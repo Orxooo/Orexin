@@ -112,14 +112,23 @@ struct TriggersView: View {
     private func ruleObservations(_ rule: TriggerRule) -> some View {
         DisclosureGroup(L("条件观测") + " · " + L(rule.combination == .all ? "全部满足" : "任一满足")) {
             ForEach(rule.conditions) { condition in
-                let reading = controller.observations[condition.id]
-                Text(conditionTitle(condition) + ": " + (reading.map { L(stateTitle($0.state)) + " · " + L($0.detail) } ?? L("尚未观测")))
+                Text(observationText(condition))
                     .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
             }
             Text(L("收尾策略在规则接管工作模式时生效；手动操作和当前会话优先。"))
                 .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).padding(.top, 4)
         }.font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+    }
+
+    private func observationText(_ condition: TriggerCondition) -> String {
+        let title = conditionTitle(condition)
+        guard let reading = controller.observations[condition.id] else {
+            return title + ": " + L("尚未观测")
+        }
+        let state = L(stateTitle(reading.state))
+        let detail = L(reading.detail)
+        return "\(title): \(state) · \(detail)"
     }
 
     private func templateCard(_ template: RuleTemplate, number: Int) -> some View {
