@@ -19,6 +19,9 @@ private actor LockRecoveryFailureLease: ScreenLockLeaseClient {
 final class NativeBackendTests: XCTestCase {
     func testLiveKernelPowerReadbackMatchesPmset() throws {
         let text = try CommandRunner.run("/usr/bin/pmset", ["-g"], timeout: 5)
+        guard text.contains("SleepDisabled") else {
+            throw XCTSkip("Host pmset does not expose SleepDisabled; live kernel comparison is unavailable.")
+        }
         let expected = try XCTUnwrap(SystemParsing.sleepDisabled(text))
         XCTAssertEqual(SystemPowerReadback.sleepDisabled(), expected)
     }
