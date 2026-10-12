@@ -80,34 +80,46 @@ struct TriggersView: View {
             cardHeading(name: rule.name, icon: icon(for: rule.conditions.first?.kind), number: number,
                         identifier: "RULE_ID :: " + String(rule.id.uuidString.prefix(8)),
                         status: ruleStatus(rule), color: ruleStatusColor(rule))
-            VStack(alignment: .leading, spacing: 8) {
-                rackRow("COND // 条件", rule.conditions.map(conditionTitle).joined(separator: rule.combination == .all ? " + " : " / "))
-                rackRow("ACTION // 执行", L(rule.mode == .background ? "后台工作" : "桌面工作") + " · " + L("保持唤醒"), color: TerminalStyle.accent)
-                rackRow("LID // 合盖策略", rule.mode == .background ? "允许合盖继续运行" : "合盖后允许休眠", color: TerminalStyle.signal)
-                rackRow("FALLBACK // 收尾", "条件解除后恢复正常模式")
-            }.padding(10).background(TerminalStyle.recess)
-            HStack(spacing: 7) {
-                Text(displayBehavior(rule)).font(.system(size: 9)).foregroundStyle(TerminalStyle.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 0)
-                Button { editing = rule } label: { TerminalIcon(name: "slider.horizontal.3", size: 16).frame(width: 26, height: 30) }
-                    .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).accessibilityLabel(LF("编辑 %@", rule.name))
-                Button(role: .destructive) { controller.remove(rule.id) } label: { TerminalIcon(name: "trash", size: 14).frame(width: 24, height: 30) }
-                    .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).foregroundStyle(TerminalStyle.warning).accessibilityLabel(LF("删除 %@", rule.name))
-                Toggle(rule.name, isOn: Binding(get: { rule.enabled }, set: { controller.setEnabled(rule.id, $0) }))
-                    .labelsHidden().toggleStyle(TerminalSwitchStyle())
-            }.padding(.top, 8).overlay(alignment: .top) { Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1) }
-            DisclosureGroup(L("条件观测") + " · " + L(rule.combination == .all ? "全部满足" : "任一满足")) {
-                ForEach(rule.conditions) { condition in
-                    let reading = controller.observations[condition.id]
-                    Text(conditionTitle(condition) + ": " + (reading.map { L(stateTitle($0.state)) + " · " + L($0.detail) } ?? L("尚未观测")))
-                        .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).textSelection(.enabled)
-                        .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
-                }
-                Text(L("收尾策略在规则接管工作模式时生效；手动操作和当前会话优先。"))
-                    .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).padding(.top, 4)
-            }.font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+            ruleDefinition(rule)
+            ruleControls(rule)
+            ruleObservations(rule)
         }.padding(14).modifier(TriggerRackSurface(active: rule.enabled && controller.enabled))
+    }
+
+    private func ruleDefinition(_ rule: TriggerRule) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            rackRow("COND // 条件", rule.conditions.map(conditionTitle).joined(separator: rule.combination == .all ? " + " : " / "))
+            rackRow("ACTION // 执行", L(rule.mode == .background ? "后台工作" : "桌面工作") + " · " + L("保持唤醒"), color: TerminalStyle.accent)
+            rackRow("LID // 合盖策略", rule.mode == .background ? "允许合盖继续运行" : "合盖后允许休眠", color: TerminalStyle.signal)
+            rackRow("FALLBACK // 收尾", "条件解除后恢复正常模式")
+        }.padding(10).background(TerminalStyle.recess)
+    }
+
+    private func ruleControls(_ rule: TriggerRule) -> some View {
+        HStack(spacing: 7) {
+            Text(displayBehavior(rule)).font(.system(size: 9)).foregroundStyle(TerminalStyle.muted)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
+            Button { editing = rule } label: { TerminalIcon(name: "slider.horizontal.3", size: 16).frame(width: 26, height: 30) }
+                .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).accessibilityLabel(LF("编辑 %@", rule.name))
+            Button(role: .destructive) { controller.remove(rule.id) } label: { TerminalIcon(name: "trash", size: 14).frame(width: 24, height: 30) }
+                .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).foregroundStyle(TerminalStyle.warning).accessibilityLabel(LF("删除 %@", rule.name))
+            Toggle(rule.name, isOn: Binding(get: { rule.enabled }, set: { controller.setEnabled(rule.id, $0) }))
+                .labelsHidden().toggleStyle(TerminalSwitchStyle())
+        }.padding(.top, 8).overlay(alignment: .top) { Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1) }
+    }
+
+    private func ruleObservations(_ rule: TriggerRule) -> some View {
+        DisclosureGroup(L("条件观测") + " · " + L(rule.combination == .all ? "全部满足" : "任一满足")) {
+            ForEach(rule.conditions) { condition in
+                let reading = controller.observations[condition.id]
+                Text(conditionTitle(condition) + ": " + (reading.map { L(stateTitle($0.state)) + " · " + L($0.detail) } ?? L("尚未观测")))
+                    .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+            }
+            Text(L("收尾策略在规则接管工作模式时生效；手动操作和当前会话优先。"))
+                .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).padding(.top, 4)
+        }.font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
     }
 
     private func templateCard(_ template: RuleTemplate, number: Int) -> some View {
