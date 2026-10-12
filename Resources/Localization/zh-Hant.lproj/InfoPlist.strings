@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "僅在你啟用 Wi-Fi 觸發規則時讀取目前網路名稱，不儲存位置。";
+"NSLocationWhenInUseUsageDescription" = "僅在你啟用 Wi-Fi 觸發規則時讀取目前網路名稱，不儲存位置。";
+"NSBluetoothUsageDescription" = "僅用於你啟用的已連接藍牙裝置觸發規則。";
+"NSBluetoothAlwaysUsageDescription" = "僅用於你啟用的已連接藍牙裝置觸發規則。";

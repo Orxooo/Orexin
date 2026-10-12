@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "Reads the current Wi-Fi network name only when you enable a Wi-Fi trigger. Your location is not stored.";
+"NSLocationWhenInUseUsageDescription" = "Reads the current Wi-Fi network name only when you enable a Wi-Fi trigger. Your location is not stored.";
+"NSBluetoothUsageDescription" = "Used only for connected Bluetooth device triggers that you enable.";
+"NSBluetoothAlwaysUsageDescription" = "Used only for connected Bluetooth device triggers that you enable.";

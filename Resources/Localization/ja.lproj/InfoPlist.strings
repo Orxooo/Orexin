@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "Wi-Fi トリガーを有効にした場合にのみ、現在のネットワーク名を読み取ります。位置情報は保存しません。";
+"NSLocationWhenInUseUsageDescription" = "Wi-Fi トリガーを有効にした場合にのみ、現在のネットワーク名を読み取ります。位置情報は保存しません。";
+"NSBluetoothUsageDescription" = "有効にした Bluetooth デバイスの接続トリガーにのみ使用します。";
+"NSBluetoothAlwaysUsageDescription" = "有効にした Bluetooth デバイスの接続トリガーにのみ使用します。";

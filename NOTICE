@@ -1,0 +1,17 @@
+Orexin
+Copyright (c) 2026 Orxooo
+SPDX-License-Identifier: GPL-3.0-only
+
+Orexin is licensed under the GNU General Public License, version 3 only.
+See LICENSE for the full terms. You may use, modify and redistribute this
+software under those terms.
+This software is provided without warranty; see sections 15 and 16 of LICENSE.
+
+Corresponding source: https://github.com/Orxooo/Orexin
+V0.1.0 Preview source tag: v0.1.0-preview.
+Release source archives and installation binaries are available together at
+https://github.com/Orxooo/Orexin/releases/tag/v0.1.0-preview.
+
+Bundled IBM Plex Mono fonts are licensed under the SIL Open Font License 1.1.
+See Assets/Licenses/IBMPlex-OFL-1.1.txt in the source distribution and
+Contents/Resources/Licenses/IBMPlex-OFL-1.1.txt in the application bundle.

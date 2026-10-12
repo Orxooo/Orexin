@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "Lit le nom du réseau Wi-Fi actuel uniquement si vous activez un déclencheur Wi-Fi. Votre position n’est pas enregistrée.";
+"NSLocationWhenInUseUsageDescription" = "Lit le nom du réseau Wi-Fi actuel uniquement si vous activez un déclencheur Wi-Fi. Votre position n’est pas enregistrée.";
+"NSBluetoothUsageDescription" = "Utilisé uniquement pour les déclencheurs d’appareils Bluetooth connectés que vous activez.";
+"NSBluetoothAlwaysUsageDescription" = "Utilisé uniquement pour les déclencheurs d’appareils Bluetooth connectés que vous activez.";

@@ -1,0 +1,35 @@
+name: macOS compatibility
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    tags: ['v*']
+    paths: ['Sources/**', 'Tests/**', 'Resources/**', 'Assets/**', 'Package.swift', 'Info.plist', 'LICENSE', 'scripts/**', '.github/workflows/**']
+  pull_request:
+    paths: ['Sources/**', 'Tests/**', 'Resources/**', 'Assets/**', 'Package.swift', 'Info.plist', 'LICENSE', 'scripts/**', '.github/workflows/**']
+permissions:
+  contents: read
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-15, macos-26]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - name: Select Swift 6 and macOS 26 SDK
+        run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
+      - name: Record environment
+        run: |
+          sw_vers
+          uname -m
+          swift --version
+      - name: Tests
+        run: swift test --arch arm64 --scratch-path "$RUNNER_TEMP/orexin-build"
+      - name: Release bundle (ad hoc signature)
+        env:
+          OREXIN_BUILD_DIR: ${{ runner.temp }}/orexin-release
+          OREXIN_OUTPUT_DIR: ${{ runner.temp }}/orexin-dist
+        run: ./scripts/build-app.sh

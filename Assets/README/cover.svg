@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="400" viewBox="0 0 1200 400" role="img" aria-labelledby="title desc">
+  <title id="title">Orexin — Power Terminal</title>
+  <desc id="desc">Klein blue Orexin wordmark beside a silver power dial. Keep working. Rest when done.</desc>
+  <defs>
+    <linearGradient id="panel" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#fafbfd"/><stop offset="1" stop-color="#e6eaf0"/></linearGradient>
+    <linearGradient id="rim" x1="0" y1="0" x2="0.7" y2="1"><stop stop-color="#ffffff"/><stop offset="0.5" stop-color="#d3d9e2"/><stop offset="1" stop-color="#f8f9fc"/></linearGradient>
+    <linearGradient id="dial" x1="0" y1="0" x2="0.7" y2="1"><stop stop-color="#ffffff"/><stop offset="1" stop-color="#e8ecf2"/></linearGradient>
+    <pattern id="grid" width="24" height="24" patternUnits="userSpaceOnUse"><path d="M24 0H0V24" fill="none" stroke="#dbe0e8" stroke-width="0.6"/></pattern>
+  </defs>
+  <rect width="1200" height="400" rx="16" fill="url(#panel)"/>
+  <path d="M16 0H704V400H16Q0 400 0 384V16Q0 0 16 0Z" fill="#002fa7"/>
+  <path d="M704 0V400" stroke="#001e6c" stroke-opacity="0.22"/>
+  <rect x="736" y="32" width="432" height="336" fill="url(#grid)"/>
+  <g fill="none" stroke="#ffffff" stroke-opacity="0.4" stroke-width="1"><path d="M26 42V26H42M662 26H678V42M26 358V374H42M662 374H678V358"/></g>
+  <g font-family="'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace" fill="#ffffff">
+    <text x="64" y="66" font-size="15" letter-spacing="3">POWER TERMINAL</text>
+    <text x="641" y="66" font-size="12" text-anchor="end" opacity="0.65">macOS</text>
+  </g>
+  <text x="60" y="199" font-family="'SF Pro Display', Helvetica, Arial, sans-serif" font-size="112" font-weight="700" letter-spacing="-5" fill="#ffffff">Orexin</text>
+  <text x="65" y="253" font-family="'SF Pro Display', Helvetica, Arial, sans-serif" font-size="25" letter-spacing="0.2" fill="#ffffff" opacity="0.9">Keep working. Rest when done.</text>
+  <path d="M64 301H641" stroke="#ffffff" stroke-opacity="0.25"/>
+  <g font-family="'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace" font-size="12" letter-spacing="1.5" fill="#ffffff">
+    <circle cx="70" cy="337" r="4"/><text x="85" y="341">KEEP AWAKE</text>
+    <path d="M226 337H258M253 333L258 337L253 341" fill="none" stroke="#ffffff" stroke-opacity="0.5"/>
+    <circle cx="291" cy="337" r="4" fill="none" stroke="#ffffff"/><text x="306" y="341">FINISH WORK</text>
+    <path d="M451 337H483M478 333L483 337L478 341" fill="none" stroke="#ffffff" stroke-opacity="0.5"/>
+    <circle cx="517" cy="337" r="4" fill="none" stroke="#ffffff"/><text x="532" y="341">LET IT REST</text>
+  </g>
+  <g fill="none" stroke="#9ca8b8" stroke-width="1"><path d="M745 57V41H761M1143 41H1159V57M745 343V359H761M1143 359H1159V343"/></g>
+  <ellipse cx="952" cy="216" rx="121" ry="118" fill="#cbd2dd" opacity="0.5"/>
+  <circle cx="952" cy="204" r="123" fill="url(#rim)" stroke="#bdc6d3"/>
+  <circle cx="952" cy="204" r="113" fill="url(#dial)" stroke="#ffffff" stroke-width="2"/>
+  <circle cx="952" cy="204" r="95" fill="none" stroke="#d8dee7"/>
+  <circle cx="952" cy="204" r="57" fill="none" stroke="#002fa7" stroke-width="9"/>
+  <path d="M870 204H1034" stroke="#002fa7" stroke-width="9" stroke-linecap="round"/>
+  <path d="M952 59V69M1097 204H1087M952 349V339M807 204H817" stroke="#98a6ba" stroke-width="2"/>
+  <path d="M855 107L861 113M1049 107L1043 113M1049 301L1043 295M855 301L861 295" stroke="#bdc6d3" stroke-width="1.5"/>
+  <circle cx="952" cy="82" r="4" fill="#002fa7"/>
+  <text x="952" y="371" text-anchor="middle" font-family="'IBM Plex Mono', 'SFMono-Regular', Consolas, monospace" font-size="10" letter-spacing="2.5" fill="#5c6d84">WORK ON YOUR TERMS</text>
+</svg>

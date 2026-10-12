@@ -1,0 +1,37 @@
+#!/bin/zsh
+# SPDX-License-Identifier: GPL-3.0-only
+# Copyright (c) 2026 Orxooo
+set -euo pipefail
+PROJECT_DIR="${0:A:h:h}"
+BUILD_DIR="${OREXIN_BUILD_DIR:-/tmp/orexin-build}"
+OUTPUT_DIR="${OREXIN_OUTPUT_DIR:-/tmp/orexin-dist}"
+cd "$PROJECT_DIR"
+swift build -c release --arch arm64 --scratch-path "$BUILD_DIR"
+APP="$OUTPUT_DIR/Orexin.app"
+mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Library/LaunchDaemons"
+cp "$BUILD_DIR/release/WakeMac" "$APP/Contents/MacOS/Orexin"
+cp "$BUILD_DIR/release/WakeMacPowerHelper" "$APP/Contents/MacOS/OrexinPowerHelper"
+cp "$PROJECT_DIR/Resources/com.orxooo.Orexin.PowerHelper.plist" "$APP/Contents/Library/LaunchDaemons/"
+cp "$PROJECT_DIR/Info.plist" "$APP/Contents/Info.plist"
+cp "$PROJECT_DIR/Assets/AppIcon.icns" "$APP/Contents/Resources/AppIcon.icns"
+cp "$PROJECT_DIR/Resources/Orexin.sdef" "$APP/Contents/Resources/Orexin.sdef"
+mkdir -p "$APP/Contents/Resources/Fonts" "$APP/Contents/Resources/Licenses"
+rsync -a --delete "$PROJECT_DIR/Assets/Fonts/" "$APP/Contents/Resources/Fonts/"
+rsync -a --delete "$PROJECT_DIR/Assets/Licenses/" "$APP/Contents/Resources/Licenses/"
+cp "$PROJECT_DIR/LICENSE" "$APP/Contents/Resources/Licenses/Orexin-GPL-3.0.txt"
+cp "$PROJECT_DIR/NOTICE" "$APP/Contents/Resources/Licenses/Orexin-NOTICE.txt"
+for localization in "$PROJECT_DIR"/Resources/Localization/*.lproj; do
+  [[ -d "$localization" ]] || continue
+  cp -R "$localization" "$APP/Contents/Resources/"
+done
+cp "$PROJECT_DIR/Assets/PowerTerminal.png" "$APP/Contents/Resources/PowerTerminal.png"
+cp "$PROJECT_DIR/Assets/OrbitalMoon.png" "$APP/Contents/Resources/OrbitalMoon.png"
+cp "$PROJECT_DIR/Assets/OrbitalCore.png" "$APP/Contents/Resources/OrbitalCore.png"
+cp "$PROJECT_DIR/Assets/OrbitalZima.png" "$APP/Contents/Resources/OrbitalZima.png"
+cp "$PROJECT_DIR/Assets/Orbital2049.png" "$APP/Contents/Resources/Orbital2049.png"
+mkdir -p "$APP/Contents/Resources/Sounds"
+rsync -a --delete --delete-excluded --include='*-click.wav' --exclude='*' "$PROJECT_DIR/Assets/Sounds/" "$APP/Contents/Resources/Sounds/"
+codesign --force --options runtime --sign "${OREXIN_SIGN_IDENTITY:--}" --identifier com.orxooo.Orexin.PowerHelper "$APP/Contents/MacOS/OrexinPowerHelper"
+codesign --force --options runtime --entitlements "$PROJECT_DIR/Resources/Orexin.entitlements" --sign "${OREXIN_SIGN_IDENTITY:--}" "$APP"
+codesign --verify --strict "$APP"
+printf '%s\n' "$APP"

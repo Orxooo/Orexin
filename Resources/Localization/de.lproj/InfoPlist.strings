@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "Liest den Namen des aktuellen WLANs nur bei aktiviertem WLAN-Auslöser. Dein Standort wird nicht gespeichert.";
+"NSLocationWhenInUseUsageDescription" = "Liest den Namen des aktuellen WLANs nur bei aktiviertem WLAN-Auslöser. Dein Standort wird nicht gespeichert.";
+"NSBluetoothUsageDescription" = "Wird nur für von dir aktivierte Auslöser für verbundene Bluetooth-Geräte verwendet.";
+"NSBluetoothAlwaysUsageDescription" = "Wird nur für von dir aktivierte Auslöser für verbundene Bluetooth-Geräte verwendet.";

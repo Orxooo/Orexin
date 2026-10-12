@@ -1,0 +1,5 @@
+"CFBundleDisplayName" = "Orexin";
+"NSLocationUsageDescription" = "Lee el nombre de la red Wi-Fi actual solo cuando activas un disparador Wi-Fi. No se guarda tu ubicación.";
+"NSLocationWhenInUseUsageDescription" = "Lee el nombre de la red Wi-Fi actual solo cuando activas un disparador Wi-Fi. No se guarda tu ubicación.";
+"NSBluetoothUsageDescription" = "Se usa solo para los activadores de dispositivos Bluetooth conectados que actives.";
+"NSBluetoothAlwaysUsageDescription" = "Se usa solo para los activadores de dispositivos Bluetooth conectados que actives.";
