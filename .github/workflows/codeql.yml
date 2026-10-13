@@ -32,7 +32,7 @@ jobs:
       security-events: write
       packages: read
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - name: Select Xcode for Swift analysis
         if: matrix.language == 'swift'
         run: sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
