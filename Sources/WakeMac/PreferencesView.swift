@@ -7,12 +7,12 @@ import ServiceManagement
 import WakeMacCore
 
 private enum PreferencePage: String, CaseIterable {
-    case power = "工作模式", sessions = "工作会话", triggers = "自动触发", automation = "自动收尾", command = "命令任务", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", history = "运行记录", about = "关于软件"
+    case power = "工作模式", sessions = "工作会话", triggers = "自动触发", automation = "自动收尾", command = "任务管理", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", history = "运行记录", about = "关于软件"
     var icon: String {
         switch self { case .power: "sun.max"; case .sessions: "hourglass"; case .triggers: "bolt.badge.clock"; case .automation: "timer"; case .command: "terminal"; case .settings: "slider.horizontal.3"; case .thermal: "thermometer"; case .advanced: "paintbrush.pointed"; case .history: "clock.arrow.circlepath"; case .about: "info.circle" }
     }
     var code: String {
-        switch self { case .power: "MODES"; case .sessions: "SESS"; case .triggers: "TRIG"; case .automation: "TEAR"; case .command: "CMDS"; case .settings: "CONF"; case .thermal: "TEMP"; case .advanced: "STYLE"; case .history: "LOGS"; case .about: "ABOUT" }
+        switch self { case .power: "MODES"; case .sessions: "SESS"; case .triggers: "TRIG"; case .automation: "TEAR"; case .command: "TASKS"; case .settings: "CONF"; case .thermal: "TEMP"; case .advanced: "STYLE"; case .history: "LOGS"; case .about: "ABOUT" }
     }
     var number: String { String(format: "%02d", (Self.allCases.firstIndex(of: self) ?? 0) + 1) }
     var englishTitle: String {
@@ -21,7 +21,7 @@ private enum PreferencePage: String, CaseIterable {
         case .sessions: "SESSION TARGET CONTROL"
         case .triggers: "AUTO DISPATCH SYSTEM"
         case .automation: "AUTO TEARDOWN & POWER DEFENSE"
-        case .command: "COMMAND TASK RUNNER"
+        case .command: "TASK MANAGEMENT"
         case .settings: "SYSTEM & DAEMON PREFERENCES"
         case .thermal: "THERMAL SAFEGUARD"
         case .advanced: "CONSOLE STYLE MATRIX"
@@ -35,7 +35,7 @@ private enum PreferencePage: String, CaseIterable {
         case .sessions: "设置保持唤醒多久，或在应用退出、下载完成后自动结束。"
         case .triggers: "条件满足时自动开始，手动操作始终优先。"
         case .automation: "让工作按时结束，也照顾好电量。"
-        case .command: "交给它一条命令，完成后安心休息。"
+        case .command: "统一查看任务，独立保活，按结果收尾。"
         case .settings: "按你的习惯，安排每一次切换。"
         case .thermal: "监测系统温度压力，在过热时释放保活。"
         case .advanced: "调整主题、语言、菜单栏与声音。"
@@ -56,6 +56,7 @@ struct PreferencesView: View {
     @State private var date = Date().addingTimeInterval(3600)
     @State private var teardownPreset = 60
     @State private var command = ""
+    @State private var taskSection = TaskManagementSection.tasks
     @State private var directory = FileManager.default.homeDirectoryForCurrentUser.path
     @State private var shortcutDraft = ShortcutBinding.defaults
     @State private var shortcutEnabled = true
@@ -82,9 +83,10 @@ struct PreferencesView: View {
         .overlay(CRTLines())
         .font(WorkType.body).foregroundStyle(TerminalStyle.ink).tint(TerminalStyle.accent)
         .buttonStyle(TerminalButtonStyle()).focusEffectDisabled().preferredColorScheme(appearance.theme.colorScheme)
+        .onChange(of: model.requestedTaskPage) { _, _ in page = .command; taskSection = .tasks }
         .onAppear { shortcutDraft = hotkeys.bindings; shortcutEnabled = hotkeys.enabled }
         .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenTemperature)) { _ in page = .thermal }
-        .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenCommandTask)) { _ in page = .command }
+        .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenCommandTask)) { _ in page = .command; taskSection = .run }
         .onReceive(NotificationCenter.default.publisher(for: .orexinOpenAbout)) { _ in page = .about }
     }
 
@@ -126,6 +128,7 @@ struct PreferencesView: View {
                 }.frame(width: width)
                     .defaultScrollAnchor(.topLeading)
                     .onChange(of: page) { _, _ in proxy.scrollTo("page-top", anchor: .top) }
+                    .onChange(of: taskSection) { _, _ in proxy.scrollTo("page-top", anchor: .top) }
                 }
             }.frame(width: width, alignment: .topLeading)
                 .frame(maxHeight: .infinity, alignment: .topLeading).clipped()
@@ -137,7 +140,7 @@ struct PreferencesView: View {
         case .sessions: sessionsTab(contentWidth: contentWidth)
         case .triggers: TriggersView(controller: model.triggers)
         case .automation: AutoTeardownView(model: model, date: $date, preset: $teardownPreset, availableWidth: max(0, contentWidth - 40))
-        case .command: CommandTasksView(model: model, command: $command, directory: $directory, availableWidth: max(0, contentWidth - 40))
+        case .command: CommandTasksView(model: model, command: $command, directory: $directory, availableWidth: max(0, contentWidth - 40), section: $taskSection)
         case .settings: settingsTab(contentWidth: contentWidth)
         case .thermal: ThermalProtectionView(model: model, availableWidth: max(0, contentWidth - 40))
         case .advanced: AdvancedView(appearance: model.appearance, notifier: notifier, availableWidth: max(0, contentWidth - 40))

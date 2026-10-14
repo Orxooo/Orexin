@@ -222,3 +222,21 @@ struct TerminalSlider: View {
         value = min(range.upperBound, max(range.lowerBound, value + direction * (range.upperBound - range.lowerBound) / 20))
     }
 }
+
+/// The existing audit-filter selection treatment, shared with in-page navigation.
+struct TerminalSelectionButton<Label: View>: View {
+    let selected: Bool
+    let action: () -> Void
+    @ViewBuilder var label: Label
+    var body: some View {
+        Button(action: action) {
+            label.frame(maxWidth: .infinity, minHeight: 31)
+                .foregroundStyle(selected ? WorkStyle.ink : WorkStyle.muted)
+                .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
+                .overlay(alignment: .top) {
+                    Rectangle().fill(TerminalStyle.accent).frame(height: 2).opacity(selected ? 1 : 0)
+                }.contentShape(Rectangle())
+        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
+            .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}

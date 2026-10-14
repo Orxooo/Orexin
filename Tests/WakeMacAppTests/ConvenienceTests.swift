@@ -192,7 +192,7 @@ actor AutomationBackend: ModeBackend {
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let m = AppModel(backend: b, preferences: UserDefaults(suiteName: "WakeMacTests." + UUID().uuidString)!, jobLogDirectory: dir)
         defer { try? FileManager.default.removeItem(at: dir) }
-        await m.refresh()
+        await m.choose(.normal)
         await m.startJob(command: "printf model-success", directory: "/tmp")
         XCTAssertNotNil(m.automation.jobSleepAt)
         XCTAssertFalse(m.jobRunning)

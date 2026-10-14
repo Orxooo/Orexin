@@ -1121,3 +1121,51 @@
 "，暂停保活并取消自动休眠；正在执行的命令继续运行。" = ", suspend life support and cancel automatic sleep; commands currently being executed continue to run.";
 "，秒" = ", seconds";
 "；紧急释放已关闭，保活状态保持不变。" = "; Emergency release has been closed, and the survival status remains unchanged.";
+
+/* Concurrent work requests and local CLI */
+"并行工作请求" = "Concurrent work requests";
+"全部停止保活" = "Stop all keep-awake";
+"每项任务独立释放保活；释放不会终止命令。全部停止同时结束会话与规则保活。" = "Each task releases its own keep-awake request without terminating its command. Stop all also ends session and rule requests.";
+"显示最近结束的请求" = "Show recently ended requests";
+"暂无工作请求" = "No work requests";
+"查看日志" = "View log";
+"释放此请求" = "Release this request";
+"保活需求已核验" = "Keep-awake requirements verified";
+"需求暂未满足；请检查电源或屏幕状态" = "Requirements not satisfied; check power or display status";
+"到期时间" = "Expires at";
+"保活已释放；命令仍在运行" = "Keep-awake released; command still running";
+"支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。" = "Run multiple foreground commands concurrently. External tasks explicitly report completion through the CLI; other apps’ progress is not inferred.";
+"每个命令独立保活并记录退出码；全部成功后才按收尾策略处理，手动模式与会话继续保留。" = "Each command independently keeps the Mac awake and records its exit code. Teardown follows only after all succeed; manual work and sessions are preserved.";
+"使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。" = "Use noninteractive foreground commands; password prompts and & / nohup background jobs are unsupported. When all overlapping requests succeed and no other keep-awake owner remains, a 60-second countdown starts. Failure, cancellation, loss or expiry only releases keep-awake. Logs retain the first 5 MB of stdout and stderr.";
+
+/* Task management navigation and integration workspace. */
+"任务管理" = "Task management";
+"统一查看任务，独立保活，按结果收尾。" = "Track tasks, keep each one awake, and finish according to its result.";
+"任务列表" = "Task list";
+"运行命令" = "Run command";
+"外部接入" = "Integrations";
+"保活中" = "Keeping awake";
+"已成功" = "Succeeded";
+"已失败" = "Failed";
+"已释放" = "Released";
+"已失联" = "Connection lost";
+"已到期" = "Expired";
+"已被停止" = "Stopped";
+"未获准" = "Rejected";
+"%d 项保活请求 · %d 条命令运行中" = "%d keep-awake requests · %d commands running";
+"当前没有活跃任务" = "No active tasks";
+"运行一条命令，或让外部工具通过 CLI 登记任务。" = "Run a command or register a task from an external tool using the CLI.";
+"允许屏幕休眠" = "Display may sleep";
+"屏幕调暗" = "Dim display";
+"屏幕常亮" = "Display stays awake";
+"本地接入状态" = "Local connection status";
+"本地接口尚未就绪；请确认 Orexin 正在运行。" = "The local interface is not ready. Make sure Orexin is running.";
+"CLI 任务接入" = "CLI tasks";
+"适合构建、备份与脚本任务。每个请求独立保活，完成后释放自己的请求。" = "For builds, backups, and scripts. Each request keeps the Mac awake independently and releases its own hold on completion.";
+"示例已复制" = "Example copied";
+"复制 CLI 示例" = "Copy CLI example";
+"示例使用应用内附带的 CLI，无需安装到 PATH。默认恢复原有状态；需要成功后休眠时添加 --after sleep。" = "The example uses the bundled CLI; no PATH setup is needed. It restores the previous state by default. Add --after sleep to sleep after success.";
+"外部任务生命周期" = "External task lifecycle";
+"register 返回 ID:TOKEN；任务执行期间用 heartbeat 续约，结束后报告实际退出码。release 仅释放保活，不终止进程。" = "register returns ID:TOKEN. Renew with heartbeat while working, then report the actual exit code. release ends the keep-awake request without terminating the process.";
+"使用 \"$orexin\" help 查看参数；所有命令支持 --json。" = "Use \"$orexin\" help for options. All commands support --json.";
+"复制完整请求 ID" = "Copy full request ID";

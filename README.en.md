@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.1.0-preview"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>Keep your Mac awake while you work. Let it rest when the job is done.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.1.0-preview"><img src="https://img.shields.io/badge/Preview-v0.1.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.1.0 Preview"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><img src="https://img.shields.io/badge/Preview-v0.2.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.2.0 Preview"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 or later">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> · <strong>English</strong><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.1.0-preview"><strong>Download V0.1.0 Preview ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><strong>Download V0.2.0 Preview ↗</strong></a> &nbsp; · &nbsp;
   <a href="#get-started">Installation</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">Handbook</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">Discussions</a>
@@ -52,7 +52,7 @@ Three themes change both the interface palette and moon artwork. Available in �
 | **Keep working with the lid closed** | The background preset keeps the system running after you approve the helper and authorize unlocked work for the session. |
 | **Present or work at your desk** | The desktop preset prevents idle sleep while allowing normal sleep when you close the lid. |
 | **Finish at the right moment** | End after a duration, at a time, when an app or process exits, or when a selected download finishes. |
-| **Run a command and step away** | Run a noninteractive foreground zsh command; success starts a cancellable 60-second sleep countdown, while failure preserves the result and logs. |
+| **Run a command and step away** | Run noninteractive foreground zsh commands concurrently, with separate wakefulness and logs; sleep is scheduled only after all overlapping requests succeed and other wakefulness sources have ended. |
 | **Start from familiar conditions** | Combine power, display, device, app, network, or weekly schedule conditions. Manual actions take priority. |
 | **Release wakefulness when needed** | Session completion, low-battery protection, and thermal protection share the cleanup path that restores sleep and password settings. |
 
@@ -64,8 +64,8 @@ Screen behavior is independent of the preset: choose **0% brightness, normal bri
 
 **Apple Silicon Mac · macOS 15 or later.** The current download is arm64.
 
-1. Open the [V0.1.0 Preview release](https://github.com/Orxooo/Orexin/releases/tag/v0.1.0-preview) and download `Orexin-0.1.0-Preview-arm64.zip`.
-2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, end work and quit the old app first; existing Orexin preferences and local data are retained.
+1. Open the [V0.2.0 Preview release](https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview) and download `Orexin-0.2.0-Preview-arm64.zip`.
+2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, wait for built-in commands to finish, end wakefulness and quit the old app first; existing Orexin preferences and local data are retained.
 3. Choose a preset and an end condition. For lid-closed work, approve the helper in Settings and personally authorize unlocked work in the native dialog.
 
 > [!IMPORTANT]
@@ -80,7 +80,7 @@ Download the ZIP and `SHA256SUMS.txt` into the same directory, then run:
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-`Orexin-0.1.0-Preview-arm64.zip: OK` confirms that the checksum matches.
+`Orexin-0.2.0-Preview-arm64.zip: OK` confirms that the checksum matches.
 
 </details>
 
@@ -95,6 +95,25 @@ shasum -a 256 -c SHA256SUMS.txt
 See the [security policy](SECURITY.md) and [feature reference](FEATURES.md).
 
 </details>
+
+## Task management and CLI
+
+V0.2.0 Preview expands Command Tasks into **Task Management**, with **Task list / Run command / Integrations**. Run commands concurrently, inspect each task's logs, actual exit code and wakefulness status, and release requests individually.
+
+Finishing one task preserves the others. A cancellable 60-second sleep countdown starts only when all overlapping requests succeed and no manual work, session or rule still needs wakefulness. Releasing a request or stopping all wakefulness does not kill running commands.
+
+After installing and opening the app, use the bundled CLI directly:
+
+```sh
+orexin=/Applications/Orexin.app/Contents/Helpers/orexin
+"$orexin" help
+"$orexin" run --title Build -- make
+"$orexin" list --json
+```
+
+`run` wraps a foreground command and reports its actual result. External tools can also use `register`, `heartbeat`, `complete` and related lifecycle commands. The local interface is restricted to the current user and does not listen on a network port. The app must remain running; restarting does not replay commands or restore old requests.
+
+See the [CLI and concurrent-request guide (Chinese)](docs/CLI.md) for options and integration examples. If the app is installed elsewhere, copy its actual path from Integrations.
 
 ## Build from source
 

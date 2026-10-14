@@ -35,6 +35,7 @@ extension AppModel {
         // A mode transition temporarily clears active/snapshot. Do not treat
         // that transient state as a failed session when a display wakes.
         guard !busy else { return }
+        updateRequestScreenPolicy()
         if verifiedWork, let active {
             sessions.screenPolicyPreventsSleep = workScreen.behavior(for: active).keepsDisplayActive
         } else { sessions.screenPolicyPreventsSleep = nil }
@@ -53,9 +54,9 @@ extension AppModel {
     func setTriggersEnabled(_ enabled: Bool) async {
         triggers.enabled = enabled
         if !enabled, triggerOwnedMode != nil, !sessions.isActive {
-            await choose(.normal, automatic: true, startupRecovery: true)
             triggerOwnedMode = nil; triggerOwnedRuleID = nil; appliedTriggerBehavior = nil
-            triggerRuntimeMode = nil
+            triggerRuntimeMode = nil; sessions.effectOverrides = nil
+            await reconcileWorkRequests()
         }
         if enabled { suppressedTriggerIDs.removeAll() }
         lastFeatureSample = .distantPast
@@ -65,6 +66,8 @@ extension AppModel {
         guard !busy, !sessions.isStarting else { return }
         if sessions.isActive || triggerOwnedMode != nil {
             let target: WorkMode = enabled ? .background : .desk
+            if sessions.isActive { sessionWorkMode = target }
+            if triggerOwnedMode != nil { triggerOwnedMode = target }
             await choose(target, automatic: true)
             if verifiedWork, active == target, triggerOwnedMode != nil {
                 triggerRuntimeMode = target; triggerOwnedMode = target

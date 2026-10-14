@@ -50,7 +50,9 @@ extension AppModel {
         if automation.batterySleepAt == next {
             automaticSleepRevision += 1; automation.cancelBatterySleep(); record("已取消本次低电量休眠。")
         } else if automation.jobSleepAt == next {
-            automaticSleepRevision += 1; automation.cancelJobSleep(); record("已取消任务完成后休眠。")
+            automaticSleepRevision += 1; automation.cancelJobSleep(); workRequests.cancelSleep()
+            if requestCountdownMode != nil { requestCountdownMode = nil; Task { await reconcileWorkRequests() } }
+            record("已取消任务完成后休眠。")
         } else { cancelTimer() }
         onUpdate?()
     }
@@ -60,6 +62,11 @@ extension AppModel {
     func cancelAutomaticSleep() {
         automaticSleepRevision += 1
         automation.cancelBatterySleep(); automation.cancelJobSleep()
+        workRequests.cancelSleep()
+        if requestCountdownMode != nil {
+            requestCountdownMode = nil
+            Task { await reconcileWorkRequests() }
+        }
         convenienceMessage = "已取消自动休眠；正在运行的命令会继续。"
         record(convenienceMessage); onUpdate?()
     }
@@ -80,6 +87,7 @@ extension AppModel {
         if battery != reading { battery = reading }
         onUpdate?()
         if await protectFromThermalPressure() { return }
+        await reapWorkRequests(now: date)
         guard !busy else { return }
         let actions = automation.evaluate(now: date, mode: active, battery: reading)
         for action in actions {
@@ -95,6 +103,7 @@ extension AppModel {
                 record("低电量保护开始恢复正常模式并请求休眠。", notify: true)
                 await choose(.normal, sleep: true, automatic: true, batterySleep: true)
             case .sleepForJob:
+                guard workRequests.active.isEmpty else { continue }
                 record("任务成功，开始恢复正常模式并请求休眠。", notify: true)
                 await choose(.normal, sleep: true, automatic: true)
             }
@@ -103,7 +112,6 @@ extension AppModel {
         tickBehavior(now: date)
     }
     func startJob(command: String, directory: String) async {
-        guard !jobRunning, !busy else { return }
         if await protectFromThermalPressure() {
             convenienceMessage = "温度保护：请等待设备降温并恢复正常休眠后，再启动命令。"
             onUpdate?(); return
@@ -114,28 +122,36 @@ extension AppModel {
               FileManager.default.fileExists(atPath: path, isDirectory: &isDirectory), isDirectory.boolValue else {
             convenienceMessage = "请填写命令和有效工作目录。"; return
         }
-        jobRunning = true
-        if active != .background && active != .desk { await choose(.desk) }
-        guard !error, pending == nil, active == .desk || active == .background else {
-            jobRunning = false; convenienceMessage = "工作模式未核验，未启动命令。"; return
-        }
-        let id = automation.beginJob()
-        let log = jobLogDirectory.appendingPathComponent("task-\(id.uuidString).log")
-        do { try FileManager.default.createDirectory(at: jobLogDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700]) }
-        catch { jobRunning = false; automation.cancelJobSleep(); convenienceMessage = error.localizedDescription; return }
-        jobStatus = "命令运行中"; jobLogURL = log; convenienceMessage = ""
-        preferences.set(true, forKey: "orexin.JobWasRunning")
-        record("命令任务已启动，成功后倒计时休眠。")
+        let handle: WorkRequestHandle
         do {
+            let behavior = workScreen.behavior(for: legacyWorkMode ?? .desk)
+            handle = try await registerWork(.init(title: "命令任务 " + Date().formatted(date: .omitted, time: .standard), source: "command",
+                screen: behavior == .normalBrightness ? .awake : behavior == .dim ? .dim : .idle, teardown: .sleepOnSuccess))
+        } catch { convenienceMessage = error.localizedDescription; onUpdate?(); return }
+        let id = handle.id
+        commandHandles[id] = handle; runningCommandIDs.insert(id); jobRunning = true
+        let log = jobLogDirectory.appendingPathComponent("task-\(id.uuidString).log")
+        commandLogs[id] = log; jobLogURL = log
+        jobStatus = "命令运行中"; convenienceMessage = ""
+        preferences.set(true, forKey: "orexin.JobWasRunning")
+        record("命令任务已启动；独立保活，等待真实退出码。")
+        do {
+            try FileManager.default.createDirectory(at: jobLogDirectory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             let result = try await Task.detached(priority: .utility) {
                 try CommandJob.run(command: command, directory: path, logURL: log)
             }.value
-            completeJob(id: id, exitCode: result.exitCode, at: Date())
+            try await completeWork(handle, exitCode: result.exitCode)
+            jobStatus = result.exitCode == 0 ? "命令成功" : "命令失败（\(result.exitCode)）"
             if result.truncated { record("任务日志已达到 5 MB 上限，后续输出已丢弃。") }
         } catch {
-            completeJob(id: id, exitCode: nil, at: Date())
-            convenienceMessage = "命令启动或日志处理失败：" + error.localizedDescription
+            let teardown = try? workRequests.release(id: id, state: .failed, reason: error.localizedDescription, now: Date())
+            saveWorkRequests(); await finishWorkMutation(teardown, now: Date())
+            jobStatus = "命令启动或日志处理失败：" + error.localizedDescription
         }
+        runningCommandIDs.remove(id); commandHandles.removeValue(forKey: id)
+        jobRunning = !runningCommandIDs.isEmpty
+        preferences.set(jobRunning, forKey: "orexin.JobWasRunning")
+        record(jobStatus, notify: true); onUpdate?()
     }
     func completeJob(id: UUID, exitCode: Int32?, at date: Date) {
         jobRunning = false; preferences.set(false, forKey: "orexin.JobWasRunning")

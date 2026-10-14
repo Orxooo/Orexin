@@ -7,5 +7,6 @@ dist/
 .env
 .env.*
 # Local development history and machine-specific verification records.
-docs/
+docs/*
+!docs/CLI.md
 design-qa.md

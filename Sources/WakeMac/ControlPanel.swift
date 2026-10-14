@@ -55,6 +55,7 @@ struct ControlPanel: View {
     }
     private var sessionSummary: String {
         if let countdown = model.countdownText { return countdown }
+        if !model.workRequests.active.isEmpty { return L("并行工作请求") + " · \(model.workRequests.active.count)" }
         if sessions.isActive { return sessions.status }
         if model.triggerOwnedMode != nil { return model.triggerSummary }
         return model.verifiedWork ? "手动结束" : "尚未开始会话"
@@ -80,6 +81,11 @@ struct ControlPanel: View {
                     modes
                     matrix
                     quickActions
+                    if !model.workRequests.active.isEmpty {
+                        Button { model.openWorkRequests(); closePopover?() } label: {
+                            Text(L("并行工作请求") + " · \(model.workRequests.active.count)")
+                        }.workKeyboardFocus(radius: 0)
+                    }
                     if model.pending != nil || model.error { feedback }
                 }.padding(12)
             }.frame(maxWidth: .infinity)

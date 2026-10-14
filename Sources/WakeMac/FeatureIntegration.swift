@@ -19,21 +19,23 @@ extension AppModel {
             guard let self, !self.busy else { return false }
             self.suppressCurrentTriggers()
             self.sessions.effectOverrides = nil
+            self.manualWorkMode = nil; self.sessionWorkMode = mode
             await self.choose(mode, automatic: true)
-            let verified = self.active == mode && !self.error && self.pending == nil
+            let verified = self.verifiedWork && (mode != .background || self.active == .background)
+            if !verified { self.sessionWorkMode = nil }
             if verified { self.featureNotificationHandler?("工作会话已开始：" + mode.title, .sessionStart) }
             return verified
         }
         controller.onEnd = { [weak self] in
             guard let self else { return }
-            await self.choose(.normal, automatic: true)
+            await self.endOwnedSession(conditionMet: false)
             if self.active == .normal, !self.error, self.pending == nil {
                 self.featureNotificationHandler?("工作会话已结束，已恢复正常休眠。", .sessionEnd)
             }
         }
         controller.onConditionEnd = { [weak self] in
             guard let self else { return }
-            await self.choose(.normal, sleep: true, automatic: true)
+            await self.endOwnedSession(conditionMet: true)
             if self.active == .normal, !self.error, self.pending == nil {
                 self.featureNotificationHandler?("会话条件已满足，已恢复正常模式并请求休眠与锁定。", .sessionEnd)
             }
@@ -70,12 +72,14 @@ extension AppModel {
         guard !sessions.isActive, !sessions.isStarting else { triggerSummary = "当前会话优先于自动触发"; return }
         let available = matching.filter { !suppressedTriggerIDs.contains($0.id) }
         if let desired = available.first(where: { $0.mode == .background }) ?? available.first {
-            if triggerOwnedMode == nil && active != .normal { triggerSummary = "保留当前手动工作模式"; return }
+            if triggerOwnedMode == nil && manualWorkMode != nil { triggerSummary = "保留当前手动工作模式"; return }
             if triggerOwnedRuleID != desired.id { triggerRuntimeMode = nil }
             let targetMode = triggerRuntimeMode ?? desired.mode
-            if triggerOwnedMode != targetMode || active != targetMode {
+            if triggerOwnedMode != targetMode || active != aggregateMode(including: targetMode) {
+                triggerOwnedMode = targetMode
                 await choose(targetMode, automatic: true)
-                guard active == targetMode, !error, pending == nil else {
+                guard verifiedWork, targetMode != .background || active == .background else {
+                    triggerOwnedMode = nil
                     suppressedTriggerIDs.formUnion(available.map(\.id)); return
                 }
                 triggerOwnedMode = targetMode
@@ -96,9 +100,9 @@ extension AppModel {
         } else if triggerOwnedMode != nil {
             // A rule naturally ending is not a manual veto. It may run again
             // when its conditions next become true.
-            await choose(.normal, automatic: true, startupRecovery: true)
             triggerOwnedMode = nil; triggerOwnedRuleID = nil; appliedTriggerBehavior = nil
-            triggerRuntimeMode = nil
+            triggerRuntimeMode = nil; sessions.effectOverrides = nil
+            await reconcileWorkRequests()
             triggerSummary = "规则条件已解除，恢复正常休眠"
             featureNotificationHandler?(triggerSummary, .triggerChange)
         } else { triggerSummary = matching.isEmpty ? triggers.status : "手动操作优先；等待规则条件解除" }

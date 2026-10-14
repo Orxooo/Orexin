@@ -1121,3 +1121,51 @@
 "，暂停保活并取消自动休眠；正在执行的命令继续运行。" = ", suspendre la sauvegarde et annuler le mode de sommeil automatique ; les commandes en cours d'exécution continuent de fonctionner.";
 "，秒" = ", seconde";
 "；紧急释放已关闭，保活状态保持不变。" = "; La libération d'urgence est fermée, le statut de survie reste inchangé.";
+
+/* Concurrent work requests and local CLI */
+"并行工作请求" = "Tâches simultanées";
+"全部停止保活" = "Arrêter tout maintien en éveil";
+"每项任务独立释放保活；释放不会终止命令。全部停止同时结束会话与规则保活。" = "Chaque tâche libère son maintien en éveil sans arrêter sa commande. Tout arrêter met aussi fin aux sessions et aux règles.";
+"显示最近结束的请求" = "Afficher les tâches récemment terminées";
+"暂无工作请求" = "Aucune tâche";
+"查看日志" = "Voir le journal";
+"释放此请求" = "Libérer cette tâche";
+"保活需求已核验" = "Maintien en éveil vérifié";
+"需求暂未满足；请检查电源或屏幕状态" = "Conditions non remplies ; vérifiez l’alimentation ou l’écran";
+"到期时间" = "Expiration";
+"保活已释放；命令仍在运行" = "Maintien en éveil libéré ; commande toujours en cours";
+"支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。" = "Exécutez plusieurs commandes au premier plan. Les tâches externes signalent leur fin via la CLI ; l’état des autres apps n’est pas déduit.";
+"每个命令独立保活并记录退出码；全部成功后才按收尾策略处理，手动模式与会话继续保留。" = "Chaque commande maintient l’éveil et enregistre son code de sortie. La clôture attend la réussite de toutes les tâches ; modes manuels et sessions sont conservés.";
+"使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。" = "Utilisez des commandes non interactives au premier plan, sans saisie de mot de passe ni tâches & / nohup. Après réussite de toutes les tâches simultanées et sans autre maintien en éveil, un compte à rebours de 60 secondes démarre. Échec, annulation, perte ou expiration libèrent seulement le maintien en éveil. Les journaux conservent les premiers 5 Mo de stdout et stderr.";
+
+/* Task management navigation and integration workspace. */
+"任务管理" = "Gestion des tâches";
+"统一查看任务，独立保活，按结果收尾。" = "Suivez les tâches, maintenez chacune en éveil et terminez selon son résultat.";
+"任务列表" = "Tâches";
+"运行命令" = "Exécuter";
+"外部接入" = "Intégrations";
+"保活中" = "Maintien en éveil";
+"已成功" = "Réussie";
+"已失败" = "Échouée";
+"已释放" = "Libérée";
+"已失联" = "Connexion perdue";
+"已到期" = "Expirée";
+"已被停止" = "Arrêtée";
+"未获准" = "Refusée";
+"%d 项保活请求 · %d 条命令运行中" = "%d demandes d’éveil · %d commandes en cours";
+"当前没有活跃任务" = "Aucune tâche active";
+"运行一条命令，或让外部工具通过 CLI 登记任务。" = "Exécutez une commande ou enregistrez une tâche externe via la CLI.";
+"允许屏幕休眠" = "Veille de l’écran autorisée";
+"屏幕调暗" = "Écran atténué";
+"屏幕常亮" = "Écran maintenu allumé";
+"本地接入状态" = "État de la connexion locale";
+"本地接口尚未就绪；请确认 Orexin 正在运行。" = "L’interface locale n’est pas prête. Vérifiez qu’Orexin est en cours d’exécution.";
+"CLI 任务接入" = "Tâches via la CLI";
+"适合构建、备份与脚本任务。每个请求独立保活，完成后释放自己的请求。" = "Pour les builds, sauvegardes et scripts. Chaque demande maintient le Mac éveillé et libère son propre maintien à la fin.";
+"示例已复制" = "Exemple copié";
+"复制 CLI 示例" = "Copier l’exemple CLI";
+"示例使用应用内附带的 CLI，无需安装到 PATH。默认恢复原有状态；需要成功后休眠时添加 --after sleep。" = "L’exemple utilise la CLI intégrée, sans configurer PATH. L’état précédent est restauré par défaut. Ajoutez --after sleep pour dormir après une réussite.";
+"外部任务生命周期" = "Cycle de vie des tâches externes";
+"register 返回 ID:TOKEN；任务执行期间用 heartbeat 续约，结束后报告实际退出码。release 仅释放保活，不终止进程。" = "register renvoie ID:TOKEN. Renouvelez avec heartbeat pendant l’exécution, puis signalez le code de sortie réel. release libère l’éveil sans arrêter le processus.";
+"使用 \"$orexin\" help 查看参数；所有命令支持 --json。" = "Consultez \"$orexin\" help pour les options. Toutes les commandes acceptent --json.";
+"复制完整请求 ID" = "Copier l’identifiant complet";

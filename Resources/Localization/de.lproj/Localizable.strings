@@ -1121,3 +1121,51 @@
 "，暂停保活并取消自动休眠；正在执行的命令继续运行。" = ", den Lebenshalt unterbrechen und die automatische Ruhestandskonfiguration aufheben; die ausführenden Befehle werden weiterhin ausgeführt.";
 "，秒" = ", Sekunden";
 "；紧急释放已关闭，保活状态保持不变。" = "Die Notentlassung ist geschlossen, der Status des Überlebens bleibt unverändert.";
+
+/* Concurrent work requests and local CLI */
+"并行工作请求" = "Parallele Arbeitsanfragen";
+"全部停止保活" = "Alle Wachhalteanfragen beenden";
+"每项任务独立释放保活；释放不会终止命令。全部停止同时结束会话与规则保活。" = "Jede Aufgabe gibt nur ihre eigene Wachhalteanforderung frei, ohne den Befehl zu beenden. Alle beenden beendet auch Sitzungen und Regeln.";
+"显示最近结束的请求" = "Kürzlich beendete Anfragen anzeigen";
+"暂无工作请求" = "Keine Arbeitsanfragen";
+"查看日志" = "Protokoll anzeigen";
+"释放此请求" = "Diese Anfrage freigeben";
+"保活需求已核验" = "Wachhalteanforderungen verifiziert";
+"需求暂未满足；请检查电源或屏幕状态" = "Anforderungen nicht erfüllt; Strom- oder Bildschirmstatus prüfen";
+"到期时间" = "Ablaufzeit";
+"保活已释放；命令仍在运行" = "Wachhalten freigegeben; Befehl läuft weiter";
+"支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。" = "Mehrere Vordergrundbefehle parallel ausführen. Externe Aufgaben melden ihren Abschluss ausdrücklich per CLI; der Fortschritt anderer Apps wird nicht geschätzt.";
+"每个命令独立保活并记录退出码；全部成功后才按收尾策略处理，手动模式与会话继续保留。" = "Jeder Befehl hält unabhängig wach und erfasst seinen Exit-Code. Erst nach Gesamterfolg greift die Abschlussregel; manuelle Arbeit und Sitzungen bleiben erhalten.";
+"使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。" = "Nicht interaktive Vordergrundbefehle verwenden; Passworteingaben und &-/nohup-Hintergrundaufgaben werden nicht unterstützt. Wenn alle überlappenden Anfragen erfolgreich sind und kein weiterer Eigentümer wach hält, beginnt ein 60-Sekunden-Countdown. Fehler, Abbruch, Verlust oder Ablauf geben nur das Wachhalten frei. Protokolle speichern die ersten 5 MB von stdout und stderr.";
+
+/* Task management navigation and integration workspace. */
+"任务管理" = "Aufgabenverwaltung";
+"统一查看任务，独立保活，按结果收尾。" = "Aufgaben verfolgen, einzeln wach halten und je nach Ergebnis abschließen.";
+"任务列表" = "Aufgaben";
+"运行命令" = "Befehl ausführen";
+"外部接入" = "Anbindungen";
+"保活中" = "Wird wach gehalten";
+"已成功" = "Erfolgreich";
+"已失败" = "Fehlgeschlagen";
+"已释放" = "Freigegeben";
+"已失联" = "Verbindung verloren";
+"已到期" = "Abgelaufen";
+"已被停止" = "Gestoppt";
+"未获准" = "Abgelehnt";
+"%d 项保活请求 · %d 条命令运行中" = "%d Wachhalteanfragen · %d laufende Befehle";
+"当前没有活跃任务" = "Keine aktiven Aufgaben";
+"运行一条命令，或让外部工具通过 CLI 登记任务。" = "Einen Befehl ausführen oder eine externe Aufgabe über die CLI registrieren.";
+"允许屏幕休眠" = "Display darf ruhen";
+"屏幕调暗" = "Display dimmen";
+"屏幕常亮" = "Display bleibt wach";
+"本地接入状态" = "Lokaler Verbindungsstatus";
+"本地接口尚未就绪；请确认 Orexin 正在运行。" = "Die lokale Schnittstelle ist nicht bereit. Prüfen Sie, ob Orexin läuft.";
+"CLI 任务接入" = "CLI-Aufgaben";
+"适合构建、备份与脚本任务。每个请求独立保活，完成后释放自己的请求。" = "Für Builds, Backups und Skripte. Jede Anfrage hält den Mac unabhängig wach und gibt ihre Anforderung nach Abschluss frei.";
+"示例已复制" = "Beispiel kopiert";
+"复制 CLI 示例" = "CLI-Beispiel kopieren";
+"示例使用应用内附带的 CLI，无需安装到 PATH。默认恢复原有状态；需要成功后休眠时添加 --after sleep。" = "Das Beispiel nutzt die enthaltene CLI ohne PATH-Einrichtung. Standardmäßig wird der vorherige Zustand wiederhergestellt. --after sleep aktiviert Ruhe nach Erfolg.";
+"外部任务生命周期" = "Lebenszyklus externer Aufgaben";
+"register 返回 ID:TOKEN；任务执行期间用 heartbeat 续约，结束后报告实际退出码。release 仅释放保活，不终止进程。" = "register liefert ID:TOKEN. Während der Arbeit mit heartbeat verlängern und danach den tatsächlichen Exit-Code melden. release beendet nur das Wachhalten, nicht den Prozess.";
+"使用 \"$orexin\" help 查看参数；所有命令支持 --json。" = "Optionen zeigt \"$orexin\" help. Alle Befehle unterstützen --json.";
+"复制完整请求 ID" = "Vollständige Anfrage-ID kopieren";

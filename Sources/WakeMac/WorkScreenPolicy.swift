@@ -84,10 +84,15 @@ enum BuiltInBrightness {
             revision += 1; appliedBehavior = nil
         }
     }
+    var requestBehavior: WorkScreenBehavior? {
+        didSet { if requestBehavior != oldValue { revision += 1; appliedBehavior = nil } }
+    }
     private var behaviorBeforeSleep: WorkScreenBehavior?
     private var observedImmediateSleep = false
     private let preferences: UserDefaults
     private let runtimeEnabled: Bool
+    private var verifiedBehavior: WorkScreenBehavior?
+    func isVerified(_ behavior: WorkScreenBehavior) -> Bool { !runtimeEnabled || verifiedBehavior == behavior }
     private var appliedBehavior: WorkScreenBehavior?
     private var appliedMode: WorkMode?
     private var originalBrightness: Float?
@@ -129,7 +134,8 @@ enum BuiltInBrightness {
         originalBrightness = (preferences.object(forKey: "orexin.screen.restoreBrightness") as? NSNumber).map { $0.floatValue }
     }
     func behavior(for mode: WorkMode) -> WorkScreenBehavior {
-        runtimeBehavior ?? (mode == .background ? background : desktop)
+        if runtimeBehavior == .immediateSleep { return .immediateSleep }
+        return requestBehavior ?? runtimeBehavior ?? (mode == .background ? background : desktop)
     }
     func resumeAfterDisplayWake() {
         guard runtimeBehavior == .immediateSleep else { return }
@@ -142,7 +148,7 @@ enum BuiltInBrightness {
         runtimeBehavior = nil; revision += 1; appliedBehavior = nil
     }
     func restore() throws {
-        revision += 1; appliedBehavior = nil; appliedMode = nil; runtimeBehavior = nil
+        revision += 1; appliedBehavior = nil; appliedMode = nil; runtimeBehavior = nil; verifiedBehavior = nil
         idleTimeout = nil; timeoutSource = nil
         if let originalBrightness {
             try writeBrightness(originalBrightness)
@@ -186,6 +192,7 @@ enum BuiltInBrightness {
         }
         normalSleepIdlePeriod = nil
         let behavior = behavior(for: mode), version = revision
+        verifiedBehavior = nil
         let changed = appliedBehavior != behavior || appliedMode != mode
         do {
             if behavior == .dim {
@@ -227,6 +234,8 @@ enum BuiltInBrightness {
                 defer { requestInFlight = false }
                 try await requestSleep()
             }
+            guard version == revision else { return }
+            verifiedBehavior = behavior
         } catch {
             guard version == revision else { return }
             if behavior == .immediateSleep { resumeAfterDisplayWake() }

@@ -4,10 +4,12 @@
 
 import PackageDescription
 let package = Package(name: "Orexin", platforms: [.macOS(.v15)], products: [
+    .executable(name: "orexin", targets: ["OrexinCLI"]),
     .executable(name: "WakeMac", targets: ["WakeMac"]),
     .executable(name: "WakeMacPowerHelper", targets: ["WakeMacPowerHelper"])
 ], targets: [
     .target(name: "WakeMacCore"),
+    .executableTarget(name: "OrexinCLI", dependencies: ["WakeMacCore"]),
     .target(name: "WakeMacPower"),
     .executableTarget(name: "WakeMac", dependencies: ["WakeMacCore", "WakeMacPower"]),
     .executableTarget(name: "WakeMacPowerHelper", dependencies: ["WakeMacCore", "WakeMacPower"]),

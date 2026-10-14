@@ -273,20 +273,14 @@ struct HistoryRecordsView: View {
 
     private func categoryButton(_ category: Category) -> some View {
         let selected = filter == category
-        return Button { filter = category } label: {
+        return TerminalSelectionButton(selected: selected, action: { filter = category }) {
             HStack(spacing: 5) {
                 Rectangle().fill(category.color).frame(width: 6, height: 6)
                 Text(L(category.rawValue)).font(.system(size: 10, weight: selected ? .semibold : .regular))
                 Text("// " + (category == .all ? "ALL (\(model.history.count))" : category.token)).font(TerminalStyle.mono(8))
                     .lineLimit(1).minimumScaleFactor(0.65)
-            }.frame(maxWidth: .infinity, minHeight: 31)
-                .foregroundStyle(selected ? WorkStyle.ink : WorkStyle.muted)
-                .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
-                .overlay(alignment: .top) { Rectangle().fill(TerminalStyle.accent).frame(height: 2).opacity(selected ? 1 : 0) }
-                .contentShape(Rectangle())
-        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
-            .accessibilityLabel(category.rawValue)
-            .accessibilityAddTraits(selected ? [.isSelected] : [])
+            }
+        }.accessibilityLabel(category.rawValue)
     }
 
     private func auditFeed(fileSize: String) -> some View {

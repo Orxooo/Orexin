@@ -104,6 +104,20 @@ extension WorkMode {
     var suppressedTriggerIDs: Set<UUID> = []
     var lastFeatureSample = Date.distantPast
     var featureTickRunning = false
+    @Published var workRequests = WorkRequestLedger()
+    @Published var requestServiceMessage = ""
+    var requestHistoryURL: URL?
+    var manualWorkMode: WorkMode?
+    var sessionWorkMode: WorkMode?
+    var requestCountdownMode: WorkMode?
+    var workStopEpoch = 0
+    var requestStopInProgress = false
+    var requestReconcileRunning = false
+    var requestReconcileNeeded = false
+    var queuedUserStop = false
+    var commandHandles: [UUID: WorkRequestHandle] = [:]
+    var runningCommandIDs: Set<UUID> = []
+    var commandLogs: [UUID: URL] = [:]
     @Published var jobRunning = false
     @Published var jobStatus = "尚未启动命令"
     @Published var jobLogURL: URL?
@@ -120,6 +134,8 @@ extension WorkMode {
     var finalBatteryReading: (() -> BatteryReading?)?
     var notificationHandler: ((String) -> Void)?
     var featureNotificationHandler: ((String, FeatureNotification) -> Void)?
+    @Published var requestedTaskPage = UUID()
+    func openWorkRequests() { openPreferences?(); requestedTaskPage = UUID() }
     var openPreferences: (() -> Void)?
     var openMenu: (() -> Void)?
     lazy var coordinator = ModeCoordinator(backend: backend)
@@ -224,8 +240,20 @@ extension WorkMode {
             self.error = true; message = reason
         }
     }
-    func choose(_ mode: WorkMode, sleep: Bool = false, automatic: Bool = false, batterySleep: Bool = false, startupRecovery: Bool = false) async {
+    func choose(_ requestedMode: WorkMode, sleep: Bool = false, automatic: Bool = false, batterySleep: Bool = false, startupRecovery: Bool = false, reconcilingRequests: Bool = false) async {
+        let globalStop = requestedMode == .normal && !reconcilingRequests
+        if globalStop {
+            requestStopInProgress = true
+            overrideWorkRequests(reason: thermalProtectionRequired ? "Thermal protection" : batterySleep ? "Battery protection" : sleep ? "Global sleep action" : "User or system stopped all work")
+        }
+        if !automatic, requestedMode != .normal { manualWorkMode = requestedMode; sessionWorkMode = nil }
+        let mode = requestedMode == .normal ? requestedMode : aggregateMode(including: requestedMode)
         guard !busy else {
+            if globalStop, !automatic || !sleep {
+                queuedUserStop = true
+                if !automatic { automaticSleepRevision += 1 }
+                UnlockedWorkAuthorization.cancelPending()
+            }
             if mode == .normal, sleep, automatic {
                 if queuedAutomaticSleep == nil || !batterySleep {
                     queuedAutomaticSleep = (batterySleep, automaticSleepRevision)
@@ -234,6 +262,7 @@ extension WorkMode {
             }
             return
         }
+        defer { if globalStop { requestStopInProgress = false } }
         if mode != .normal, thermalProtectionRequired || thermalCleanupPending {
             await protectFromThermalPressure()
             error = true
@@ -243,7 +272,7 @@ extension WorkMode {
         }
         let sleepIdlePeriod = sleep ? workScreen.currentIdlePeriod() : nil
         let previousMode = active
-        if !automatic || mode == .normal {
+        if !reconcilingRequests && (!automatic || mode == .normal) {
             sessions.effectOverrides = nil
             sessions.manualModeChanged()
             if !startupRecovery { suppressCurrentTriggers() }
@@ -260,7 +289,7 @@ extension WorkMode {
             sessions.screenPolicyPreventsSleep = nil
             do { try workScreen.restore() }
             catch { record("屏幕亮度恢复失败：" + error.localizedDescription) }
-        } else { workScreen.runtimeBehavior = nil }
+        } else if !reconcilingRequests { workScreen.runtimeBehavior = nil }
         message = LF("正在应用并核验「%@」…", mode.title); onUpdate?()
         let revision = automaticSleepRevision
         let result = sleep ? await coordinator.sleep(lockRequirement: lockRequirement) { [weak self] in
@@ -302,12 +331,17 @@ extension WorkMode {
             error = true; message = reason; showPanel?()
         }
         busy = false
+        if queuedUserStop {
+            queuedUserStop = false
+            await choose(.normal)
+            return
+        }
         if let queued = queuedAutomaticSleep {
             queuedAutomaticSleep = nil
             if queued.revision == automaticSleepRevision {
                 await choose(.normal, sleep: true, automatic: true, batterySleep: queued.battery)
                 return
-            }
+            } else { requestStopInProgress = false }
         }
         if mode != .normal, thermalProtectionRequired || thermalCleanupPending {
             // A failed readback/rollback may have hidden an acquired inhibitor.
@@ -320,6 +354,7 @@ extension WorkMode {
         }
         else if pending != nil { record("等待恢复立即锁屏保护。", notify: !thermalCleanupPending) }
         else { record(result == .sleepCancelled ? message : (sleep ? "已发送系统休眠请求。" : "模式已核验：" + mode.recordTitle)) }
+        if requestReconcileNeeded && !requestReconcileRunning { await reconcileWorkRequests() }
         if verifiedWork { await applyWorkScreenPolicy(now: Date()) }
         if !automatic, !error, pending == nil, active == mode, previousMode != mode {
             if mode != .normal { featureNotificationHandler?("工作已开始：" + mode.title, .sessionStart) }
@@ -337,7 +372,7 @@ extension WorkMode {
     }
     func requestQuit() async {
         if jobRunning {
-            automation.cancelJobSleep()
+            automation.cancelJobSleep(); workRequests.cancelSleep()
             convenienceMessage = "命令仍在运行。已取消完成后休眠；请等待命令结束后退出。"
             record(convenienceMessage); openPreferences?(); return
         }
@@ -363,6 +398,7 @@ extension WorkMode {
     var allowExit = false
     var preferencesWindow: NSWindow?
     var automationTimer: Timer?
+    var localTaskServer: LocalControlServer?
     var observers: [NSObjectProtocol] = []
     let hotkeys = GlobalHotKeys()
     let notifier = LocalNotifier()
@@ -451,6 +487,15 @@ extension WorkMode {
             if UserDefaults.standard.bool(forKey: "orexin.HasConfiguredMode") { await model.choose(.normal, automatic: true, startupRecovery: true) }
             else { await model.refresh() }
             if model.behavior.startAtLaunch { await model.beginDefaultSession() }
+            model.recoverWorkRequests(from: AppPaths.root.appendingPathComponent("work-requests.json"))
+            do {
+                let path = ProcessInfo.processInfo.environment["OREXIN_SOCKET"] ?? LocalControlSocket.defaultPath
+                localTaskServer = try LocalControlServer(path: path) { [weak model = self.model] request in
+                    guard let model else { return ControlReply(ok: false, error: "Orexin is shutting down") }
+                    return await model.handleTaskControl(request)
+                }
+                model.requestServiceMessage = "本地 CLI 已就绪：" + path
+            } catch { model.requestServiceMessage = "本地 CLI 未启动：" + error.localizedDescription }
         }
         timer = Timer(timeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.model.refresh() }
@@ -459,6 +504,7 @@ extension WorkMode {
         // loop renews its lease even when a readback command or UI is delayed.
         if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
+    func applicationWillTerminate(_ notification: Notification) { localTaskServer?.stop() }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPreferences(); return true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if allowExit { return .terminateNow }

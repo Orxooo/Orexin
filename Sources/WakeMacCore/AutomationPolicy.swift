@@ -23,6 +23,7 @@ public struct AutomationPolicy {
     public mutating func resetBatterySession() { batterySleepAt = nil; batterySuppressed = false; batteryWarned = false }
     public mutating func cancelBatterySleep() { batterySleepAt = nil; batterySuppressed = true }
     public mutating func cancelJobSleep() { jobArmed = false; jobSleepAt = nil }
+    public mutating func scheduleJobSleep(now: Date) { jobArmed = true; jobSleepAt = now.addingTimeInterval(60) }
     public mutating func beginJob() -> UUID {
         let id = UUID(); jobID = id; jobArmed = true; jobSleepAt = nil; return id
     }

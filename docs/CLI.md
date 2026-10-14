@@ -1,0 +1,126 @@
+# Orexin CLI 与并行工作请求
+
+本接口从 `v0.2.0-preview` 起随应用发布，`v0.1.0-preview` 不包含此 CLI。主应用必须运行。无需 Developer ID、公证或付费开发者会员即可构建和使用普通桌面请求；后台合盖与保持未锁定仍遵循现有辅助服务和本次原生授权要求。
+
+## 安装包用法
+
+安装并打开 Orexin 后，可直接使用应用内置 CLI，无需配置 PATH：
+
+```sh
+orexin=/Applications/Orexin.app/Contents/Helpers/orexin
+"$orexin" help
+"$orexin" list --json
+"$orexin" run --title Build -- make
+```
+
+若应用安装在其他位置，请相应调整路径；「任务管理 → 外部接入」会显示当前应用的准确路径。升级前等待内置命令结束并退出应用；重启不会恢复旧保活请求或重放命令。
+
+## 构建与使用
+
+```sh
+swift build --arch arm64 --scratch-path /tmp/orexin-cli-build
+/tmp/orexin-cli-build/debug/orexin help
+
+# 同时生成应用包和独立 CLI，不安装、不注册服务
+./scripts/build-app.sh
+/tmp/orexin-dist/orexin help
+```
+
+构建脚本还会把 CLI 放入 `Orexin.app/Contents/Helpers/orexin`。可以直接使用绝对路径，不需要安装到 PATH。CLI 不会自动启动应用、申请权限、输入密码或替换已安装应用。`OREXIN_SOCKET` 或 `--socket PATH` 可选择独立实例的接口；应用也读取 `OREXIN_SOCKET`。
+
+## 包装命令
+
+```sh
+orexin run --title Build -- make
+orexin run --title Backup --lease 60 -- /path/to/backup --verify
+orexin run --title 'AI foreground task' --screen awake -- /path/to/agent
+orexin run --title 'Short check' --timeout 300 --json -- /usr/bin/true
+```
+
+`--` 后的参数原样交给 `/usr/bin/env` 执行，默认继承当前目录和标准输入/输出；不会拼接成 shell 字符串。需要管道等 shell 语法时，显式使用 `-- /bin/zsh -c '...'`。只包装前台进程，不推断 GUI、后台分离任务或远端工作的完成。
+
+- 默认是 `--mode desk --screen idle --after restore`。
+- 包装器每隔租约的三分之一发送心跳，并使用自身 PID 和内核启动时间标识所有者。
+- 正常退出保留子进程退出码；被信号终止时返回 `128 + signal`。SIGINT、SIGTERM、SIGHUP 转发给直接子进程。不会扫描或终止任意后代进程。
+- 用户释放保活、全部停止或保护失效时，命令继续执行。若命令退出 0，但期间发现保活丢失或无法确认最终报告，包装器返回 75，并保留已知的实际退出码。
+- `run --json` 将子命令输出送到 stderr，只在 stdout 输出一份最终 JSON。非 JSON 模式保留正常命令输出。
+- `--after sleep` 仅在重叠请求全部成功、没有手动/会话/规则保活来源时安排可取消的 60 秒休眠倒计时。失败、取消、失联和到期都否决本批次的自动休眠；它们仍释放自身请求。
+
+## 外部任务生命周期
+
+适合能明确报告结果的脚本或工具：
+
+```sh
+# 所有者是这个长寿命报告脚本，而不是被等待的 worker。
+handle=$(orexin register --title 'External build' --owner-pid $$ --lease 60)
+orexin heartbeat "$handle"
+
+# 由调用方运行自己的工作，并捕获真实结果。
+/path/to/worker
+code=$?
+orexin complete "$handle" --exit-code "$code"
+```
+
+超过 60 秒的工作须在运行期间持续心跳，例如每 20 秒一次；普通前台命令优先使用 `run`，由包装器负责心跳和真实退出报告。登记本身不会执行命令。
+
+```sh
+orexin register --title 'Long report' --lease 120 --timeout 3600 --json
+orexin heartbeat ID:TOKEN --json
+orexin complete ID:TOKEN --exit-code 0 --json
+orexin fail ID:TOKEN --exit-code 7 --json
+orexin release ID:TOKEN --json
+orexin cancel ID:TOKEN --json       # release 的别名，不发送进程信号
+orexin status UUID --json
+orexin list --json
+orexin stop-all --json              # 明确的全局用户操作
+```
+
+`register` 输出 `ID:TOKEN` 所有者句柄；JSON 模式将其放在 `handle.id` 和 `handle.token`。变更单个请求必须携带该句柄。`status/list` 和持久记录不包含 token。`complete` 必须提供实际退出码，`fail` 必须提供非零退出码。
+
+`--owner-pid` 可选，必须指向当前用户的、能够持续存活到 `complete` 的报告程序或 shell。不要填写随后会被 `wait` 的 worker PID。所有者消失只证明报告链失联，不证明工作成功。失联之后到达的有效报告会记录 `exitCode`，但不改变已经终止的保活状态，不重启保活或补发休眠。
+
+租约为 5–3600 秒，默认 60 秒。心跳不能越过 `--timeout` 设置的绝对期限，不能复活已终止请求。每个实例最多 64 个活跃请求，并保留最近 200 个终态记录。应用重启将上次活跃记录标为 `lost`，不会重放命令或保活；旧句柄不能继续续约。
+
+## 电源、屏幕与收尾规则
+
+| 情况 | 结果 |
+| --- | --- |
+| 多项请求并行 | 各自拥有身份和生命周期；某一项完成或释放不撤销其他请求 |
+| `desk` 与 `background` 重叠 | 合并为后台工作，继续走现有辅助服务及锁屏核验 |
+| `awake`、`dim`、`idle` 重叠 | 正常亮度保持显示器 > 最低亮度保留显示器 > 允许系统闲置熄屏 |
+| 手动工作、工作会话、自动规则仍有效 | 任务结束保留这些来源；自然会话/规则结束也保留其他任务 |
+| 显示器断言、亮度或锁屏核验失败 | 不报告该屏幕需求已满足；新请求拒绝启动，已有请求显示未满足原因 |
+| 用户选择“立即熄屏” | 暂停显示器需求，任务不会替用户点亮/解锁；状态会显示未满足 |
+| 释放此请求 | 只撤销这一项保活，不杀命令 |
+| 正常休眠、全部停止、全局定时到点 | 撤销当前全部请求，抑制当前规则；迟到完成/心跳不能重新开启 |
+| 温度或低电量保护 | 具有最高优先级；保护收尾期间拒绝新登记，不终止命令 |
+| 最后一项结束，默认 `restore` | 释放 Orexin 自己的保活；实际闲置休眠时机由 macOS 和原有正常模式策略决定 |
+| 批次全部成功且选择了 `sleep` | 无其他保活来源时进入一次 60 秒倒计时；新请求或用户取消会撤销该倒计时 |
+
+手动切换工作模式仍保留原有的会话/规则取消语义；独立任务需求参与合并，因此关闭合盖选项不能削弱另一项仍要求后台运行的任务。要撤销该需求，请释放对应请求或全部停止。不要把“保活已核验”理解为物理合盖、传感器或真实休眠已经验收。
+
+在应用的「任务管理 → 任务列表」页面可以查看活跃请求、最近终态、来源、模式、屏幕需求、到期时间、实际退出码，以及每项命令的日志。单个请求与全部停止使用不同按钮。点击短 ID 旁的复制图标可复制完整请求 ID；「查看日志」打开该项任务的日志详情。已释放保活但仍在执行的内置命令会继续显示。
+
+「运行命令」保留工作目录、语法预检与命令编辑器，已有任务运行时可继续准备并启动下一项任务。「外部接入」提供应用内置 CLI 的实际路径、可复制示例、本地接口状态，以及原有 AppleScript 控制。
+
+## 本地协议 v1
+
+默认地址 `/tmp/orexin-<uid>/control.sock`。父目录权限 0700，socket 权限 0600；客户端和服务端都检查对端 UID。端点锁防止第二个实例覆盖正在使用的接口，不监听 TCP、不对外公开、不提供远程服务。
+
+每条连接处理一行 UTF-8 JSON 请求和一行 JSON 响应。请求上限 64 KiB，读取/写入有超时；字段与 CLI 共用 `WakeMacCore/LocalControlProtocol.swift`。接口仅登记生命周期及控制现有电源路径，不接受执行命令的 API。
+
+登记示例（用调用方生成的随机 UUID 替换占位符）：
+
+```json
+{"version":1,"operation":"register","handle":{"id":"REQUEST-UUID","token":"OWNER-TOKEN-UUID"},"spec":{"title":"Build","source":"external","mode":"desk","screen":"idle","leaseSeconds":60,"teardown":"restore"}}
+```
+
+可选 `deadline` 使用 ISO 8601 日期；可选 `process` 为当前用户报告进程的 `pid`、内核启动 `seconds` 与 `microseconds`，建议通过 CLI 生成。服务端固定来源为 `external`。相同句柄和相同参数的活跃登记可重试；已终止的句柄不能重新登记。旧终态超出保留数量后查询返回未知，不能将未知推断为成功。
+
+其他操作为 `heartbeat`、`complete`、`release`、`status`、`list`、`stop-all`。前三者需要 `handle`，`complete` 另需整数 `exitCode`；`status` 可带 `id`。
+
+响应的 `ok` 表示接口操作是否成功，任务真实结果看 `tasks[].request.state` 和 `exitCode`；当前保活是否满足看 `tasks[].satisfied`、`detail`、顶层 `mode` 与 `verified`。`commandRunning` 只描述应用内置命令，不推测外部任务。终态包括 `succeeded`、`failed`、`cancelled`、`lost`、`expired`、`overridden`、`rejected`。协议错误或不可核验状态不包装成成功。
+
+## 验证边界
+
+自动测试包含策略合并、独立释放、真实 CLI 子进程经 Unix socket 调用实际 AppModel、退出码、信号、所有者丢失、租约/期限、用户与保护竞争、规则和屏幕状态。测试电源后端模拟原生状态；这些结果不代表真实合盖、整机休眠、锁屏或辅助服务授权已验收。构建脚本不安装应用，也不修改系统授权。

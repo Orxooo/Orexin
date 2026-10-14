@@ -29,6 +29,7 @@ enum SessionEffectTiming {
     }
 }
 struct SessionEffectReport: Equatable {
+    var displayAssertionActive = false
     var display = "未启用"
     var screenSaver = "允许屏保"
     var cursor = "未启用"
@@ -81,7 +82,8 @@ struct SessionEffectReport: Equatable {
         let lidClosed = lidClosedProvider() && !choices.preventDisplaySleep
         if !unlocked || lidClosed { releaseInteractiveEffects() }
         if choices.preventDisplaySleep && unlocked && !lidClosed {
-            report.display = acquireDisplay() ? "会话期间阻止显示器闲时休眠" : "无法建立显示器保活断言"
+            report.displayAssertionActive = acquireDisplay()
+            report.display = report.displayAssertionActive ? "会话期间阻止显示器闲时休眠" : "无法建立显示器保活断言"
         } else {
             releaseAssertion(&displayID)
             report.display = lidClosed ? "合盖时暂停显示器保活" : choices.preventDisplaySleep ? "已锁定或状态未知，显示器保活已暂停" : "允许显示器休眠"

@@ -4,10 +4,16 @@ import AppKit
 import SwiftUI
 import WakeMacCore
 
+enum TaskManagementSection: String, CaseIterable {
+    case tasks = "任务列表", run = "运行命令", integrations = "外部接入"
+    var code: String { switch self { case .tasks: "TASKS"; case .run: "RUN"; case .integrations: "CONNECT" } }
+}
+
 struct CommandTasksView: View {
     @ObservedObject var model: AppModel
     @Binding var command: String
     @Binding var directory: String
+    @Binding var section: TaskManagementSection
     let availableWidth: CGFloat
     @State private var preflightBusy = false
     @State private var preflightPassed: Bool?
@@ -17,34 +23,59 @@ struct CommandTasksView: View {
     @State private var mounted = false
     @State private var windowVisible = false
     @State private var directoryValid = false
-    @State private var scriptCopyMessage = ""
-    private let sampleScript = "tell application \"Orexin\"\n    start session mode \"desktop\" for minutes 30\n    session status\n    -- end session\nend tell"
+    @State private var selectedLogURL: URL?
+    @State private var showTaskLog = false
 
-    init(model: AppModel, command: Binding<String>, directory: Binding<String>, availableWidth: CGFloat) {
-        self.model = model; _command = command; _directory = directory; self.availableWidth = availableWidth
+    init(model: AppModel, command: Binding<String>, directory: Binding<String>, availableWidth: CGFloat,
+         section: Binding<TaskManagementSection>) {
+        self.model = model; _command = command; _directory = directory; self.availableWidth = availableWidth; _section = section
     }
     private var hasCommand: Bool { !command.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     private func refreshDirectoryValidity() {
         var folder: ObjCBool = false
         directoryValid = FileManager.default.fileExists(atPath: (directory as NSString).expandingTildeInPath, isDirectory: &folder) && folder.boolValue
     }
-    private var canRun: Bool { hasCommand && directoryValid && !model.jobRunning && !model.busy && !preflightBusy }
-    private var isVisible: Bool { mounted && windowVisible }
-    private var logRefreshID: LogRefreshID { .init(path: model.jobLogURL?.path, running: model.jobRunning, visible: isVisible) }
+    private var canRun: Bool { hasCommand && directoryValid && !model.busy && !preflightBusy }
+    private var showsLog: Bool { section == .run || showTaskLog }
+    private var isVisible: Bool { mounted && windowVisible && showsLog }
+    private var currentLogURL: URL? { showTaskLog ? selectedLogURL : model.jobLogURL }
+    private var logRequest: WorkRequestRecord? {
+        guard let url = currentLogURL else { return nil }
+        return model.workRequests.records.first { model.commandLogs[$0.id] == url }
+    }
+    private var logRunning: Bool { logRequest.map { model.runningCommandIDs.contains($0.id) } ?? false }
+    private var logRefreshID: LogRefreshID { .init(path: currentLogURL?.path, running: logRunning, visible: isVisible, displayed: showsLog) }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if availableWidth > 760 {
-                HStack(alignment: .top, spacing: 16) {
-                    executionColumn.frame(width: (availableWidth - 16) * 0.68)
-                    observationColumn.frame(width: (availableWidth - 16) * 0.32)
+            sectionNavigation
+            switch section {
+            case .tasks:
+                WorkRequestsView(model: model, onShowLog: { url in
+                    selectedLogURL = url; logTail = ""; logError = ""; showTaskLog = true
+                }, onRunCommand: { section = .run }, onConnect: { section = .integrations })
+            case .run:
+                if availableWidth > 840 {
+                    HStack(alignment: .top, spacing: 16) {
+                        executionColumn.frame(width: (availableWidth - 16) * 0.64)
+                        observationColumn.frame(width: (availableWidth - 16) * 0.36)
+                    }
+                } else {
+                    executionColumn
+                    observationColumn
                 }
-            } else {
-                executionColumn
-                observationColumn
+            case .integrations:
+                TaskIntegrationsView(model: model, availableWidth: availableWidth)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
             .background(CommandWindowVisibilityProbe { windowVisible = $0 }.frame(width: 0, height: 0))
+            .sheet(isPresented: $showTaskLog) {
+                VStack(alignment: .leading, spacing: 16) {
+                    observationColumn
+                    HStack { Spacer(); Button(L("关闭")) { showTaskLog = false }.keyboardShortcut(.cancelAction) }
+                }.padding(24).frame(width: 640).background(TerminalStyle.paper)
+                    .foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle())
+            }
             .onAppear { mounted = true; refreshDirectoryValidity() }
             .onDisappear { mounted = false }
             .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in refreshDirectoryValidity() }
@@ -52,69 +83,53 @@ struct CommandTasksView: View {
             .onChange(of: command) { _, _ in resetPreflight() }
             .onChange(of: directory) { _, _ in resetPreflight(); refreshDirectoryValidity() }
             .task(id: logRefreshID) {
-                guard isVisible else { return }
+                guard showsLog else { return }
+                // Load once on selection even before macOS delivers window visibility.
+                // Ongoing polling remains limited to a visible log workspace.
                 await refreshLog()
-                while model.jobRunning && isVisible && !Task.isCancelled {
+                while logRunning && isVisible && !Task.isCancelled {
                     do { try await Task.sleep(for: .seconds(1)) } catch { return }
-                    guard model.jobRunning, isVisible, !Task.isCancelled else { return }
+                    guard logRunning, isVisible, !Task.isCancelled else { return }
                     await refreshLog()
                 }
             }
+    }
+    private var sectionNavigation: some View {
+        HStack(spacing: 2) {
+            ForEach(TaskManagementSection.allCases, id: \.self) { item in
+                TerminalSelectionButton(selected: section == item, action: { section = item }) {
+                    HStack(spacing: 5) {
+                        Text(L(item.rawValue)).font(.system(size: 12, weight: section == item ? .semibold : .regular))
+                        Text("// " + item.code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
+                            .accessibilityHidden(true)
+                    }
+                }.accessibilityLabel(L(item.rawValue))
+            }
+        }.padding(3).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(WorkStyle.line))
     }
     private var executionColumn: some View {
         VStack(alignment: .leading, spacing: 16) {
             executionProtocol
             console
-            WorkNote(text: "只跟踪这里启动的前台命令，不会判断其他 Codex 任务是否完成。未处于工作模式时会先核验桌面工作模式。")
-                .padding(14).modifier(CommandRackSurface())
+            WorkNote(text: "支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。")
+                .padding(14).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
             DisclosureGroup("运行前须知与休眠规则") {
-                Text(L("使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。命令成功后倒计时 60 秒，失败时不会安排休眠。日志保存 stdout 和 stderr 的前 5 MB。"))
-                    .font(.system(size: 11)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
-            }.font(.system(size: 11)).foregroundStyle(TerminalStyle.muted)
-            scripting
+                Text(L("使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。"))
+                    .font(WorkType.caption).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
+            }.font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
             if !model.convenienceMessage.isEmpty { WorkNote(text: model.convenienceMessage) }
         }
-    }
-    private var scripting: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                TerminalLabel("AppleScript 外部总线", systemImage: "terminal")
-                    .font(.system(size: 15, weight: .semibold))
-                Spacer(minLength: 0)
-                Text("AUTOMATION API").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
-            }
-            Text(L("通过 AppleScript 控制工作会话与电源策略。"))
-                .font(.system(size: 11)).foregroundStyle(TerminalStyle.muted)
-            Text(sampleScript).font(TerminalStyle.mono(10)).textSelection(.enabled)
-                .frame(maxWidth: .infinity, alignment: .leading).padding(12).background(TerminalStyle.recess)
-            HStack {
-                if !scriptCopyMessage.isEmpty {
-                    Text(L(scriptCopyMessage)).font(.system(size: 10)).foregroundStyle(TerminalStyle.signal)
-                }
-                Spacer(minLength: 0)
-                Button {
-                    NSPasteboard.general.clearContents()
-                    scriptCopyMessage = NSPasteboard.general.setString(sampleScript, forType: .string)
-                        ? "脚本已复制" : "复制失败，请选中文本复制"
-                } label: { TerminalLabel("复制脚本", systemImage: "doc.on.doc") }
-                    .workKeyboardFocus(radius: 0)
-            }
-            WorkNote(text: "支持会话启停、延长、剩余时间、显示器与屏保、合盖、触发器和磁盘保活控制。后台工作需要已批准的合盖服务；所有命令采用偏好设置中的锁屏策略。")
-            DisclosureGroup("更多脚本命令") {
-                Text("session is active\nsession time remaining\nextend session for minutes 15\nprevent display sleep\nallow display sleep\nprevent screen saver\nallow screen saver\nenable closed display mode\ndisable closed display mode\ntriggers are enabled\nenable triggers\ndisable triggers\nenable drive alive\ndisable drive alive")
-                    .font(TerminalStyle.mono(10)).textSelection(.enabled).padding(.top, 8)
-            }.font(.system(size: 11))
-        }.padding(16).modifier(CommandRackSurface())
     }
     private var executionProtocol: some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack(alignment: .top) {
-                TerminalLabel("运行一次，完成后休眠", systemImage: "terminal").font(.system(size: 16, weight: .semibold))
+                TerminalLabel("运行一次，完成后休眠", systemImage: "terminal").font(WorkType.sectionTitle)
                     .accessibilityAddTraits(.isHeader)
                 Spacer(minLength: 0)
                 Text("EXECUTE AND REST").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
             }
-            Text(L("命令成功后进入 60 秒休眠倒计时；失败时保留日志与当前工作状态。")).font(.system(size: 11))
+            Text(L("每个命令独立保活并记录退出码；全部成功后才按收尾策略处理，手动模式与会话继续保留。")).font(WorkType.caption)
                 .foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
                 Text("SUCCESS: 60s").foregroundStyle(TerminalStyle.accent)
@@ -122,7 +137,7 @@ struct CommandTasksView: View {
                 Text(L("STDIN: 非交互")).foregroundStyle(TerminalStyle.muted)
             }.font(TerminalStyle.mono(9))
             HStack {
-                TerminalLabel("工作目录 // WORKING DIRECTORY", systemImage: "folder").font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+                TerminalLabel("工作目录 // WORKING DIRECTORY", systemImage: "folder").font(WorkType.compactCaption).foregroundStyle(TerminalStyle.muted)
                 Spacer(minLength: 0)
                 Text(L(directoryValid ? "PATH VALID" : "请选择有效目录")).font(.system(size: 9))
                     .foregroundStyle(directoryValid ? TerminalStyle.signal : TerminalStyle.amber)
@@ -130,14 +145,14 @@ struct CommandTasksView: View {
             HStack(spacing: 8) {
                 Text("$").font(TerminalStyle.mono(14)).foregroundStyle(TerminalStyle.muted).accessibilityHidden(true)
                 TextField(L("工作目录"), text: $directory).textFieldStyle(.plain).font(TerminalStyle.mono(12))
-                    .disabled(model.jobRunning).accessibilityLabel("命令工作目录")
+                    .accessibilityLabel(L("命令工作目录"))
                 Button(L("选择目录…")) {
                     let panel = NSOpenPanel()
                     panel.canChooseDirectories = true; panel.canChooseFiles = false; panel.allowsMultipleSelection = false
                     if panel.runModal() == .OK, let url = panel.url { directory = url.path; refreshDirectoryValidity() }
-                }.workKeyboardFocus(radius: 0).disabled(model.jobRunning)
+                }.workKeyboardFocus(radius: 0)
             }.padding(10).background(TerminalStyle.recess)
-        }.padding(16).modifier(CommandRackSurface())
+        }.padding(16).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
     }
     private var console: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -146,12 +161,12 @@ struct CommandTasksView: View {
                 Text("/bin/zsh -l").font(TerminalStyle.mono(10))
                 Text(directory).font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted).lineLimit(1).truncationMode(.middle)
                 Spacer(minLength: 0)
-                Text(model.jobRunning ? "RUNNING" : "COMMAND").font(TerminalStyle.mono(9))
+                Text("COMMAND DRAFT").font(TerminalStyle.mono(9))
                     .foregroundStyle(model.jobRunning ? TerminalStyle.signal : TerminalStyle.muted)
             }.padding(12).background(TerminalStyle.silver.opacity(0.3))
             Rectangle().fill(TerminalStyle.line).frame(height: 1)
             ZStack(alignment: .topLeading) {
-                CommandSourceEditor(text: $command, editable: !model.jobRunning).frame(height: 330).clipped()
+                CommandSourceEditor(text: $command, editable: true).frame(height: 230).clipped()
                 if command.isEmpty {
                     Text(L("# 输入多行 zsh 命令\n# 成功后倒计时休眠；失败时保留现场"))
                         .font(TerminalStyle.mono(12)).foregroundStyle(TerminalStyle.steel).padding(.leading, 47).padding(.top, 16)
@@ -161,7 +176,7 @@ struct CommandTasksView: View {
             HStack(spacing: 8) {
                 Text("❯").font(TerminalStyle.mono(13)).foregroundStyle(TerminalStyle.accent)
                 TerminalCursor().frame(width: 8, height: 15).allowsHitTesting(false).accessibilityHidden(true)
-                Text(L("在上方输入命令，点击下方运行")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+                Text(L("在上方输入命令，点击下方运行")).font(WorkType.compactCaption).foregroundStyle(TerminalStyle.muted)
                 Spacer(minLength: 0)
             }.padding(.horizontal, 15).padding(.vertical, 10).background(TerminalStyle.recess)
             HStack {
@@ -184,26 +199,36 @@ struct CommandTasksView: View {
                 }
                 Spacer(minLength: 0)
                 Button(L(preflightBusy ? "检查中…" : "语法预检")) { Task { await preflight() } }
-                    .workKeyboardFocus(radius: 0).disabled(preflightBusy || model.jobRunning || !hasCommand)
+                    .workKeyboardFocus(radius: 0).disabled(preflightBusy || !hasCommand)
                     .help("只运行 zsh -n，不执行命令，不检查依赖或登录环境。")
-                Button { Task { await model.startJob(command: command, directory: directory) } } label: {
+                Button {
+                    let submitted = command, folder = directory
+                    Task { await model.startJob(command: submitted, directory: folder) }
+                } label: {
                     TerminalLabel("运行，成功后休眠", systemImage: "play.fill").font(.system(size: 12, weight: .semibold))
                 }.buttonStyle(TerminalButtonStyle(prominent: true)).workKeyboardFocus(radius: 0).disabled(!canRun)
             }.padding(12).background(TerminalStyle.surface)
             if model.jobRunning || model.automation.jobSleepAt != nil {
                 Button(L("取消完成后休眠，命令继续"), action: model.cancelAutomaticSleep).workKeyboardFocus(radius: 0).padding(12)
             }
-        }.modifier(CommandRackSurface())
+        }.frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
     }
     private var observationColumn: some View {
         VStack(alignment: .leading, spacing: 16) {
-            OrbitalMoon(phase: model.active?.rawValue ?? "unknown").frame(height: 260).padding(14)
-                .background(TerminalGrid()).modifier(CommandRackSurface())
             VStack(alignment: .leading, spacing: 12) {
                 HStack {
                     TerminalLabel("任务执行日志", systemImage: "doc.text").font(.system(size: 13, weight: .semibold))
                     Spacer(minLength: 0)
                     Text("STDOUT / STDERR").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
+                }
+                if let request = logRequest {
+                    Text(request.spec.title).font(.system(size: 12, weight: .medium)).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true)
+                    HStack {
+                        Text(L(logRunning ? "命令运行中" : request.state.displayTitle))
+                        Spacer()
+                        if let code = request.exitCode { Text("EXIT \(code)") }
+                    }.font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
                 }
                 ScrollViewReader { proxy in
                     ScrollView {
@@ -213,27 +238,26 @@ struct CommandTasksView: View {
                             Color.clear.frame(height: 1).id("log-end")
                         }.padding(10)
                     }.frame(height: 268).background(TerminalStyle.recess)
-                        .onChange(of: logTail) { _, _ in if model.jobRunning { proxy.scrollTo("log-end", anchor: .bottom) } }
+                        .onChange(of: logTail) { _, _ in if logRunning { proxy.scrollTo("log-end", anchor: .bottom) } }
                 }
-                Text(L(model.jobRunning ? "运行中 · 最近输出" : "最近一次任务输出")).font(.system(size: 9)).foregroundStyle(TerminalStyle.muted)
                 Text(L("最多显示末尾 16 KiB / 80 行")).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
-                if let url = model.jobLogURL {
+                if let url = currentLogURL {
                     Button(L("在 Finder 查看完整日志")) { NSWorkspace.shared.activateFileViewerSelecting([url]) }.workKeyboardFocus(radius: 0)
                 }
-            }.padding(14).modifier(CommandRackSurface())
+            }.padding(14).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
         }
     }
     private var logText: String {
         if !logError.isEmpty { return L(logError) }
         if !logTail.isEmpty { return logTail }
-        return L(model.jobRunning ? "命令运行中，等待标准输出或错误输出。" : model.jobLogURL == nil ? "尚未启动命令。任务输出会在运行后显示。" : "日志没有输出内容。")
+        return L(logRunning ? "命令运行中，等待标准输出或错误输出。" : currentLogURL == nil ? "尚未启动命令。任务输出会在运行后显示。" : "日志没有输出内容。")
     }
     private func resetPreflight() {
         if preflightPassed != nil { preflightPassed = nil }
         if !preflightMessage.isEmpty { preflightMessage = "" }
     }
     private func preflight() async {
-        guard !preflightBusy, !model.jobRunning else { return }
+        guard !preflightBusy else { return }
         let submitted = command, folder = directory
         preflightBusy = true
         defer { preflightBusy = false }
@@ -246,7 +270,7 @@ struct CommandTasksView: View {
         preflightMessage = diagnostic.map { LF("语法检查未通过：\n%@", $0) } ?? "zsh -n 语法检查通过；未执行命令。依赖、路径参数和运行结果仍需实际运行验证。"
     }
     private func refreshLog() async {
-        guard let url = model.jobLogURL else { logTail = ""; logError = ""; return }
+        guard let url = currentLogURL else { logTail = ""; logError = ""; return }
         let result = await Task.detached(priority: .utility) { () -> (String, String) in
             do {
                 let handle = try FileHandle(forReadingFrom: url)
@@ -260,18 +284,10 @@ struct CommandTasksView: View {
                 return (lines.suffix(80).joined(separator: "\n"), "")
             } catch { return ("", LF("暂时无法读取日志：%@", error.localizedDescription)) }
         }.value
-        guard !Task.isCancelled, model.jobLogURL == url else { return }
+        guard !Task.isCancelled, currentLogURL == url else { return }
         logTail = result.0; logError = result.1
     }
-    private struct LogRefreshID: Equatable { var path: String?; var running: Bool; var visible: Bool }
-}
-
-private struct CommandRackSurface: ViewModifier {
-    func body(content: Content) -> some View {
-        content.frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.surface)
-            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.7)))
-            .overlay(TerminalBrackets().stroke(TerminalStyle.line, lineWidth: 0.7).padding(5).allowsHitTesting(false))
-    }
+    private struct LogRefreshID: Equatable { var path: String?; var running: Bool; var visible: Bool; var displayed: Bool }
 }
 
 /// Native scrolling keeps logical line numbers aligned with wrapped editor text.
