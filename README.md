@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>让 Mac 在工作时保持唤醒，在任务结束后安心休息。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.0"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><img src="https://img.shields.io/badge/Release-v1.0.1-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.1"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 或更新版本">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>简体中文</strong> · <a href="README.en.md">English</a><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><strong>下载 V1.0.0 ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><strong>下载 V1.0.1 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#开始使用">安装指南</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">使用手册</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">社区讨论</a>
@@ -66,7 +66,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 
 **Apple Silicon Mac · macOS 15 或更新版本。** 当前提供 arm64 安装包。
 
-1. 打开 [V1.0.0 发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.0)，下载 `Orexin-1.0.0-arm64.zip`。
+1. 打开 [V1.0.1 发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.1)，下载 `Orexin-1.0.1-arm64.zip`。
 2. 解压，将 `Orexin.app` 移入「应用程序」并打开。升级前等待命令与执行计划结束、结束保活；若旧版支持后台服务，运行内置 CLI 的 `service-stop`，再退出界面并替换应用。现有 Orexin 数据与偏好保留。
 3. 选择工作预设和结束条件。需要合盖运行时，按「偏好设置」指引批准辅助服务；本次未锁定工作由你在原生窗口亲自授权。
 
@@ -82,7 +82,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-显示 `Orexin-1.0.0-arm64.zip: OK` 表示校验值一致。
+显示 `Orexin-1.0.1-arm64.zip: OK` 表示校验值一致。
 
 </details>
 

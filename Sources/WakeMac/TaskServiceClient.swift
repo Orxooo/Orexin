@@ -69,6 +69,12 @@ extension AppModel {
     }
     func chooseThroughService(_ mode: WorkMode, sleep: Bool, automatic: Bool, reconcilingRequests: Bool) async {
         if busy && mode != .normal { return }
+        // The timer already renews the lease and reads service state. Reconcile
+        // unchanged, verified work without publishing a user-visible transition.
+        if automatic, reconcilingRequests, !sleep, verifiedWork, !serviceConnectionFailed,
+           let desired = legacyWorkMode, desired != .normal, let handle = interfaceHandle,
+           workRequests.active.contains(where: { $0.id == handle.id }),
+           interfaceSpec == interfaceRequestSpec(for: desired) { return }
         busy = true; error = false; pending = nil
         defer { busy = false; onUpdate?() }
         do {
@@ -83,10 +89,7 @@ extension AppModel {
             if !automatic { manualWorkMode = mode; sessionWorkMode = nil; suppressCurrentTriggers() }
             let desired = reconcilingRequests ? legacyWorkMode : legacyWorkMode ?? mode
             if let desired, desired != .normal {
-                let screen = workScreen.runtimeBehavior ?? (desired == .background ? workScreen.background : workScreen.desktop)
-                let spec = WorkRequestSpec(title: "Orexin interface", source: "interface", mode: desired,
-                                           screen: screen == .normalBrightness ? .awake : screen == .dim ? .dim : .idle,
-                                           leaseSeconds: 15, process: LocalProcessIdentity.capture(pid: getpid()))
+                let spec = interfaceRequestSpec(for: desired)
                 if interfaceSpec != spec || interfaceHandle == nil {
                     if unlockedWorkEnabled, snapshot?.lockPolicy != .off {
                         var prepare = ControlMessage("unlocked-prepare"); prepare.owner = LocalProcessIdentity.capture(pid: getpid())
@@ -112,6 +115,12 @@ extension AppModel {
             preferences.set(true, forKey: "orexin.HasConfiguredMode")
             message = "后台服务已核验当前工作需求。"
         } catch { self.error = true; message = error.localizedDescription; await refreshTaskService(); self.error = true }
+    }
+    private func interfaceRequestSpec(for mode: WorkMode) -> WorkRequestSpec {
+        let screen = workScreen.runtimeBehavior ?? (mode == .background ? workScreen.background : workScreen.desktop)
+        return WorkRequestSpec(title: "Orexin interface", source: "interface", mode: mode,
+                               screen: screen == .normalBrightness ? .awake : screen == .dim ? .dim : .idle,
+                               leaseSeconds: 15, process: LocalProcessIdentity.capture(pid: getpid()))
     }
     func disconnectInterface() async {
         if let handle = interfaceHandle { _ = try? await serviceCall(.init("complete", handle: handle, exitCode: 0)) }

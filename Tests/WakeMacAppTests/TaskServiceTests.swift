@@ -1,4 +1,5 @@
 import XCTest
+import Combine
 @testable import WakeMac
 import WakeMacCore
 
@@ -150,6 +151,61 @@ import WakeMacCore
         await client.refresh()
         XCTAssertFalse(client.error)
         XCTAssertEqual(client.active, .normal)
+    }
+
+    func testRepeatedInterfaceTicksKeepVerifiedWorkWithoutModeTransitions() async throws {
+        let value = await model()
+        let path = "/tmp/orxt-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await value.handleTaskControl($0) }
+        defer { server.stop() }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh()
+        await client.choose(.desk)
+        XCTAssertTrue(client.verifiedWork)
+        let handle = try XCTUnwrap(client.interfaceHandle)
+        let lease = try XCTUnwrap(value.workRequests.active.first?.leaseExpiresAt)
+        var transitions: [Bool] = []
+        let observation = client.$busy.dropFirst().sink { transitions.append($0) }
+        defer { observation.cancel() }
+
+        for _ in 0..<8 {
+            await client.tick(battery: nil)
+            XCTAssertTrue(client.verifiedWork)
+            XCTAssertEqual(client.interfaceHandle, handle)
+        }
+
+        XCTAssertFalse(transitions.contains(true), "Heartbeat reconciliation must not show the mode-switching UI")
+        XCTAssertEqual(value.workRequests.active.map(\.id), [handle.id])
+        XCTAssertGreaterThan(try XCTUnwrap(value.workRequests.active.first?.leaseExpiresAt), lease)
+    }
+
+    func testInterfaceScreenChangeAndErrorRecoveryStillReconcile() async throws {
+        let value = await model()
+        let path = "/tmp/orxc-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await value.handleTaskControl($0) }
+        defer { server.stop() }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh()
+        await client.choose(.desk)
+        let original = try XCTUnwrap(client.interfaceHandle)
+        var transitions: [Bool] = []
+        let observation = client.$busy.dropFirst().sink { transitions.append($0) }
+        defer { observation.cancel() }
+
+        await client.setWorkScreenBehavior(.normalBrightness)
+        XCTAssertNotEqual(client.interfaceHandle, original)
+        XCTAssertEqual(value.workRequests.active.count, 1)
+        XCTAssertEqual(value.workRequests.active.first?.spec.screen, .awake)
+        XCTAssertTrue(transitions.contains(true))
+        XCTAssertTrue(client.verifiedWork)
+
+        transitions.removeAll()
+        client.error = true
+        await client.reconcileWorkRequests()
+        XCTAssertTrue(transitions.contains(true), "An existing error must still be rechecked")
+        XCTAssertTrue(client.verifiedWork)
     }
 
 }
