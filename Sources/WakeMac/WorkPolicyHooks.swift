@@ -28,10 +28,11 @@ import WakeMacCore
         }
         posix_spawnattr_setflags(&attributes, Int16(POSIX_SPAWN_SETPGROUP | POSIX_SPAWN_CLOEXEC_DEFAULT))
         posix_spawnattr_setpgroup(&attributes, 0)
-        let argv = ["/bin/zsh", "-f", path].map { strdup($0) } + [nil]
+        let arguments: [String] = ["/bin/zsh", "-f", path]
+        let argv = arguments.map { value in value.withCString { strdup($0) } } + [nil]
         let environment: [String] = ["PATH=/usr/bin:/bin:/usr/sbin:/sbin", "OREXIN_SCRIPT_PATH=\(sourcePath)", "OREXIN_TASK_ID=\(record.id.uuidString)",
                    "OREXIN_OUTCOME=\(record.state.rawValue)", "OREXIN_EXIT_CODE=\(record.exitCode.map(String.init) ?? "")"]
-        let env = environment.map { strdup($0) } + [nil]
+        let env = environment.map { value in value.withCString { strdup($0) } } + [nil]
         defer { argv.forEach { free($0) }; env.forEach { free($0) } }
         var pid: pid_t = 0
         let error = argv.withUnsafeBufferPointer { a in env.withUnsafeBufferPointer { e in

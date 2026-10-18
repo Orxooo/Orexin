@@ -7,7 +7,7 @@ enum OrexinRelease {
     static let releasesURL = repositoryURL.appendingPathComponent("releases")
     static let issuesURL = repositoryURL.appendingPathComponent("issues/new")
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.3.0" }
-    static var channel: String { Bundle.main.object(forInfoDictionaryKey: "OrexinReleaseChannel") as? String ?? "Preview" }
+    static var channel: String { Bundle.main.object(forInfoDictionaryKey: "OrexinReleaseChannel") as? String ?? "Preview.1" }
     static var displayVersion: String { "V\(version)" + (channel.isEmpty ? "" : " \(channel)") }
     static var versionTag: String { "v\(version)" + (channel.isEmpty ? "" : "-\(channel.lowercased())") }
 }

@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>Keep your Mac awake while you work. Let it rest when the job is done.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><img src="https://img.shields.io/badge/Preview-v0.3.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.3.0 Preview"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="https://img.shields.io/badge/Preview-v0.3.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.3.0 Preview.1"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 or later">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> · <strong>English</strong><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><strong>Download V0.3.0 Preview ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><strong>Download V0.3.0 Preview.1 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#get-started">Installation</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">Handbook</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">Discussions</a>
@@ -64,7 +64,7 @@ Screen behavior is independent of the preset: choose **0% brightness, normal bri
 
 **Apple Silicon Mac · macOS 15 or later.** The current download is arm64.
 
-1. Open the [V0.3.0 Preview release](https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview) and download `Orexin-0.3.0-Preview-arm64.zip`.
+1. Open the [V0.3.0 Preview.1 release](https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1) and download `Orexin-0.3.0-Preview.1-arm64.zip`.
 2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, wait for built-in commands to finish, end wakefulness and quit the old app first; existing Orexin preferences and local data are retained.
 3. Choose a preset and an end condition. For lid-closed work, approve the helper in Settings and personally authorize unlocked work in the native dialog.
 
@@ -80,7 +80,7 @@ Download the ZIP and `SHA256SUMS.txt` into the same directory, then run:
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-`Orexin-0.3.0-Preview-arm64.zip: OK` confirms that the checksum matches.
+`Orexin-0.3.0-Preview.1-arm64.zip: OK` confirms that the checksum matches.
 
 </details>
 
@@ -98,7 +98,7 @@ See the [security policy](SECURITY.md) and [feature reference](FEATURES.md).
 
 ## Task management and CLI
 
-V0.3.0 Preview adds professional rules, power analysis, and reusable work profiles: nested conditions and read-only trials, observable assertion sources and a contextual timeline, and versioned JSON import/export with an exact preview. See the [configuration guide](docs/WORK-CONFIGURATION.md). Work profiles can include notifications and locally enabled outcome scripts, with a configuration snapshot captured when each task starts.
+V0.3.0 Preview.1 adds professional rules, power analysis, and reusable work profiles: nested conditions and read-only trials, observable assertion sources and a contextual timeline, and versioned JSON import/export with an exact preview. See the [configuration guide](docs/WORK-CONFIGURATION.md). Work profiles can include notifications and locally enabled outcome scripts, with a configuration snapshot captured when each task starts.
 
 **Task Management** includes **Task list / Run command / Work profiles / Integrations**. Run commands concurrently, inspect each task's logs, actual exit code and wakefulness status, and release requests individually.
 
