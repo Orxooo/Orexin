@@ -16,7 +16,7 @@ public enum LocalControlSocket {
         let result = withUnsafePointer(to: &address) {
             $0.withMemoryRebound(to: sockaddr.self, capacity: 1) { connect(fd, $0, socklen_t(MemoryLayout<sockaddr_un>.size)) }
         }
-        guard result == 0 else { throw ModeError("Orexin is unavailable at \(path). Open the app first. (\(String(cString: strerror(errno))))") }
+        guard result == 0 else { throw ModeError("Orexin is unavailable at \(path). Start the background service with orexin service-start. (\(String(cString: strerror(errno))))") }
         guard sameUser(fd) else { throw ModeError("Local server belongs to a different user") }
         try write(ControlCoding.encode(message), to: fd)
         return try ControlCoding.decode(ControlReply.self, from: read(fd, limit: 512 * 1024))

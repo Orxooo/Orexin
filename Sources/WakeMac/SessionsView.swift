@@ -38,7 +38,7 @@ struct SessionsView: View {
     }
 
     private var settingsPanel: some View {
-        sessionPanel(title: "会话设置", subtitle: "TARGET PRESETS", signal: TerminalStyle.accent) {
+        sessionPanel(number: "01", title: "会话设置", subtitle: "TARGET PRESETS", signal: TerminalStyle.accent) {
             VStack(alignment: .leading, spacing: 14) {
                 VStack(alignment: .leading, spacing: 8) {
                     fieldHeading("开始时使用", subtitle: "INITIAL WORK MODE")
@@ -182,7 +182,7 @@ struct SessionsView: View {
     }
 
     private var effectsPanel: some View {
-        sessionPanel(title: "会话效果", subtitle: "HARDWARE ASSERTION MATRIX", signal: TerminalStyle.signal) {
+        sessionPanel(number: "02", title: "会话效果", subtitle: "HARDWARE ASSERTION MATRIX", signal: TerminalStyle.signal) {
             VStack(alignment: .leading, spacing: 12) {
                 effectText("手动、会话和自动触发的工作模式均适用；恢复正常休眠后停止。")
                 effectRow(code: "DISPLAY", descriptor: "IDLE DISPLAY", title: "防止显示器闲时休眠", detail: "不会改变锁屏或密码设置；锁定后暂停。", isOn: displayPrevention, report: controller.effectReport.display) { EmptyView() }
@@ -258,12 +258,12 @@ struct SessionsView: View {
                     .foregroundStyle(isOn.wrappedValue ? TerminalStyle.accent : WorkStyle.muted)
                     .frame(width: 63, alignment: .leading).padding(.top, 4)
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 7) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 7) {
+                            Text(L(title)).font(.system(size: 13, weight: .semibold))
+                            Text(descriptor).font(TerminalStyle.mono(8)).foregroundStyle(WorkStyle.muted)
+                        }
                         Text(L(title)).font(.system(size: 13, weight: .semibold))
-                        Text(descriptor).font(TerminalStyle.mono(8))
-                            .foregroundStyle(isOn.wrappedValue ? TerminalStyle.signal : WorkStyle.muted)
-                            .padding(.horizontal, 4).padding(.vertical, 2).background(TerminalStyle.silver)
-                            .lineLimit(1).minimumScaleFactor(0.7)
                     }
                     Text(L(detail)).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
@@ -272,15 +272,11 @@ struct SessionsView: View {
                         Text(L(report)).font(TerminalStyle.mono(9)).foregroundStyle(WorkStyle.muted)
                             .fixedSize(horizontal: false, vertical: true)
                     }.accessibilityLabel(LF("运行反馈：%@", L(report)))
-                }
+                }.frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 8) {
-                    HStack(spacing: 10) {
-                        Text(isOn.wrappedValue ? "ON" : "OFF").font(TerminalStyle.mono(9))
-                            .foregroundStyle(isOn.wrappedValue ? TerminalStyle.signal : WorkStyle.muted)
-                        Toggle(L(title), isOn: isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
-                            .accessibilityLabel(title).accessibilityHint(detail)
-                    }
+                    Toggle(L(title), isOn: isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
+                        .accessibilityLabel(title).accessibilityHint(detail)
                     if let actionTitle, let action {
                         Button(L(actionTitle), action: action).font(WorkType.caption)
                             .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
@@ -341,21 +337,10 @@ struct SessionsView: View {
         }
     }
 
-    private func sessionPanel<Content: View>(title: String, subtitle: String, signal: Color, @ViewBuilder content: () -> Content) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Rectangle().fill(signal).frame(width: 4, height: 18)
-                Text(L(title)).font(WorkType.sectionTitle).accessibilityAddTraits(.isHeader)
-                Text("// " + subtitle).font(TerminalStyle.mono(10)).foregroundStyle(WorkStyle.muted)
-                    .lineLimit(1).minimumScaleFactor(0.7)
-                Spacer(minLength: 0)
-            }
-            Rectangle().fill(WorkStyle.line.opacity(0.55)).frame(height: 1)
+    private func sessionPanel<Content: View>(number: String, title: String, subtitle: String, signal: Color, @ViewBuilder content: () -> Content) -> some View {
+        PreferencesConsoleRack(number: number, title: title, code: subtitle, accent: signal) {
             content()
-        }.frame(maxWidth: .infinity, alignment: .leading).padding(20)
-            .background(WorkStyle.surface)
-            .overlay(Rectangle().strokeBorder(WorkStyle.line.opacity(0.6), lineWidth: 1))
-            .overlay(TerminalBrackets().stroke(signal.opacity(0.5), lineWidth: 1.3).allowsHitTesting(false))
+        }
     }
 
     @ViewBuilder private var conditionFields: some View {

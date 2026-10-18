@@ -12,6 +12,12 @@ public struct ControlMessage: Codable, Sendable {
     public var document: Data?
     public var strategy: String?
     public var previewToken: String?
+    public var mode: WorkMode?
+    public var screen: RequestScreen?
+    public var command: String?
+    public var directory: String?
+    public var owner: LocalProcessIdentity?
+    public var enabled: Bool?
     public init(_ operation: String, handle: WorkRequestHandle? = nil, spec: WorkRequestSpec? = nil, id: UUID? = nil, exitCode: Int32? = nil) {
         self.operation = operation; self.handle = handle; self.spec = spec; self.id = id; self.exitCode = exitCode
     }
@@ -34,9 +40,15 @@ public struct ControlReply: Codable, Sendable {
     public var mode: WorkMode?
     public var verified: Bool
     public var sleepAt: Date?
+    public var batterySleepAt: Date?
+    public var timeline: Data?
     public var document: Data?
     public var changes: [String]?
     public var previewToken: String?
+    public var service: TaskServiceInfo?
+    public var plans: [PlanRunSummary]?
+    public var snapshot: Snapshot?
+    public var commandLogs: [UUID: String]?
     public init(ok: Bool = true, error: String? = nil, handle: WorkRequestHandle? = nil, tasks: [ControlTaskStatus] = [], mode: WorkMode? = nil, verified: Bool = false, sleepAt: Date? = nil) {
         self.ok = ok; self.error = error; self.handle = handle; self.tasks = tasks; self.mode = mode; self.verified = verified; self.sleepAt = sleepAt
     }

@@ -28,7 +28,7 @@ struct PreferencesConsoleRack<Content: View>: View {
             Rectangle().fill(TerminalStyle.line.opacity(0.55)).frame(height: 1)
             content
         }.padding(20).frame(maxWidth: .infinity, alignment: .leading)
-            .background(TerminalStyle.paper.opacity(0.8))
+            .background(WorkStyle.surface)
             .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.6)))
             .overlay(TerminalBrackets().stroke(accent.opacity(0.8), lineWidth: 1.4).allowsHitTesting(false))
     }
@@ -56,7 +56,6 @@ struct PreferencesServiceReadyBadge: View {
             .padding(.horizontal, 15).frame(height: 36)
             .foregroundStyle(TerminalStyle.accent).background(TerminalStyle.selection.opacity(0.45))
             .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.75)))
-            .shadow(color: TerminalStyle.accent.opacity(0.15), radius: 5)
             .accessibilityElement(children: .ignore)
             .accessibilityLabel("合盖服务已安装并已授权")
             .accessibilityValue("DAEMON_READY")
@@ -150,21 +149,24 @@ struct IdleScreenConsoleView: View {
         VStack(alignment: .leading, spacing: 12) {
             HStack(spacing: 12) {
                 Text("[" + number + "]").font(TerminalStyle.mono(10)).foregroundStyle(TerminalStyle.secondary)
+                    .frame(width: 63, alignment: .leading)
                 VStack(alignment: .leading, spacing: 5) {
-                    HStack(spacing: 7) {
+                    ViewThatFits(in: .horizontal) {
+                        HStack(spacing: 7) {
+                            Text(L(title)).font(.system(size: 13, weight: .semibold))
+                            Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
+                        }
                         Text(L(title)).font(.system(size: 13, weight: .semibold))
-                        Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
-                            .padding(.horizontal, 4).padding(.vertical, 2).background(TerminalStyle.silver)
                     }
                     Text(L(detail)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                }
+                }.frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)
                 control()
             }
             Rectangle().fill(TerminalStyle.line.opacity(0.4)).frame(height: 1)
             timing()
-        }.padding(12).background(TerminalStyle.recess)
+        }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
     }
 
     private func timingControl(_ title: String, value: Binding<Double>, accessibility: String) -> some View {

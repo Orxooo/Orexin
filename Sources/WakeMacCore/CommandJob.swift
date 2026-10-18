@@ -7,6 +7,7 @@ public struct CommandJobResult: Sendable {
     public let exitCode: Int32
     public let logURL: URL
     public let truncated: Bool
+    public init(exitCode: Int32, logURL: URL, truncated: Bool) { self.exitCode = exitCode; self.logURL = logURL; self.truncated = truncated }
 }
 public enum CommandJob {
     /// Runs only the explicitly submitted foreground shell; stdin is closed (noninteractive).

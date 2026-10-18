@@ -1316,3 +1316,16 @@
 "Failure and timeout release wakefulness without requesting sleep" = "Fehler und Zeitüberschreitung beenden das Wachhalten, ohne Ruhezustand anzufordern.";
 "Hook script must be an absolute local path" = "Das Abschlussskript muss einen absoluten lokalen Pfad verwenden.";
 "Imported rules are disabled; imported hook approvals are cleared locally." = "Importierte Regeln sind deaktiviert; lokale Freigaben importierter Skripte werden gelöscht.";
+"任务组与执行计划" = "Aufgabengruppen und Ausführungspläne";
+"导入计划" = "Plan importieren";
+"串行或并行运行一组命令，按依赖条件推进。退出界面后，后台服务继续管理。" = "Befehle abhängig von ihren Voraussetzungen nacheinander oder parallel ausführen. Der Hintergrunddienst läuft nach dem Schließen der Oberfläche weiter.";
+"%d 条命令 · 最多 %d 条同时运行" = "%d Befehle · Höchstens %d gleichzeitig";
+"运行会执行以上命令。取消计划只跳过尚未启动的命令；已启动的命令会继续。" = "Beim Start werden die obigen Befehle ausgeführt. Abbrechen überspringt noch nicht gestartete Befehle; laufende Befehle werden fortgesetzt.";
+"运行计划" = "Plan starten";
+"取消计划" = "Plan abbrechen";
+"查看详情" = "Details anzeigen";
+"后台服务运行中 · PID %d" = "Hintergrunddienst läuft · PID %d";
+"本地接口尚未就绪；请先启动后台任务服务。" = "Lokale Schnittstelle nicht verfügbar; starten Sie zuerst den Hintergrunddienst.";
+"等待执行" = "Ausstehend";
+"正在取消" = "Wird abgebrochen";
+"已跳过" = "Übersprungen";

@@ -19,7 +19,7 @@ struct TaskIntegrationsView: View {
         VStack(alignment: .leading, spacing: 16) {
             VStack(alignment: .leading, spacing: 8) {
                 TerminalLabel("本地接入状态", systemImage: "terminal").font(.system(size: 13, weight: .semibold))
-                Text(model.requestServiceMessage.isEmpty ? L("本地接口尚未就绪；请确认 Orexin 正在运行。") : model.requestServiceMessage)
+                Text(model.requestServiceMessage.isEmpty ? L("本地接口尚未就绪；请先启动后台任务服务。") : model.requestServiceMessage)
                     .font(TerminalStyle.mono(10)).textSelection(.enabled).fixedSize(horizontal: false, vertical: true)
                     .foregroundStyle(TerminalStyle.muted)
             }.padding(16).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()

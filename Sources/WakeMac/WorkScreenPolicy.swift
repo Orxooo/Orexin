@@ -150,7 +150,7 @@ enum BuiltInBrightness {
     func restore() throws {
         revision += 1; appliedBehavior = nil; appliedMode = nil; runtimeBehavior = nil; verifiedBehavior = nil
         idleTimeout = nil; timeoutSource = nil
-        if let originalBrightness {
+        if runtimeEnabled, let originalBrightness {
             try writeBrightness(originalBrightness)
             self.originalBrightness = nil
             preferences.removeObject(forKey: "orexin.screen.restoreBrightness")

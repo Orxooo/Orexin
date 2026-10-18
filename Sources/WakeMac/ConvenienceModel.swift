@@ -6,15 +6,15 @@ import WakeMacCore
 
 @MainActor enum AppPaths {
     // Orexin starts with its own local history and assets.
-    static let root = FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Application Support/Orexin", isDirectory: true)
+    static let root = TaskServiceLauncher.stateDirectory
 }
 
 extension AppModel {
     var countdownText: String? {
-        guard let end = [automation.nextDeadline, sessions.deadline].compactMap({ $0 }).min() else { return nil }
+        guard let end = [automation.nextDeadline, sessions.deadline, serviceSleepAt].compactMap({ $0 }).min() else { return nil }
         let seconds = max(0, Int(ceil(end.timeIntervalSince(now))))
         if automation.batterySleepAt == end { return String(format: L("低电量：%d 秒后休眠"), seconds) }
-        if automation.jobSleepAt == end { return String(format: L("任务已完成：%d 秒后休眠"), seconds) }
+        if automation.jobSleepAt == end || serviceSleepAt == end { return String(format: L("任务已完成：%d 秒后休眠"), seconds) }
         return String(format: L("%d 分钟后休眠并锁定"), max(1, Int(ceil(Double(seconds) / 60))))
     }
     var menuText: String {
@@ -22,7 +22,7 @@ extension AppModel {
         if busy { return L("切换中") }
         if error || pending != nil { return L("待处理") }
         let name = active.map { $0 == .background ? L("后台") : $0 == .desk ? L("桌面") : L("正常") } ?? L("未知")
-        guard let end = [automation.nextDeadline, sessions.deadline].compactMap({ $0 }).min() else { return name }
+        guard let end = [automation.nextDeadline, sessions.deadline, serviceSleepAt].compactMap({ $0 }).min() else { return name }
         if appearance.showEndTime {
             let formatter = DateFormatter(); formatter.locale = AppLanguage.selected.locale
             formatter.dateFormat = appearance.twentyFourHour ? "HH:mm" : "h:mm a"
@@ -48,9 +48,13 @@ extension AppModel {
         onUpdate?()
     }
     func cancelVisibleCountdown() {
-        guard let next = [automation.nextDeadline, sessions.deadline].compactMap({ $0 }).min() else { return }
+        guard let next = [automation.nextDeadline, sessions.deadline, serviceSleepAt].compactMap({ $0 }).min() else { return }
+        if serviceSleepAt == next { cancelAutomaticSleep(); return }
         if sessions.deadline == next { Task { await sessions.end() }; return }
         if automation.batterySleepAt == next {
+            if serviceSocket != nil {
+                Task { if let reply = try? await serviceCall(.init("cancel-battery-sleep")) { adoptServiceReply(reply) } }
+            }
             automaticSleepRevision += 1; automation.cancelBatterySleep(); record("已取消本次低电量休眠。")
         } else if automation.jobSleepAt == next {
             automaticSleepRevision += 1; automation.cancelJobSleep(); workRequests.cancelSleep()
@@ -63,6 +67,7 @@ extension AppModel {
         automation.deadline = nil; record("已取消定时休眠。"); onUpdate?()
     }
     func cancelAutomaticSleep() {
+        if serviceSocket != nil { Task { if let reply = try? await serviceCall(.init("cancel-sleep")) { adoptServiceReply(reply) } } }
         automaticSleepRevision += 1
         automation.cancelBatterySleep(); automation.cancelJobSleep()
         workRequests.cancelSleep()
@@ -86,16 +91,26 @@ extension AppModel {
         menuLabelEnabled = enabled; preferences.set(enabled, forKey: "orexin.MenuLabel"); onUpdate?()
     }
     func tick(now date: Date = Date(), battery reading: BatteryReading?) async {
+        if serviceSocket != nil { await refreshTaskService(renew: true) }
         now = date
         if battery?.onBattery != reading?.onBattery {
             record(reading.map { $0.onBattery ? "电源来源：电池" : "电源来源：外接电源" } ?? "电源来源：未知", context: historyContext(kind: .powerSource))
         }
         if battery != reading { battery = reading }
-        if backend is MacBackend { await powerAnalysis.refresh(now: date) }
+        if backend is MacBackend || serviceSocket != nil { await powerAnalysis.refresh(now: date) }
         if !hooksMayRun { policyHooks.cancelAll() }
         onUpdate?()
+        if serviceSocket != nil {
+            sampleThermalPressure(at: date)
+            if let deadline = automation.deadline, date >= deadline {
+                automation.deadline = nil; await choose(.normal, sleep: true, automatic: true)
+            }
+            await tickFeatures(now: date, battery: reading, thermalAlreadyChecked: true)
+            tickBehavior(now: date)
+            return
+        }
         if await protectFromThermalPressure() { return }
-        await reapWorkRequests(now: date)
+        if serviceSocket == nil { await reapWorkRequests(now: date) }
         guard !busy else { return }
         let actions = automation.evaluate(now: date, mode: active, battery: reading)
         for action in actions {
@@ -116,10 +131,15 @@ extension AppModel {
                 await choose(.normal, sleep: true, automatic: true)
             }
         }
+        if isTaskService {
+            await applyWorkScreenPolicy(now: date)
+            return
+        }
         await tickFeatures(now: date, battery: reading, thermalAlreadyChecked: true)
         tickBehavior(now: date)
     }
     func startJob(command: String, directory: String) async {
+        if serviceSocket != nil { await submitServiceCommand(command: command, directory: directory); return }
         if await protectFromThermalPressure() {
             convenienceMessage = "温度保护：请等待设备降温并恢复正常休眠后，再启动命令。"
             onUpdate?(); return

@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>Keep your Mac awake while you work. Let it rest when the job is done.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="https://img.shields.io/badge/Preview-v0.3.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.3.0 Preview.1"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.0"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 or later">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> · <strong>English</strong><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><strong>Download V0.3.0 Preview.1 ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><strong>Download V1.0.0 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#get-started">Installation</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">Handbook</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">Discussions</a>
@@ -64,12 +64,12 @@ Screen behavior is independent of the preset: choose **0% brightness, normal bri
 
 **Apple Silicon Mac · macOS 15 or later.** The current download is arm64.
 
-1. Open the [V0.3.0 Preview.1 release](https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1) and download `Orexin-0.3.0-Preview.1-arm64.zip`.
-2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, wait for built-in commands to finish, end wakefulness and quit the old app first; existing Orexin preferences and local data are retained.
+1. Open the [V1.0.0 release](https://github.com/Orxooo/Orexin/releases/tag/v1.0.0) and download `Orexin-1.0.0-arm64.zip`.
+2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, wait for commands and execution plans to finish and end wakefulness. If the old version has a background service, run the bundled CLI’s `service-stop`, then quit the interface and replace the app. Existing Orexin preferences and local data are retained.
 3. Choose a preset and an end condition. For lid-closed work, approve the helper in Settings and personally authorize unlocked work in the native dialog.
 
 > [!IMPORTANT]
-> **This is a preview release.** The download is Apple Development-signed and has not been Developer ID-notarized. macOS may block the first launch. Check the source and `SHA256SUMS.txt`, then follow the system's Privacy & Security prompt. You do not need to disable Gatekeeper or System Integrity Protection globally.
+> The download is Apple Development-signed and has not been Developer ID-notarized. macOS may block the first launch. Check the source and `SHA256SUMS.txt`, then follow the system's Privacy & Security prompt. You do not need to disable Gatekeeper or System Integrity Protection globally.
 
 <details>
 <summary><strong>Verify your download</strong></summary>
@@ -80,7 +80,7 @@ Download the ZIP and `SHA256SUMS.txt` into the same directory, then run:
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-`Orexin-0.3.0-Preview.1-arm64.zip: OK` confirms that the checksum matches.
+`Orexin-1.0.0-arm64.zip: OK` confirms that the checksum matches.
 
 </details>
 
@@ -98,22 +98,25 @@ See the [security policy](SECURITY.md) and [feature reference](FEATURES.md).
 
 ## Task management and CLI
 
-V0.3.0 Preview.1 adds professional rules, power analysis, and reusable work profiles: nested conditions and read-only trials, observable assertion sources and a contextual timeline, and versioned JSON import/export with an exact preview. See the [configuration guide](docs/WORK-CONFIGURATION.md). Work profiles can include notifications and locally enabled outcome scripts, with a configuration snapshot captured when each task starts.
+V1.0.0 is the first stable release, adding an independent background task service and execution plans alongside consistent controls, alignment, and spacing. Plans support dependencies, serial/parallel execution, concurrency limits, failure branches, and per-command logs. See the [execution-plan guide (Chinese)](docs/EXECUTION-PLANS.md).
+
+Professional rules, power analysis, and reusable work profiles provide: nested conditions and read-only trials, observable assertion sources and a contextual timeline, and versioned JSON import/export with an exact preview. See the [configuration guide](docs/WORK-CONFIGURATION.md). Work profiles can include notifications and locally enabled outcome scripts, with a configuration snapshot captured when each task starts.
 
 **Task Management** includes **Task list / Run command / Work profiles / Integrations**. Run commands concurrently, inspect each task's logs, actual exit code and wakefulness status, and release requests individually.
 
 Finishing one task preserves the others. A cancellable 60-second sleep countdown starts only when all overlapping requests succeed and no manual work, session or rule still needs wakefulness. Releasing a request or stopping all wakefulness does not kill running commands.
 
-After installing and opening the app, use the bundled CLI directly:
+After installing, use the bundled CLI without keeping the interface open:
 
 ```sh
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
+"$orexin" service-start
 "$orexin" help
 "$orexin" run --title Build -- make
 "$orexin" list --json
 ```
 
-`run` wraps a foreground command and reports its actual result. External tools can also use `register`, `heartbeat`, `complete` and related lifecycle commands. The local interface is restricted to the current user and does not listen on a network port. The app must remain running; restarting does not replay commands or restore old requests.
+`run` wraps a foreground command and reports its actual result. External tools can also use `register`, `heartbeat`, `complete` and related lifecycle commands. The local interface is restricted to the current user and does not listen on a network port. Requests and plans run in the independent background service and survive closing or reopening the interface. Manual sessions, automatic rules, and interface-driven conveniences still depend on the interface process. Restarting the service marks unfinished work as lost without replaying commands or restoring old wakefulness requests.
 
 See the [CLI and concurrent-request guide (Chinese)](docs/CLI.md) for options and integration examples. If the app is installed elsewhere, copy its actual path from Integrations.
 

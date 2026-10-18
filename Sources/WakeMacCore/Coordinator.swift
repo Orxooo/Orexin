@@ -4,14 +4,14 @@
 import Foundation
 
 public enum WorkMode: String, CaseIterable, Codable, Sendable { case background, desk, normal }
-public enum LockPolicy: Equatable, Sendable { case off, immediate, delayed, unknown }
+public enum LockPolicy: String, Codable, Equatable, Sendable { case off, immediate, delayed, unknown }
 public enum LockRequirement: Sendable {
     case immediate, system, unlockedWork
     public func accepts(_ policy: LockPolicy) -> Bool {
         policy != .unknown && (self != .immediate || policy == .immediate)
     }
 }
-public struct Snapshot: Equatable, Sendable {
+public struct Snapshot: Codable, Equatable, Sendable {
     public var sleepDisabled: Bool?
     public var lockPolicy: LockPolicy
     public var idleSleepPrevented: Bool?

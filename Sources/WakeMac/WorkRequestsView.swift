@@ -43,7 +43,7 @@ struct WorkRequestsView: View {
                 Spacer(minLength: 12)
                 actionButton("全部停止保活", role: .destructive) { Task { await model.choose(.normal) } }
                     .disabled(model.busy || !model.verifiedWork)
-            }.padding(.horizontal, 12)
+            }
             Text(L("每项任务独立释放保活；释放不会终止命令。全部停止同时结束会话与规则保活。"))
                 .font(WorkType.caption).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
             Rectangle().fill(WorkStyle.line).frame(height: 1)
@@ -64,6 +64,8 @@ struct WorkRequestsView: View {
             LazyVStack(spacing: 10) {
                 ForEach(visible) { request in requestRow(request) }
             }
+            Rectangle().fill(WorkStyle.line).frame(height: 1)
+            ExecutionPlansView(model: model, onShowLog: onShowLog)
         }.padding(16).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
     }
     private func requestRow(_ request: WorkRequestRecord) -> some View {

@@ -1,19 +1,20 @@
 # Orexin CLI 与并行工作请求
 
-本接口从 `v0.2.0-preview` 起随应用发布，`v0.1.0-preview` 不包含此 CLI。主应用必须运行。无需 Developer ID、公证或付费开发者会员即可构建和使用普通桌面请求；后台合盖与保持未锁定仍遵循现有辅助服务和本次原生授权要求。
+本接口从 `v0.2.0-preview` 起随应用发布，`v0.1.0-preview` 不包含此 CLI。从 V1.0.0 起改由独立后台任务服务提供接口，窗口进程无需常驻（V0.3.0 Preview.1 及更早版本仍要求主应用运行）。无需 Developer ID、公证或付费开发者会员即可构建和使用普通桌面请求；后台合盖与保持未锁定仍遵循现有辅助服务和本次原生授权要求。
 
 ## 安装包用法
 
-安装并打开 Orexin 后，可直接使用应用内置 CLI，无需配置 PATH：
+打开 V1.0.0 界面会启动后台服务；也可以直接使用内置 CLI 启动服务，无需打开界面或配置 PATH：
 
 ```sh
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
+"$orexin" service-start
 "$orexin" help
 "$orexin" list --json
 "$orexin" run --title Build -- make
 ```
 
-若应用安装在其他位置，请相应调整路径；「任务管理 → 外部接入」会显示当前应用的准确路径。升级前等待内置命令结束并退出应用；重启不会恢复旧保活请求或重放命令。
+若应用安装在其他位置，请相应调整路径；「任务管理 → 外部接入」会显示当前应用的准确路径。升级前等待命令与计划结束、结束保活；若旧版支持后台服务，运行 `service-stop`，再退出界面并替换应用。V0.3.0 Preview.1 及更早版本没有该服务命令，结束工作并退出旧版即可。退出界面不会停止服务任务；后台服务重启后，原活跃请求记为失联，未完成计划不重放。
 
 ## 构建与使用
 
@@ -26,7 +27,20 @@ swift build --arch arm64 --scratch-path /tmp/orexin-cli-build
 /tmp/orexin-dist/orexin help
 ```
 
-构建脚本还会把 CLI 放入 `Orexin.app/Contents/Helpers/orexin`。可以直接使用绝对路径，不需要安装到 PATH。CLI 不会自动启动应用、申请权限、输入密码或替换已安装应用。`OREXIN_SOCKET` 或 `--socket PATH` 可选择独立实例的接口；应用也读取 `OREXIN_SOCKET`。
+构建脚本还会把 CLI 放入 `Orexin.app/Contents/Helpers/orexin`。可以直接使用绝对路径，不需要安装到 PATH。`service-start` 只启动无窗口进程，不注册登录项或安装 LaunchAgent；普通任务命令要求服务已启动。CLI 不会申请权限、输入密码或替换已安装应用。`OREXIN_SOCKET` 或 `--socket PATH` 可选择独立实例的接口；应用也读取 `OREXIN_SOCKET`。
+
+## 后台服务与执行计划（V1.0.0 起）
+
+- `service-start [--service-executable PATH]`：启动或复用当前用户的后台核心。构建目录中的 CLI 自动查找同目录 `WakeMac`，应用内 CLI 查找本应用主程序。
+- `service-status`：查看 PID、实例 ID 与当前任务；`service-stop` 只在没有活跃请求、运行命令或未完成计划时退出。
+- `plan-validate FILE`：只读校验，可离线执行；`plan-run FILE`：明确执行文件中的命令，提交后 CLI 可退出。
+- `plan-list`、`plan-status UUID`：查看组与子任务进度；`plan-cancel UUID`：跳过待执行命令，已运行命令继续，最后释放整组保护。
+- `stop-all`：立即撤销所有保活，并跳过计划中尚未启动的命令。已运行的命令继续，因此服务可能仍拒绝退出。
+- `plan-run --id UUID` 可用同一 ID 重试同一份提交；已结束的 ID 不会重跑命令。
+
+完整格式与例子见 [执行计划指南](EXECUTION-PLANS.md)。默认不安装常驻登录服务；登出、系统重启或服务异常退出后不会自动重放任务。界面中的旧会话、自动规则、鼠标与磁盘辅助效果仍由界面驱动，其保活需求作为带进程身份和 15 秒租约的请求提交；它们不等同于后台计划。界面退出或失联后仅此请求结束。后台任务、计划与原生电源保护由服务继续管理。
+
+`OREXIN_STATE_DIR` 可与私有 `OREXIN_SOCKET` 配合隔离测试状态和偏好；普通使用无需设置。服务与界面应使用同一组路径。
 
 ## 包装命令
 

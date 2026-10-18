@@ -10,7 +10,9 @@ dist/
 docs/*
 !docs/CLI.md
 !docs/WORK-CONFIGURATION.md
+!docs/EXECUTION-PLANS.md
 !docs/examples/
 docs/examples/*
 !docs/examples/work-configuration.json
+!docs/examples/execution-plan.json
 design-qa.md

@@ -252,6 +252,12 @@ struct TriggerConditionResult: Codable, Equatable {
         enabled = preferences.object(forKey: Self.enabledStorageKey) as? Bool ?? true
         rules = preferences.data(forKey: Self.storageKey).flatMap { try? JSONDecoder().decode([TriggerRule].self, from: $0) } ?? []
     }
+    func reload() {
+        let values = preferences.data(forKey: Self.storageKey).flatMap { try? JSONDecoder().decode([TriggerRule].self, from: $0) } ?? []
+        if values != rules { rules = values; engine.reset(); evaluationReport = nil; revision += 1 }
+        let master = preferences.object(forKey: Self.enabledStorageKey) as? Bool ?? true
+        if enabled != master { enabled = master }
+    }
     @discardableResult func save(_ rule: TriggerRule) -> String? {
         if let error = Self.validateRules(rules.filter { $0.id != rule.id } + [rule]) { return error }
         if let index = rules.firstIndex(where: { $0.id == rule.id }) { rules[index] = rule }

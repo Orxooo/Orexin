@@ -58,6 +58,12 @@ struct ConfigurationPreview {
         profiles = preferences.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([WorkProfile].self, from: $0) } ?? []
         approvals = preferences.dictionary(forKey: Self.trustKey) as? [String: String] ?? [:]
     }
+    func reload() {
+        let values = preferences.data(forKey: Self.key).flatMap { try? JSONDecoder().decode([WorkProfile].self, from: $0) } ?? []
+        if values != profiles { profiles = values }
+        let trust = preferences.dictionary(forKey: Self.trustKey) as? [String: String] ?? [:]
+        if trust != approvals { approvals = trust }
+    }
     func replace(_ values: [WorkProfile], revoke: Set<UUID>) throws {
         guard Set(values.map(\.id)).count == values.count, values.count <= 64 else { throw ModeError("Duplicate or too many profiles") }
         if let error = values.compactMap(\.validationError).first { throw ModeError(error) }

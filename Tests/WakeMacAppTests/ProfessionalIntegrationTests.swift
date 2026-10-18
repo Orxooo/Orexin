@@ -108,7 +108,10 @@ import WakeMacCore
             let bitmap = try XCTUnwrap(host.bitmapImageRepForCachingDisplay(in: host.bounds)); host.cacheDisplay(in: host.bounds, to: bitmap)
             try XCTUnwrap(bitmap.representation(using: .png, properties: [:])).write(to: evidence.appendingPathComponent(name + ".png"))
         }
-        for width in [CGFloat(1100), CGFloat(650)] {
+        model.appearance.theme = .light
+        for width in [CGFloat(1100), CGFloat(614)] {
+            try await capture(ScrollView { SessionsView(controller: model.sessions).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()).preferredColorScheme(.light), name: "sessions-\(Int(width))", width: width)
+            try await capture(IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: true).padding(20).background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).preferredColorScheme(.light), name: "idle-\(Int(width))", width: width)
             try await capture(ScrollView { WorkConfigurationsView(model: model).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()), name: "policies-\(Int(width))", width: width)
             try model.profiles.replace([], revoke: [])
             try await capture(ScrollView { WorkConfigurationsView(model: model).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()), name: "policies-empty-\(Int(width))", width: width)
@@ -121,6 +124,7 @@ import WakeMacCore
         try await capture(WorkProfileEditor(profile: profile, save: { _ in }).background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink), name: "profile-editor", width: 700)
         let root = PreferencesView(model: model, hotkeys: GlobalHotKeys(preferences: model.preferences), notifier: LocalNotifier(preferences: model.preferences))
         try await capture(root, name: "full-window", width: 1280)
+        try await capture(root, name: "full-window-compact", width: 860)
         if ProcessInfo.processInfo.environment["OREXIN_PHASE_INTERACTIVE"] == "1" {
             try Data("\(getpid())\n\(path)\n".utf8).write(to: evidence.appendingPathComponent("ready.txt"))
             for _ in 0..<2400 {

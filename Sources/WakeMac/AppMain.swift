@@ -54,18 +54,30 @@ extension WorkMode {
     @Published var menuLabelEnabled = true
     @Published private(set) var requiresImmediateLock = true
     @Published private(set) var unlockedWorkEnabled = false
+    func reloadWorkPolicyPreferences() {
+        requiresImmediateLock = preferences.object(forKey: "orexin.RequireImmediateLock") as? Bool ?? true
+        unlockedWorkEnabled = preferences.bool(forKey: "orexin.work.keepUnlocked")
+    }
     var lockRequirement: LockRequirement { unlockedWorkEnabled ? .unlockedWork : requiresImmediateLock ? .immediate : .system }
     var lockSummary: String { unlockedWorkEnabled ? "工作时保持未锁定" : requiresImmediateLock ? "要求即时密码保护" : "跟随系统锁屏设置" }
     func setUnlockedWork(_ enabled: Bool) async {
         guard !busy else { return }
         if active != .normal { await choose(.normal) }
         guard !error else { return }
+        if serviceSocket != nil {
+            var request = ControlMessage("unlocked-setting"); request.enabled = enabled
+            do { _ = try await serviceCall(request) } catch { self.error = true; message = error.localizedDescription; return }
+        }
         unlockedWorkEnabled = enabled
         preferences.set(enabled, forKey: "orexin.work.keepUnlocked")
         onUpdate?()
     }
     func setRequireImmediateLock(_ enabled: Bool) async {
         guard !busy else { return }
+        if serviceSocket != nil {
+            var request = ControlMessage("interface-settings"); request.enabled = enabled
+            do { _ = try await serviceCall(request) } catch { self.error = true; message = error.localizedDescription; return }
+        }
         requiresImmediateLock = enabled
         preferences.set(enabled, forKey: "orexin.RequireImmediateLock")
         generation += 1; refreshID = nil
@@ -118,6 +130,26 @@ extension WorkMode {
     @Published var workRequests = WorkRequestLedger()
     @Published var requestServiceMessage = ""
     var requestHistoryURL: URL?
+    var isTaskService = false
+    var serviceStopping = false
+    var serviceInfo: TaskServiceInfo?
+    var pendingUnlockedOwner: LocalProcessIdentity?
+    var pendingUnlockedDeadline: Date?
+    var stopTaskService: (() -> Void)?
+    var serviceSocket: String?
+    var interfaceHandle: WorkRequestHandle?
+    var interfaceSpec: WorkRequestSpec?
+    var serviceRefreshRunning = false
+    var serviceConnectionFailed = false
+    @Published var serviceSleepAt: Date?
+    @Published var servicePlans: [PlanRunSummary] = []
+    @Published var planRuns: [PlanRun] = []
+    var planHandles: [UUID: WorkRequestHandle] = [:]
+    var planHistoryURL: URL?
+    var planAdvanceRunning = false
+    var planCommandRunner: @Sendable (String, String, URL) throws -> CommandJobResult = { try CommandJob.run(command: $0, directory: $1, logURL: $2) }
+    var remoteTaskStatus: [UUID: ControlTaskStatus] = [:]
+
     var manualWorkMode: WorkMode?
     var sessionWorkMode: WorkMode?
     var requestCountdownMode: WorkMode?
@@ -222,6 +254,7 @@ extension WorkMode {
         } catch { helperMessage = error.localizedDescription }
     }
     func refresh() async {
+        if serviceSocket != nil { await refreshTaskService(); return }
         guard !busy && refreshID == nil else { return }
         refreshHelperStatus()
         let id = UUID(), version = generation
@@ -252,6 +285,7 @@ extension WorkMode {
         }
     }
     func choose(_ requestedMode: WorkMode, sleep: Bool = false, automatic: Bool = false, batterySleep: Bool = false, startupRecovery: Bool = false, reconcilingRequests: Bool = false) async {
+        if serviceSocket != nil { await chooseThroughService(requestedMode, sleep: sleep, automatic: automatic, reconcilingRequests: reconcilingRequests); return }
         let globalStop = requestedMode == .normal && !reconcilingRequests
         if globalStop {
             requestStopInProgress = true
@@ -293,7 +327,7 @@ extension WorkMode {
         record((automatic ? "自动切换：" : "切换模式：") + mode.recordTitle)
         generation += 1; refreshID = nil
         // Persist intent before the first side effect, including an interrupted first attempt.
-        preferences.set(true, forKey: "orexin.HasConfiguredMode")
+        if !isTaskService || !startupRecovery { preferences.set(true, forKey: "orexin.HasConfiguredMode") }
         busy = true; error = false; pending = nil; active = nil
         snapshot = nil
         if mode == .normal {
@@ -382,6 +416,7 @@ extension WorkMode {
         Task { await backend.requestLockPolicy(.immediate) }
     }
     func requestQuit() async {
+        if serviceSocket != nil { await disconnectInterface(); return }
         if jobRunning {
             automation.cancelJobSleep(); workRequests.cancelSleep()
             convenienceMessage = "命令仍在运行。已取消完成后休眠；请等待命令结束后退出。"
@@ -401,7 +436,11 @@ extension WorkMode {
 }
 
 @MainActor final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
-    let model = AppModel(historyURL: AppPaths.root.appendingPathComponent("history.json"))
+    let model: AppModel = {
+        let model = AppModel(backend: ServiceModeBackend(path: TaskServiceLauncher.socketPath), preferences: TaskServiceLauncher.isolatedPreferences ?? .standard, historyURL: AppPaths.root.appendingPathComponent("interface-history.json"))
+        model.serviceSocket = TaskServiceLauncher.socketPath
+        return model
+    }()
     var item: NSStatusItem!
     var panel: NSWindow!
     var quickPanel: ConsoleMenuPanel!
@@ -409,7 +448,6 @@ extension WorkMode {
     var allowExit = false
     var preferencesWindow: NSWindow?
     var automationTimer: Timer?
-    var localTaskServer: LocalControlServer?
     var observers: [NSObjectProtocol] = []
     let hotkeys = GlobalHotKeys()
     let notifier = LocalNotifier()
@@ -492,22 +530,12 @@ extension WorkMode {
         automationTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.model.tick(battery: BatterySource.read()) }
         }
-        model.record("应用启动；恢复正常模式，不重放命令或定时任务。")
+        model.record("界面启动；连接后台任务服务，保留正在运行的任务。")
         updateMenu()
-        if !UserDefaults.standard.bool(forKey: "orexin.HasConfiguredMode") { showPreferences() }
+        if !model.preferences.bool(forKey: "orexin.HasConfiguredMode") { showPreferences() }
         Task {
-            if UserDefaults.standard.bool(forKey: "orexin.HasConfiguredMode") { await model.choose(.normal, automatic: true, startupRecovery: true) }
-            else { await model.refresh() }
+            await model.connectTaskService()
             if model.behavior.startAtLaunch { await model.beginDefaultSession() }
-            model.recoverWorkRequests(from: AppPaths.root.appendingPathComponent("work-requests.json"))
-            do {
-                let path = ProcessInfo.processInfo.environment["OREXIN_SOCKET"] ?? LocalControlSocket.defaultPath
-                localTaskServer = try LocalControlServer(path: path) { [weak model = self.model] request in
-                    guard let model else { return ControlReply(ok: false, error: "Orexin is shutting down") }
-                    return await model.handleTaskControl(request)
-                }
-                model.requestServiceMessage = "本地 CLI 已就绪：" + path
-            } catch { model.requestServiceMessage = "本地 CLI 未启动：" + error.localizedDescription }
         }
         timer = Timer(timeInterval: 10, repeats: true) { [weak self] _ in
             Task { @MainActor in await self?.model.refresh() }
@@ -516,7 +544,7 @@ extension WorkMode {
         // loop renews its lease even when a readback command or UI is delayed.
         if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
-    func applicationWillTerminate(_ notification: Notification) { localTaskServer?.stop() }
+    func applicationWillTerminate(_ notification: Notification) { automationTimer?.invalidate(); timer?.invalidate() }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPreferences(); return true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if allowExit { return .terminateNow }
@@ -599,6 +627,16 @@ extension WorkMode {
 
 @main struct WakeMacMain {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--task-service") {
+            _ = setsid()
+            let runtime = TaskServiceRuntime()
+            // Keep the service out of NSApplication/LaunchServices window routing.
+            let keepAlive = Port()
+            RunLoop.main.add(keepAlive, forMode: .default)
+            runtime.start()
+            withExtendedLifetime(runtime) { RunLoop.main.run() }
+            return
+        }
         let app = NSApplication.shared
         TerminalStyle.registerFonts()
         let delegate = AppDelegate()

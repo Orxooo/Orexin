@@ -242,36 +242,17 @@ struct HistoryRecordsView: View {
 
     private var toolbar: some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 11) {
-                TerminalIcon(name: "internaldrive", size: 18)
-                    .frame(width: 29, height: 29).background(TerminalStyle.silver)
-                    .overlay(Rectangle().strokeBorder(WorkStyle.line))
-                Text(L("仅保存在这台 Mac")).font(.system(size: 12, weight: .semibold)).fixedSize()
-                Text("// " + (model.historyStore.url?.path ?? L("未配置本机日志文件")))
-                    .font(TerminalStyle.mono(10)).foregroundStyle(WorkStyle.muted)
-                    .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
-                Spacer(minLength: 0)
-                Button(action: export) {
-                    TerminalLabel("导出记录 // JSON", systemImage: "square.and.arrow.down").font(.system(size: 11))
-                }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
-                Button(role: .destructive) {
-                    showingClearConfirmation = true
-                    operationMessage = ""
-                } label: {
-                    TerminalLabel("清空日志 // CLEAR", systemImage: "trash").font(.system(size: 11))
-                }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
-                    .disabled(model.history.isEmpty || model.historyStore.url == nil)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) { storageLocation; toolbarActions }
+                VStack(alignment: .leading, spacing: 12) { storageLocation; toolbarActions }
             }
             Rectangle().fill(WorkStyle.line).frame(height: 1)
             if showingClearConfirmation { clearConfirmation }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 2) {
-                    ForEach(Category.allCases, id: \.self) { category in
-                        categoryButton(category).fixedSize(horizontal: true, vertical: false)
-                    }
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: 112), spacing: 6)], spacing: 6) {
+                ForEach(Category.allCases, id: \.self) { category in
+                    categoryButton(category)
                 }
-            }.padding(3).background(TerminalStyle.recess)
-                .overlay(Rectangle().strokeBorder(WorkStyle.line))
+            }
             HStack(spacing: 9) {
                 TerminalIcon(name: "magnifyingglass", size: 14).foregroundStyle(WorkStyle.muted)
                 TextField(L("搜索事件、类别、状态或 ID…"), text: $search).textFieldStyle(.plain)
@@ -298,6 +279,34 @@ struct HistoryRecordsView: View {
             .overlay(Rectangle().strokeBorder(WorkStyle.line.opacity(0.75)))
     }
 
+    private var storageLocation: some View {
+        HStack(spacing: 10) {
+            TerminalIcon(name: "internaldrive", size: 18)
+                .frame(width: 32, height: 32).background(TerminalStyle.silver)
+            VStack(alignment: .leading, spacing: 4) {
+                Text(L("仅保存在这台 Mac")).font(WorkType.controlLabel.weight(.semibold))
+                Text(model.historyStore.url?.path ?? L("未配置本机日志文件"))
+                    .font(TerminalStyle.mono(9)).foregroundStyle(WorkStyle.muted)
+                    .lineLimit(1).truncationMode(.middle).textSelection(.enabled)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var toolbarActions: some View {
+        HStack(spacing: 10) {
+            Button(action: export) {
+                TerminalLabel("导出记录 // JSON", systemImage: "square.and.arrow.down")
+            }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+            Button(role: .destructive) {
+                showingClearConfirmation = true
+                operationMessage = ""
+            } label: {
+                TerminalLabel("清空日志 // CLEAR", systemImage: "trash")
+            }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+                .disabled(model.history.isEmpty || model.historyStore.url == nil)
+        }.fixedSize(horizontal: true, vertical: false)
+    }
+
     private var clearConfirmation: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(L("清空运行记录？")).font(.system(size: 15, weight: .semibold))
@@ -317,11 +326,13 @@ struct HistoryRecordsView: View {
     private func categoryButton(_ category: Category) -> some View {
         let selected = filter == category
         return TerminalSelectionButton(selected: selected, action: { filter = category }) {
-            HStack(spacing: 5) {
+            HStack(spacing: 6) {
                 Rectangle().fill(category.color).frame(width: 6, height: 6)
-                Text(L(category.rawValue)).font(.system(size: 10, weight: selected ? .semibold : .regular))
-                Text("// " + (category == .all ? "ALL (\(model.history.count))" : category.token)).font(TerminalStyle.mono(8))
-                    .lineLimit(1).minimumScaleFactor(0.65)
+                Text(L(category.rawValue)).font(.system(size: 11, weight: selected ? .semibold : .regular))
+                    .fixedSize(horizontal: false, vertical: true)
+                if category == .all {
+                    Text("\(model.history.count)").font(TerminalStyle.mono(9)).foregroundStyle(WorkStyle.muted)
+                }
             }
         }.accessibilityLabel(category.rawValue)
     }

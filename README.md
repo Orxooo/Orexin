@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>让 Mac 在工作时保持唤醒，在任务结束后安心休息。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><img src="https://img.shields.io/badge/Preview-v0.3.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.3.0 Preview.1"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><img src="https://img.shields.io/badge/Release-v1.0.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.0"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 或更新版本">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>简体中文</strong> · <a href="README.en.md">English</a><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1"><strong>下载 V0.3.0 Preview.1 ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.0"><strong>下载 V1.0.0 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#开始使用">安装指南</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">使用手册</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">社区讨论</a>
@@ -66,12 +66,12 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 
 **Apple Silicon Mac · macOS 15 或更新版本。** 当前提供 arm64 安装包。
 
-1. 打开 [V0.3.0 Preview.1 发布页](https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview.1)，下载 `Orexin-0.3.0-Preview.1-arm64.zip`。
-2. 解压，将 `Orexin.app` 移入「应用程序」并打开。升级前等待内置命令结束、结束保活并退出旧版，再替换应用；现有 Orexin 数据与偏好保留。
+1. 打开 [V1.0.0 发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.0)，下载 `Orexin-1.0.0-arm64.zip`。
+2. 解压，将 `Orexin.app` 移入「应用程序」并打开。升级前等待命令与执行计划结束、结束保活；若旧版支持后台服务，运行内置 CLI 的 `service-stop`，再退出界面并替换应用。现有 Orexin 数据与偏好保留。
 3. 选择工作预设和结束条件。需要合盖运行时，按「偏好设置」指引批准辅助服务；本次未锁定工作由你在原生窗口亲自授权。
 
 > [!IMPORTANT]
-> **这是预览版。** 安装包使用 Apple Development 签名，尚未完成 Developer ID 公证。首次打开可能被 macOS 阻止，请核对来源和发布页的 `SHA256SUMS.txt`，再按系统「隐私与安全性」提示处理。无需关闭全局 Gatekeeper 或系统完整性保护。
+> 安装包使用 Apple Development 签名，尚未完成 Developer ID 公证。首次打开可能被 macOS 阻止，请核对来源和发布页的 `SHA256SUMS.txt`，再按系统「隐私与安全性」提示处理。无需关闭全局 Gatekeeper 或系统完整性保护。
 
 <details>
 <summary><strong>校验下载文件</strong></summary>
@@ -82,7 +82,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-显示 `Orexin-0.3.0-Preview.1-arm64.zip: OK` 表示校验值一致。
+显示 `Orexin-1.0.0-arm64.zip: OK` 表示校验值一致。
 
 </details>
 
@@ -100,22 +100,25 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ## 任务管理与 CLI
 
-V0.3.0 Preview.1 新增专业规则、电源分析和可复用工作配置：嵌套条件与只读试运行、系统断言来源与事件时间线、带差异预览的 JSON 配置导入/导出。参见 [工作配置指南](docs/WORK-CONFIGURATION.md)。工作配置可保存通知与本机结果脚本，并在任务开始时采用配置快照。
+V1.0.0 是首个正式版本，新增独立后台任务服务与执行计划，并统一界面控件、对齐和间距。执行计划支持依赖、串行/并行、并发上限、失败分支和逐项日志；参见 [执行计划指南](docs/EXECUTION-PLANS.md)。
+
+专业规则、电源分析和可复用工作配置继续提供：嵌套条件与只读试运行、系统断言来源与事件时间线、带差异预览的 JSON 配置导入/导出。参见 [工作配置指南](docs/WORK-CONFIGURATION.md)。工作配置可保存通知与本机结果脚本，并在任务开始时采用配置快照。
 
 「任务管理」包含 **任务列表 / 运行命令 / 工作配置 / 外部接入**。可以并行启动命令，分别查看日志、实际退出码与保活状态，并独立释放每项请求。
 
 单项完成不会结束其他任务的保活。只有所有重叠请求成功、且没有手动工作、会话或规则仍需保活时，才进入可取消的 60 秒休眠倒计时。释放保活和全部停止都不会杀死运行中的命令。
 
-安装并打开应用后，直接使用内置 CLI：
+安装后可以直接使用内置 CLI，无需保持界面打开：
 
 ```sh
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
+"$orexin" service-start
 "$orexin" help
 "$orexin" run --title Build -- make
 "$orexin" list --json
 ```
 
-`run` 包装前台命令并报告实际结果；外部工具也可用 `register`、`heartbeat`、`complete` 等命令管理任务生命周期。本地接口仅对当前用户开放，不监听网络端口。应用必须保持运行；重启不会重放命令或恢复旧请求。
+`run` 包装前台命令并报告实际结果；外部工具也可用 `register`、`heartbeat`、`complete` 等命令管理任务生命周期。本地接口仅对当前用户开放，不监听网络端口。独立后台服务承载请求和计划，退出或重开界面不影响它们；手动会话、自动规则和界面辅助功能仍依赖界面进程。服务重启会把未完成工作标为失联，不重放命令或恢复旧保活。
 
 完整选项和外部工具接入示例见 [CLI 与并行请求指南](docs/CLI.md)。应用安装在其他位置时，可从「外部接入」复制准确路径。
 

@@ -243,9 +243,10 @@ struct PreferencesView: View {
     }
 
     private func sessionsTab(contentWidth: CGFloat) -> some View {
-        VStack(spacing: 16) {
+        VStack(alignment: .leading, spacing: 16) {
             orbitalColumns(contentWidth: contentWidth) {
                 SessionsView(controller: model.sessions)
+                IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: model.snapshot?.lockPolicy == .immediate)
             } trailing: {
                 VStack(spacing: 16) {
                     VStack(spacing: 14) {
@@ -259,7 +260,6 @@ struct PreferencesView: View {
                     OrbitalEventFeed(entries: model.history, title: "会话记录")
                 }
             }
-            IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: model.snapshot?.lockPolicy == .immediate)
         }
     }
     private var sessionRemaining: String {
@@ -414,8 +414,10 @@ struct PreferencesView: View {
     @ViewBuilder private func orbitalColumns<Leading: View, Trailing: View>(contentWidth: CGFloat, @ViewBuilder leading: () -> Leading, @ViewBuilder trailing: () -> Trailing) -> some View {
         if contentWidth > 760 {
             HStack(alignment: .top, spacing: 16) {
-                leading().frame(maxWidth: .infinity, alignment: .leading)
-                trailing().frame(width: (contentWidth - 56) * 0.32)
+                VStack(alignment: .leading, spacing: 16) { leading() }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                VStack(alignment: .leading, spacing: 16) { trailing() }
+                    .frame(width: min(280, (contentWidth - 56) * 0.27))
             }
         } else {
             VStack(alignment: .leading, spacing: 16) { leading(); trailing() }

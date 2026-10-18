@@ -12,11 +12,12 @@ actor MacBackend: ModeBackend {
     private let injectedCommand: (@Sendable (String, [String], TimeInterval) async throws -> String)?
     private let heartbeatInterval: UInt64
     private let preferences: UserDefaults
+    private let allowsAuthentication: Bool
     init(command: (@Sendable (String, [String], TimeInterval) async throws -> String)? = nil,
          helper: any BackgroundLeaseClient = PowerHelperClient(), heartbeatInterval: UInt64 = 5_000_000_000,
-         preferences: UserDefaults = .standard) {
+         preferences: UserDefaults = .standard, allowsAuthentication: Bool = true) {
         injectedCommand = command; self.helper = helper; self.heartbeatInterval = max(1_000_000, heartbeatInterval)
-        self.preferences = preferences
+        self.preferences = preferences; self.allowsAuthentication = allowsAuthentication
     }
     private func command(_ path: String, _ args: [String], timeout: TimeInterval = 20) async throws -> String {
         if let injectedCommand { return try await injectedCommand(path, args, timeout) }
@@ -115,6 +116,7 @@ actor MacBackend: ModeBackend {
             try await helper.setBackground(true)
         }
         if preferences.bool(forKey: "orexin.work.keepUnlocked"), !unlockedRequested {
+            guard allowsAuthentication else { throw ModeError("Authorize unlocked work from the Orexin interface first") }
             guard let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("当前服务不支持临时锁屏策略。") }
             try await lockHelper.prepareUnlockedWork()
             unlockedRequested = true
@@ -142,6 +144,22 @@ actor MacBackend: ModeBackend {
             throw ModeError("系统防休眠状态不一致。请先在其他保活程序中恢复休眠，再重新选择模式。")
         }
         if mode != .normal { try assertion.acquire() }
+    }
+    func prepareUnlockedWorkFromInterface() async throws {
+        guard !unlockedRequested, let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("Unlocked work is already active or unsupported") }
+        try await lockHelper.prepareUnlockedWork()
+        unlockedRequested = true
+        preferences.set(true, forKey: "orexin.UnlockedLeaseArmed")
+        startHeartbeat()
+    }
+    func renewPendingUnlockedWork() async throws {
+        guard unlockedRequested else { throw ModeError("Unlocked-work recovery lease ended") }
+        try await helper.renew()
+    }
+    func verifyUnlockedWorkFromInterface() async throws {
+        guard unlockedRequested else { throw ModeError("No pending unlocked-work recovery lease") }
+        let policy = SystemParsing.lockPolicy(try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"]))
+        guard policy == .off else { try await restoreUnlockedWork(); throw ModeError("Unlocked-work authorization did not finish") }
     }
     private func releaseNormalPower() async throws {
         var failures: [String] = []
@@ -179,6 +197,7 @@ actor MacBackend: ModeBackend {
         preferences.set(false, forKey: "orexin.UnlockedLeaseArmed")
     }
     func requestLockPolicy(_ policy: LockPolicy) async {
+        guard allowsAuthentication else { return }
         await MainActor.run {
             if let url = URL(string: "x-apple.systempreferences:com.apple.Lock-Screen-Settings.extension") { NSWorkspace.shared.open(url) }
         }

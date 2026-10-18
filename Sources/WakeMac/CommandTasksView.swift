@@ -102,8 +102,10 @@ struct CommandTasksView: View {
                 TerminalSelectionButton(selected: section == item, action: { section = item }) {
                     HStack(spacing: 5) {
                         Text(L(item.rawValue)).font(.system(size: 12, weight: section == item ? .semibold : .regular))
-                        Text("// " + item.code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
-                            .accessibilityHidden(true)
+                        if availableWidth >= 760 {
+                            Text("// " + item.code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
+                                .accessibilityHidden(true)
+                        }
                     }
                 }.accessibilityLabel(L(item.rawValue))
             }

@@ -40,9 +40,9 @@ struct PowerAnalysisView: View {
                     Rectangle().fill(WorkStyle.line).frame(width: 1)
                     VStack(alignment: .leading, spacing: 5) {
                         Text(L("最近观察")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
-                        Text(snapshot.sampledAt, style: .time).font(TerminalStyle.mono(15))
+                        Text(snapshot.sampledAt, style: .time).font(TerminalStyle.mono(22))
                         Text(L("应用运行时，每 30 秒采样")).font(.system(size: 10)).foregroundStyle(WorkStyle.muted)
-                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.leading, 16)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.horizontal, 10)
                 }.fixedSize(horizontal: false, vertical: true).padding(14).background(TerminalStyle.recess)
 
                 Text(L(observationSummary(snapshot))).font(.system(size: 12, weight: .medium))
@@ -53,12 +53,18 @@ struct PowerAnalysisView: View {
 
                 DisclosureGroup(isExpanded: $expanded) {
                     VStack(alignment: .leading, spacing: 12) {
-                        Picker(L("断言来源"), selection: $source) {
-                            ForEach(Source.allCases, id: \.self) { Text(L($0.rawValue)).tag($0) }
-                        }.pickerStyle(.segmented).frame(maxWidth: 340)
+                        HStack(spacing: 12) {
+                            Text(L("断言来源")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
+                                .fixedSize()
+                            TerminalSegmentedPicker(title: "断言来源", selection: $source,
+                                choices: Source.allCases.map { TerminalChoice($0.rawValue, $0) })
+                                .frame(maxWidth: 340)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
                         if rows.isEmpty {
                             Text(L(snapshot.processesReadable ? "当前没有匹配的活动断言。" : "系统未返回进程列表，来源未知。"))
-                                .font(WorkType.caption).foregroundStyle(WorkStyle.muted).padding(.vertical, 8)
+                                .font(WorkType.caption).foregroundStyle(WorkStyle.muted)
+                                .frame(maxWidth: .infinity, minHeight: 56, alignment: .leading)
+                                .padding(.horizontal, 12).background(TerminalStyle.recess)
                         } else {
                             ScrollView {
                                 LazyVStack(alignment: .leading, spacing: 0) {
@@ -83,7 +89,7 @@ struct PowerAnalysisView: View {
                         }
                         Text(L("仅读取 PID、进程名称和断言类型；不读取命令参数、断言描述或系统私有日志。"))
                             .font(.system(size: 10)).foregroundStyle(WorkStyle.muted)
-                    }.padding(.top, 12)
+                    }.frame(maxWidth: .infinity, alignment: .leading).padding(.top, 12)
                 } label: {
                     Text(L("查看系统断言与来源")).font(.system(size: 12, weight: .medium))
                 }
@@ -91,7 +97,8 @@ struct PowerAnalysisView: View {
                 Text(L("尚未读取系统电源断言。来源与原因未知。"))
                     .font(WorkType.body).foregroundStyle(WorkStyle.muted)
             }
-        }.padding(16).background(WorkStyle.surface).overlay(Rectangle().strokeBorder(WorkStyle.line))
+        }.frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16).background(WorkStyle.surface).overlay(Rectangle().strokeBorder(WorkStyle.line))
             .task { await observer.refresh() }
     }
 

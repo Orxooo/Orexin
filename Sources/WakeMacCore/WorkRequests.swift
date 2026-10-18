@@ -63,6 +63,8 @@ public struct WorkRequestLedger: Sendable {
             return value
         }
     }
+    /// Read-only client projection; owner capabilities stay in the service.
+    public init(observing records: [WorkRequestRecord]) { self.records = records }
     public var active: [WorkRequestRecord] { records.filter { $0.state == .active } }
     public var demand: WorkRequestDemand? {
         let live = active

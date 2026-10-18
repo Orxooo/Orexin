@@ -20,6 +20,8 @@ public struct AutomationPolicy {
     private var batterySuppressed = false
     private var batteryWarned = false
     public init() {}
+    /// Read-only UI projection; only the service evaluates these countdowns.
+    public mutating func observeServiceCountdowns(battery: Date?, job: Date?) { batterySleepAt = battery; jobSleepAt = job }
     public mutating func resetBatterySession() { batterySleepAt = nil; batterySuppressed = false; batteryWarned = false }
     public mutating func cancelBatterySleep() { batterySleepAt = nil; batterySuppressed = true }
     public mutating func cancelJobSleep() { jobArmed = false; jobSleepAt = nil }

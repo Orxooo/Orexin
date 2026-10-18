@@ -6,7 +6,7 @@ body:
     id: version
     attributes:
       label: Orexin 版本
-      placeholder: 例如 V0.1.0 Preview（构建 34）
+      placeholder: 例如 V1.0.0（构建 39）
     validations:
       required: true
   - type: input

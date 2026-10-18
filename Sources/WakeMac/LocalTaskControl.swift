@@ -11,7 +11,13 @@ extension AppModel {
                 detail: item.state != .active ? item.reason ?? item.state.rawValue : satisfied ? "Verified" : requestUnsatisfiedReason(item.spec),
                 commandRunning: runningCommandIDs.contains(item.id))
         }
-        return ControlReply(handle: handle, tasks: tasks, mode: active, verified: verifiedWork, sleepAt: automation.jobSleepAt)
+        var reply = ControlReply(handle: handle, tasks: tasks, mode: active, verified: verifiedWork, sleepAt: automation.jobSleepAt)
+        reply.batterySleepAt = automation.batterySleepAt
+        reply.timeline = try? ControlCoding.encode(Array(history.prefix(100)))
+        reply.service = serviceInfo; reply.snapshot = snapshot
+        reply.plans = planRuns.reversed().map(PlanRunSummary.init)
+        reply.commandLogs = commandLogs.mapValues(\.path)
+        return reply
     }
     private func taskMutationReply(id: UUID) -> ControlReply {
         var reply = taskControlReply(id: id)
@@ -19,18 +25,26 @@ extension AppModel {
         return reply
     }
     func handleTaskControl(_ request: ControlMessage) async -> ControlReply {
+        if serviceStopping {
+            var reply = ControlReply(ok: false, error: "Task service is stopping"); reply.service = serviceInfo; return reply
+        }
         let entryStopEpoch = workStopEpoch
         do {
             guard request.version == 1 else { throw ModeError("Unsupported local API version") }
             try Task.checkCancellation()
+            if isTaskService { reloadServicePreferences() }
+            if let reply = try await handleServiceControl(request) { return reply }
             // Inspection/preview never reaps leases, advances rule timers or changes power.
             if let reply = try await handleConfigurationControl(request) { return reply }
             await reapWorkRequests(now: Date())
             switch request.operation {
-            case "register":
+            case "register", "interface-register":
                 guard entryStopEpoch == workStopEpoch, !requestStopInProgress else { throw ModeError("Registration was superseded by a global stop") }
                 guard var spec = request.spec, let handle = request.handle else { throw ModeError("register requires spec and owner handle") }
-                spec.source = "external"
+                if request.operation == "interface-register" {
+                    guard let owner = spec.process, owner.isAlive == true, spec.leaseSeconds != nil else { throw ModeError("Interface requests require a live owner and bounded lease") }
+                }
+                spec.source = request.operation == "interface-register" ? "interface" : "external"
                 spec.leaseSeconds = spec.leaseSeconds ?? 60
                 if let owner = spec.process, LocalProcessIdentity.capture(pid: owner.pid) != owner { throw ModeError("Owner process identity cannot be verified for this user") }
                 // Never open a system authorization window on behalf of a socket client.
@@ -39,6 +53,7 @@ extension AppModel {
                 guard entryStopEpoch == workStopEpoch, !requestStopInProgress else { throw ModeError("Registration was superseded by a global stop") }
                 guard lockRequirement.accepts(current.lockPolicy) else { throw ModeError("Current lock policy is not authorized; resolve it in Orexin first") }
                 _ = try await registerWork(spec, handle: handle)
+                if request.operation == "interface-register" { pendingUnlockedOwner = nil; pendingUnlockedDeadline = nil }
                 return taskControlReply(id: handle.id, handle: handle)
             case "heartbeat":
                 guard let handle = request.handle else { throw ModeError("heartbeat requires owner handle") }

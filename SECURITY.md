@@ -1,6 +1,6 @@
 # 安全问题报告
 
-Orexin 是预览阶段的开源桌面应用。涉及合盖辅助服务越权、任意命令执行、认证绕过或私人数据泄露的问题，请使用仓库的 [私密漏洞报告入口](https://github.com/Orxooo/Orexin/security/advisories/new)，不要在公开 Issue 中发布利用细节、凭据或私人日志。
+Orexin 是开源桌面应用。涉及合盖辅助服务越权、任意命令执行、认证绕过或私人数据泄露的问题，请使用仓库的 [私密漏洞报告入口](https://github.com/Orxooo/Orexin/security/advisories/new)，不要在公开 Issue 中发布利用细节、凭据或私人日志。
 
 报告请说明受影响版本、macOS 和芯片型号、复现步骤、影响与最小证明。普通界面或设备兼容问题走公开 Issue。个人维护项目无法承诺固定响应时间。
 
@@ -8,4 +8,4 @@ Orexin 不保存账户密码，也不自动解锁已锁定的 Mac。启用「工
 
 合盖辅助服务需要系统批准，只接受同一 Apple 开发者团队签名的主程序调用固定的电源与锁屏恢复接口。降低亮度和请求熄屏由主程序处理。具体行为与限制见 [README](README.md#系统要求) 和 [功能清单](FEATURES.md)。
 
-V0.1.0 Preview 的下载包使用 Apple Development 签名，尚未完成 Developer ID 公证；这不等于已通过 Apple 的分发审核。
+V1.0.0 的下载包使用 Apple Development 签名，尚未完成 Developer ID 公证；这不等于已通过 Apple 的分发审核。

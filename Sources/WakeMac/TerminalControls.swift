@@ -60,7 +60,6 @@ private struct TerminalMenuControl: View {
             }.padding(.leading, 9).padding(.trailing, 3).frame(height: controlHeight)
                 .background(WorkStyle.surface)
                 .overlay(Rectangle().strokeBorder(showing ? TerminalStyle.ink.opacity(0.65) : TerminalStyle.line))
-                .shadow(color: TerminalStyle.accent.opacity(showing ? 0.35 : 0.12), radius: showing ? 8 : 4)
                 .opacity(enabled && !titles.isEmpty ? 1 : 0.45).contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).disabled(titles.isEmpty)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showing)
@@ -234,16 +233,75 @@ struct TerminalSlider: View {
 struct TerminalSelectionButton<Label: View>: View {
     let selected: Bool
     let action: () -> Void
+    var managesKeyboardFocus = true
     @ViewBuilder var label: Label
     var body: some View {
+        if managesKeyboardFocus {
+            button.workKeyboardFocus(radius: 0)
+        } else {
+            button
+        }
+    }
+    private var button: some View {
         Button(action: action) {
-            label.frame(maxWidth: .infinity, minHeight: 31)
+            label.padding(.horizontal, 12).padding(.vertical, 8)
+                .frame(maxWidth: .infinity, minHeight: 36)
                 .foregroundStyle(selected ? WorkStyle.ink : WorkStyle.muted)
                 .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
                 .overlay(alignment: .top) {
                     Rectangle().fill(TerminalStyle.accent).frame(height: 2).opacity(selected ? 1 : 0)
                 }.contentShape(Rectangle())
-        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
+        }.buttonStyle(TerminalPlainButtonStyle())
             .accessibilityAddTraits(selected ? [.isSelected] : [])
+    }
+}
+
+/// The same selection treatment for compact filters and in-page navigation.
+struct TerminalSegmentedPicker<Value: Hashable>: View {
+    let title: String
+    @Binding var selection: Value
+    let choices: [TerminalChoice<Value>]
+    @FocusState private var focusedChoice: Value?
+    @Environment(\.isEnabled) private var enabled
+
+    var body: some View {
+        HStack(spacing: 2) {
+            ForEach(choices.indices, id: \.self) { index in
+                let choice = choices[index]
+                TerminalSelectionButton(selected: selection == choice.value,
+                                        action: { selection = choice.value },
+                                        managesKeyboardFocus: false) {
+                    Text(L(choice.title)).font(WorkType.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                }.accessibilityLabel(L(choice.title))
+                    .focused($focusedChoice, equals: choice.value)
+                    .focusEffectDisabled()
+                    .overlay(alignment: .bottom) {
+                        Rectangle().fill(TerminalStyle.amber)
+                            .frame(width: 16, height: 2).offset(y: 3)
+                            .opacity(focusedChoice == choice.value ? 1 : 0).allowsHitTesting(false)
+                    }
+            }
+        }.padding(3).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(WorkStyle.line))
+            .accessibilityElement(children: .contain).accessibilityLabel(L(title))
+            .onKeyPress(.leftArrow) { moveSelection(-1); return .handled }
+            .onKeyPress(.rightArrow) { moveSelection(1); return .handled }
+            .accessibilityAdjustableAction { direction in
+                switch direction {
+                case .increment: moveSelection(1)
+                case .decrement: moveSelection(-1)
+                @unknown default: break
+                }
+            }
+    }
+
+    private func moveSelection(_ offset: Int) {
+        guard enabled, let current = choices.firstIndex(where: { $0.value == selection }) else { return }
+        let next = min(choices.count - 1, max(0, current + offset))
+        guard next != current else { return }
+        selection = choices[next].value
+        focusedChoice = choices[next].value
+        ControlAudio.shared.click()
     }
 }

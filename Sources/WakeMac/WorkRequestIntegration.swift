@@ -42,6 +42,7 @@ extension AppModel {
     }
     /// Global user/safety actions revoke requests, never the user's command processes.
     func overrideWorkRequests(reason: String) {
+        cancelPendingPlans()
         workStopEpoch += 1
         policyHooks.cancelAll()
         workRequests.stopAll(reason: reason, now: Date())
@@ -50,6 +51,10 @@ extension AppModel {
         saveWorkRequests()
     }
     @discardableResult func registerWork(_ spec: WorkRequestSpec, handle: WorkRequestHandle = .init(), now: Date = Date()) async throws -> WorkRequestHandle {
+        if serviceSocket != nil {
+            let reply = try await serviceCall(.init("register", handle: handle, spec: spec))
+            adoptServiceReply(reply); return reply.handle ?? handle
+        }
         var spec = spec
         let selectedProfile: WorkProfile?
         if let id = spec.profileID {
@@ -119,6 +124,7 @@ extension AppModel {
         return "Display requirement is not verified: " + sessions.effectReport.display + " · " + workScreen.status
     }
     func requestSatisfied(_ spec: WorkRequestSpec) -> Bool {
+        if serviceSocket != nil { return remoteTaskStatus.values.contains { $0.request.spec == spec && $0.satisfied } }
         guard verifiedWork, spec.mode != .background || active == .background else { return false }
         guard let active else { return false }
         let screen = workScreen.behavior(for: active)
@@ -126,11 +132,17 @@ extension AppModel {
             && (spec.screen == .dim ? screen.keepsDisplayActive : screen == .normalBrightness))
     }
     func completeWork(_ handle: WorkRequestHandle, exitCode: Int32, now: Date = Date()) async throws {
+        if serviceSocket != nil { adoptServiceReply(try await serviceCall(.init("complete", handle: handle, exitCode: exitCode))); return }
         let teardown = try workRequests.complete(handle, exitCode: exitCode, now: now)
         saveWorkRequests()
         await finishWorkMutation(teardown, now: now)
     }
     func releaseWork(id: UUID, now: Date = Date()) async {
+        if serviceSocket != nil {
+            do { adoptServiceReply(try await serviceCall(.init("release-user", id: id))) }
+            catch { requestServiceMessage = error.localizedDescription }
+            return
+        }
         guard let teardown = try? workRequests.release(id: id, reason: "User released this request; command continues", now: now) else {
             saveWorkRequests(); await reconcileWorkRequests(); return
         }
@@ -153,6 +165,10 @@ extension AppModel {
         onUpdate?()
     }
     func reconcileWorkRequests() async {
+        if serviceSocket != nil {
+            await chooseThroughService(aggregateMode(), sleep: false, automatic: true, reconcilingRequests: true)
+            return
+        }
         requestReconcileNeeded = true
         guard !busy, !requestReconcileRunning else { return }
         requestReconcileRunning = true

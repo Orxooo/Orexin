@@ -63,7 +63,8 @@ struct WorkConfigurationsView: View {
                 VStack(alignment: .leading, spacing: 12) {
                     Text(L("导入预览")).font(TerminalStyle.mono(13))
                     ForEach(preview.changes, id: \.self) { Text(L($0)).font(WorkType.caption).textSelection(.enabled) }
-                    Picker(L("配置内容"), selection: $previewAfter) { Text(L("导入前")).tag(false); Text(L("应用后")).tag(true) }.pickerStyle(.segmented)
+                    TerminalSegmentedPicker(title: "配置内容", selection: $previewAfter,
+                        choices: [TerminalChoice("导入前", false), TerminalChoice("应用后", true)])
                     ScrollView([.vertical, .horizontal]) {
                         Text(previewAfter ? preview.afterJSON : preview.beforeJSON).font(TerminalStyle.mono(11)).textSelection(.enabled).frame(maxWidth: .infinity, alignment: .leading)
                     }.frame(height: 330).padding(10).background(TerminalStyle.recess)

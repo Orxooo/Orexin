@@ -14,7 +14,7 @@ private struct Arguments {
     init(_ arguments: [String]) throws {
         operation = arguments.first ?? "help"
         var index = 1
-        let allowed: Set<String> = ["--socket", "--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code", "--profile", "--strategy", "--expect"]
+        let allowed: Set<String> = ["--socket", "--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code", "--profile", "--strategy", "--expect", "--service-executable", "--id"]
         while index < arguments.count {
             let item = arguments[index]
             if item == "--" { command = Array(arguments.dropFirst(index + 1)); break }
@@ -27,7 +27,7 @@ private struct Arguments {
         }
         let common: Set<String> = ["--socket"]
         let registration: Set<String> = ["--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--profile"]
-        let valid = common.union(["register", "run"].contains(operation) ? registration : ["complete", "fail"].contains(operation) ? ["--exit-code"] : operation == "config-import" ? ["--strategy", "--expect"] : [])
+        let valid = common.union(["register", "run"].contains(operation) ? registration : ["complete", "fail"].contains(operation) ? ["--exit-code"] : operation == "config-import" ? ["--strategy", "--expect"] : operation == "service-start" ? ["--service-executable"] : operation == "plan-run" ? ["--id"] : [])
         guard Set(options.keys).isSubset(of: valid), operation == "run" || command.isEmpty else { throw ModeError("Option does not apply to this command") }
         guard !apply || operation == "config-import" else { throw ModeError("--apply is only valid for config-import") }
     }
@@ -71,7 +71,13 @@ private struct Arguments {
 
 @main struct OrexinCLI {
     static let help = """
-    orexin — independent local keep-awake requests (Orexin app must be running)
+    orexin — independent tasks coordinated by a background service
+      service-start [--service-executable PATH]   Start without opening the interface
+      service-status | service-stop       Inspect service / stop only when idle
+      plan-validate FILE                  Validate a JSON plan without executing it
+      plan-run FILE [--id UUID]            Submit a group; commands outlive the interface/CLI
+      plan-list | plan-status ID          Inspect groups and actual task results
+      plan-cancel ID                      Skip pending tasks; running commands continue
       run [options] -- COMMAND [ARG ...]    Wrap a foreground command; preserve exit status
       register [options]                   Print ID:TOKEN owner handle
       heartbeat ID:TOKEN                   Renew the bounded lease
@@ -101,6 +107,18 @@ private struct Arguments {
             let args = try Arguments(Array(CommandLine.arguments.dropFirst())); json = args.json
             if ["help", "--help", "-h"].contains(args.operation) { print(help); return }
             if args.operation == "run" { exit(try await run(args)) }
+            if args.operation == "service-start" {
+                guard args.positional.isEmpty else { throw ModeError("service-start accepts no positional arguments") }
+                let executable = try args.options["--service-executable"].map { URL(fileURLWithPath: $0) }
+                    ?? TaskServiceLauncher.executable(near: URL(fileURLWithPath: CommandLine.arguments[0]).resolvingSymlinksInPath())
+                try printReply(TaskServiceLauncher.start(executable: executable, socket: args.socket), json: json)
+                return
+            }
+            if args.operation == "plan-validate" {
+                let plan = try readPlan(args)
+                var reply = ControlReply(); reply.document = try ControlCoding.encode(plan)
+                try printReply(reply, json: json); return
+            }
             let request: ControlMessage
             switch args.operation {
             case "register": request = .init("register", handle: .init(), spec: try args.spec(wrapping: false))
@@ -112,6 +130,18 @@ private struct Arguments {
                 guard args.positional.count <= (args.operation == "status" ? 1 : 0) else { throw ModeError("status accepts at most one ID; list accepts none") }
                 let id = args.positional.first.flatMap(UUID.init(uuidString:))
                 guard args.positional.isEmpty || id != nil else { throw ModeError("Invalid request ID") }
+                request = .init(args.operation, id: id)
+            case "service-status", "service-stop", "plan-list":
+                guard args.positional.isEmpty else { throw ModeError("This command accepts no positional arguments") }
+                request = .init(args.operation)
+            case "plan-run":
+                let plan = try readPlan(args)
+                let id = args.options["--id"].flatMap(UUID.init(uuidString:))
+                guard args.options["--id"] == nil || id != nil else { throw ModeError("--id requires a UUID") }
+                var value = ControlMessage("plan-run", id: id ?? UUID()); value.document = try ControlCoding.encode(plan)
+                request = value
+            case "plan-status", "plan-cancel":
+                guard args.positional.count == 1, let id = UUID(uuidString: args.positional[0]) else { throw ModeError("Expected a plan UUID") }
                 request = .init(args.operation, id: id)
             case "stop-all":
                 guard args.positional.isEmpty else { throw ModeError("stop-all does not accept arguments") }
@@ -138,6 +168,13 @@ private struct Arguments {
             exit(1)
         }
     }
+    private static func readPlan(_ args: Arguments) throws -> ExecutionPlan {
+        guard args.positional.count == 1 else { throw ModeError("Expected one plan JSON file") }
+        let file = try FileHandle(forReadingFrom: URL(fileURLWithPath: args.positional[0])); defer { try? file.close() }
+        let data = try file.read(upToCount: 32 * 1024 + 1) ?? Data()
+        guard data.count <= 32 * 1024 else { throw ModeError("Execution plan exceeds 32 KiB") }
+        return try ControlCoding.decode(ExecutionPlan.self, from: data).validated()
+    }
     static func call(_ message: ControlMessage, path: String) throws -> ControlReply {
         let reply = try LocalControlSocket.call(message, path: path)
         guard reply.ok else { throw ModeError(reply.error ?? "Local control failed") }
@@ -151,6 +188,8 @@ private struct Arguments {
             if let token = reply.previewToken { print("Preview token: " + token) }
             print(String(decoding: document, as: UTF8.self)); return
         }
+        if let service = reply.service { print("service=running pid=\(service.pid) instance=\(service.instanceID.uuidString)") }
+        for plan in reply.plans ?? [] { print("plan=\(plan.id.uuidString)\t\(plan.state.rawValue)\t\(plan.finished)/\(plan.total)\t\(plan.title)") }
         print("mode=\(reply.mode?.rawValue ?? "unknown") verified=\(reply.verified) tasks=\(reply.tasks.count)")
         for task in reply.tasks {
             let item = task.request

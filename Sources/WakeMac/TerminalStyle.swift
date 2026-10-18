@@ -124,8 +124,6 @@ private struct TerminalRenderedButtonStyle: ButtonStyle {
                 .background(prominent ? color : hovered && enabled ? TerminalStyle.selection : TerminalStyle.silver.opacity(0.65))
                 .clipShape(Rectangle())
                 .overlay(Rectangle().strokeBorder(prominent ? color : TerminalStyle.line, lineWidth: 1))
-                .overlay(alignment: .top) { Rectangle().fill(TerminalStyle.ink.opacity(prominent ? 0.32 : 0.12)).frame(height: 1).padding(.horizontal, 2) }
-                .shadow(color: color.opacity(enabled ? (hovered ? 0.45 : prominent ? 0.35 : 0.20) : 0), radius: hovered ? 10 : 5)
                 .opacity(enabled ? 1 : 0.4)
                 .scaleEffect(configuration.isPressed && !reduceMotion ? 0.97 : 1)
                 .offset(y: configuration.isPressed && !reduceMotion ? 2 : 0)
@@ -156,7 +154,6 @@ private struct TerminalRenderedPlainButtonStyle: ButtonStyle {
         configuration.label
             .scaleEffect(configuration.isPressed && !reduceMotion ? 0.975 : 1)
             .offset(y: configuration.isPressed && !reduceMotion ? 1.5 : 0)
-            .shadow(color: TerminalStyle.accent.opacity(enabled ? 0.16 : 0), radius: 4)
             .opacity(configuration.isPressed ? 0.72 : 1)
             .animation(reduceMotion ? nil : .spring(response: 0.24, dampingFraction: 0.58), value: configuration.isPressed)
             .modifier(ControlPressFeedback(pressed: configuration.isPressed, enabled: enabled))
@@ -176,7 +173,6 @@ struct TerminalSwitchStyle: ToggleStyle {
             ZStack(alignment: .leading) {
                 Rectangle().fill(configuration.isOn ? TerminalStyle.accent : TerminalStyle.silver)
                     .frame(width: 31, height: 25)
-                    .shadow(color: TerminalStyle.accent.opacity(configuration.isOn && enabled ? 0.5 : 0.08), radius: 7)
                     .offset(x: configuration.isOn ? 0 : 31)
                 HStack(spacing: 0) {
                     Text("ON").foregroundStyle(configuration.isOn ? TerminalStyle.onAccent : TerminalStyle.muted).frame(width: 31, height: 25)
@@ -185,7 +181,6 @@ struct TerminalSwitchStyle: ToggleStyle {
             }.font(TerminalStyle.mono(10))
                 .padding(3).background(TerminalStyle.recess)
                 .overlay(Rectangle().strokeBorder(configuration.isOn ? TerminalStyle.accent.opacity(0.65) : TerminalStyle.line))
-                .shadow(color: TerminalStyle.accent.opacity(configuration.isOn && enabled ? 0.28 : 0), radius: 6)
                 .opacity(enabled ? 1 : 0.4).padding(.vertical, 3).contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle(sound: false)).workKeyboardFocus(radius: 0)
             .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: configuration.isOn)

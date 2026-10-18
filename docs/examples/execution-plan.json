@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "title": "Parallel checks and summary",
+  "mode": "desk",
+  "screen": "idle",
+  "teardown": "restore",
+  "maxConcurrent": 2,
+  "tasks": [
+    { "id": "first", "command": "printf 'First task completed\\n'", "directory": "/tmp" },
+    { "id": "second", "command": "printf 'Second task completed\\n'", "directory": "/tmp" },
+    { "id": "summary", "command": "printf 'Both tasks succeeded\\n'", "directory": "/tmp", "dependencies": ["first", "second"], "condition": "success" }
+  ]
+}

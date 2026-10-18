@@ -21,6 +21,10 @@ extension AppModel {
         onUpdate?()
     }
     func sleepDisplayNow() async {
+        if serviceSocket != nil {
+            do { adoptServiceReply(try await serviceCall(.init("display-sleep"))) } catch { message = error.localizedDescription }
+            return
+        }
         guard verifiedWork, !sessions.isStarting else { return }
         workScreen.runtimeBehavior = .immediateSleep
         await applyWorkScreenPolicy(now: Date())
@@ -35,6 +39,7 @@ extension AppModel {
         // A mode transition temporarily clears active/snapshot. Do not treat
         // that transient state as a failed session when a display wakes.
         guard !busy else { return }
+        if serviceSocket != nil, interfaceHandle != nil { await chooseThroughService(aggregateMode(), sleep: false, automatic: true, reconcilingRequests: true) }
         updateRequestScreenPolicy()
         if verifiedWork, let active {
             sessions.screenPolicyPreventsSleep = workScreen.behavior(for: active).keepsDisplayActive
