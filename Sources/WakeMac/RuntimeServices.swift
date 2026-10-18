@@ -11,6 +11,7 @@ struct HistoryEntry: Codable, Identifiable {
     var id = UUID()
     var date = Date()
     var text: String
+    var context: HistoryContext? = nil
 }
 @MainActor final class HistoryStore {
     static let maximumEntries = 200
@@ -20,8 +21,8 @@ struct HistoryEntry: Codable, Identifiable {
         self.url = url
         entries = url.flatMap { try? Data(contentsOf: $0) }.flatMap { try? JSONDecoder().decode([HistoryEntry].self, from: $0) } ?? []
     }
-    func append(_ text: String) {
-        entries.insert(HistoryEntry(text: text), at: 0)
+    func append(_ text: String, context: HistoryContext? = nil, at date: Date = Date()) {
+        entries.insert(HistoryEntry(date: date, text: text, context: context), at: 0)
         entries = Array(entries.prefix(Self.maximumEntries))
         guard let url, let data = try? JSONEncoder().encode(entries) else { return }
         try? FileManager.default.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])

@@ -20,6 +20,7 @@ extension AppModel {
         } else { workScreen.requestBehavior = requested }
     }
     func saveWorkRequests() {
+        observeWorkOutcomes(now: Date())
         guard let requestHistoryURL else { return }
         do {
             let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
@@ -35,18 +36,31 @@ extension AppModel {
             guard FileManager.default.fileExists(atPath: url.path) else { return }
             let decoder = JSONDecoder(); decoder.dateDecodingStrategy = .iso8601
             workRequests = WorkRequestLedger(recovering: try decoder.decode([WorkRequestRecord].self, from: Data(contentsOf: url)), now: Date())
+            observedWorkEnds = Set(workRequests.records.map(\.id))
             saveWorkRequests()
         } catch { requestServiceMessage = "无法恢复任务记录；未重放保活：" + error.localizedDescription }
     }
     /// Global user/safety actions revoke requests, never the user's command processes.
     func overrideWorkRequests(reason: String) {
         workStopEpoch += 1
+        policyHooks.cancelAll()
         workRequests.stopAll(reason: reason, now: Date())
         manualWorkMode = nil; sessionWorkMode = nil
         requestCountdownMode = nil; workScreen.requestBehavior = nil
         saveWorkRequests()
     }
     @discardableResult func registerWork(_ spec: WorkRequestSpec, handle: WorkRequestHandle = .init(), now: Date = Date()) async throws -> WorkRequestHandle {
+        var spec = spec
+        let selectedProfile: WorkProfile?
+        if let id = spec.profileID {
+            let captured = workRequests.records.contains(where: { $0.id == handle.id && $0.spec.profileID == id }) ? requestProfiles[handle.id] : nil
+            guard let profile = captured ?? profiles.profiles.first(where: { $0.id == id }) else { throw ModeError("Unknown work profile") }
+            selectedProfile = profile
+            // A retry retains the original effective deadline and captured policy.
+            if let existing = workRequests.records.first(where: { $0.id == handle.id }), existing.spec.profileID == id {
+                spec = try (requestProfiles[handle.id] ?? profile).applying(to: spec, now: existing.createdAt)
+            } else { spec = try profile.applying(to: spec, now: now) }
+        } else { selectedProfile = nil }
         guard !requestStopInProgress else { throw ModeError("Global work teardown is in progress; register again after it finishes") }
         guard !thermalProtectionRequired, !thermalCleanupPending else { throw ModeError("Thermal protection is active") }
         let stopEpoch = workStopEpoch
@@ -60,6 +74,10 @@ extension AppModel {
         if workRequests.active.isEmpty && legacyWorkMode == nil && active == .normal { automation.resetBatterySession() }
         let inserted = !workRequests.records.contains { $0.id == handle.id }
         let registered = try workRequests.register(spec, handle: handle, now: now)
+        if inserted, let profile = selectedProfile {
+            requestProfiles[registered.id] = profile
+            if profiles.hooksEnabled(profile) { requestHookApprovals[registered.id] = profiles.approvals[profile.id.uuidString] }
+        }
         if automation.jobSleepAt != nil || requestCountdownMode != nil { automaticSleepRevision += 1 }
         automation.cancelJobSleep(); requestCountdownMode = nil
         saveWorkRequests()

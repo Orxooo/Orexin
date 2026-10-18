@@ -24,11 +24,13 @@ public struct WorkRequestSpec: Codable, Equatable, Sendable {
     public var leaseSeconds: TimeInterval?
     public var process: LocalProcessIdentity?
     public var teardown: RequestTeardown
+    public var profileID: UUID?
     public init(title: String, source: String = "external", mode: WorkMode = .desk, screen: RequestScreen = .idle,
                 deadline: Date? = nil, leaseSeconds: TimeInterval? = nil, process: LocalProcessIdentity? = nil,
-                teardown: RequestTeardown = .restore) {
+                teardown: RequestTeardown = .restore, profileID: UUID? = nil) {
         self.title = title; self.source = source; self.mode = mode; self.screen = screen
         self.deadline = deadline; self.leaseSeconds = leaseSeconds; self.process = process; self.teardown = teardown
+        self.profileID = profileID
     }
 }
 public struct WorkRequestRecord: Codable, Equatable, Identifiable, Sendable {

@@ -74,7 +74,18 @@ extension WorkMode {
     @Published var convenienceMessage = ""
     @Published var helperMessage = ""
     @Published var triggerSummary = "自动触发尚未接管运行模式"
-    lazy var triggers = TriggerController(preferences: preferences, source: triggerSource)
+    lazy var triggers = makeTriggerController()
+    lazy var profiles = WorkProfileStore(preferences: preferences)
+    lazy var powerAnalysis: PowerAnalysisObserver = {
+        let observer = PowerAnalysisObserver()
+        observer.onChange = { [weak self] text in self?.record(text, context: self?.historyContext(kind: .powerAssertion)) }
+        return observer
+    }()
+    let policyHooks = WorkPolicyHooks()
+    var requestProfiles: [UUID: WorkProfile] = [:]
+    var requestHookApprovals: [UUID: String] = [:]
+    var observedWorkEnds: Set<UUID> = []
+    @Published var selectedWorkProfileID: UUID?
     lazy var sessions = makeSessionController()
     lazy var behavior = BehaviorPreferences(preferences: preferences)
     lazy var idlePolicy: IdlePolicyController = {
@@ -465,6 +476,7 @@ extension WorkMode {
                 Task { @MainActor in
                     guard let self else { return }
                     self.model.record(text)
+                    if name == NSWorkspace.didWakeNotification { await self.model.powerAnalysis.refresh(force: true) }
                     if name == NSWorkspace.screensDidWakeNotification {
                         self.model.workScreen.resumeAfterDisplayWake()
                         await self.model.applyWorkScreenPolicy(now: Date())

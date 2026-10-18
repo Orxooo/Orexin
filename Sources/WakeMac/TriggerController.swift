@@ -88,6 +88,16 @@ struct TriggerWeeklySchedule: Codable, Equatable {
         if clock < endMinute { return weekdays.contains(day == 1 ? 7 : day - 1) }
         return false
     }
+    private enum CodingKeys: String, CodingKey { case weekdays, startMinute, endMinute, allDay }
+    /// Set iteration order is not canonical. Stable arrays are required for
+    /// portable-config preview tokens and reproducible versioned exports.
+    func encode(to encoder: Encoder) throws {
+        var fields = encoder.container(keyedBy: CodingKeys.self)
+        try fields.encode(weekdays.sorted(), forKey: .weekdays)
+        try fields.encode(startMinute, forKey: .startMinute)
+        try fields.encode(endMinute, forKey: .endMinute)
+        try fields.encode(allDay, forKey: .allDay)
+    }
     var summary: String {
         let labels = [1: "周日", 2: "周一", 3: "周二", 4: "周三", 5: "周四", 6: "周五", 7: "周六"]
         let days = [2, 3, 4, 5, 6, 7, 1].filter { weekdays.contains($0) }.map { L(labels[$0]!) }.joined(separator: ", ")
@@ -152,18 +162,29 @@ struct TriggerRule: Codable, Identifiable, Equatable {
     var conditions = [TriggerCondition()]
     var preventDisplaySleep: Bool? = nil
     var preventScreenSaver: Bool? = nil
-    enum CodingKeys: String, CodingKey { case id, name, mode, enabled, combination, conditions, preventDisplaySleep, preventScreenSaver }
+    var expression: TriggerExpression? = nil
+    var priority = 0
+    var sustainedMatchSeconds: TimeInterval = 0
+    var cooldownSeconds: TimeInterval = 0
+    var effectiveExpression: TriggerExpression {
+        expression ?? (combination == .all ? .all(conditions.map(TriggerExpression.condition)) : .any(conditions.map(TriggerExpression.condition)))
+    }
+    var allConditions: [TriggerCondition] { effectiveExpression.conditions }
+    enum CodingKeys: String, CodingKey { case id, name, mode, enabled, combination, conditions, preventDisplaySleep, preventScreenSaver, expression, priority, sustainedMatchSeconds, cooldownSeconds }
     var validationError: String? {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "请填写规则名称。" }
         if mode == .normal { return "触发规则只能选择桌面工作或后台工作。" }
-        if conditions.isEmpty { return "每条规则至少需要一个条件。" }
-        if Set(conditions.map(\.id)).count != conditions.count { return "条件标识重复，请重新添加条件。" }
-        return conditions.compactMap(\.validationError).first
+        guard (-1000...1000).contains(priority) else { return "优先级必须在 -1000 至 1000 之间。" }
+        guard sustainedMatchSeconds.isFinite, (0...86400).contains(sustainedMatchSeconds), cooldownSeconds.isFinite, (0...86400).contains(cooldownSeconds) else { return "持续匹配和冷却时间必须为 0–86400 秒。" }
+        if let error = effectiveExpression.validationError() { return error }
+        let leaves = allConditions
+        if leaves.count > 64 { return "每条规则最多 64 个条件。" }
+        if Set(leaves.map(\.id)).count != leaves.count { return "条件标识重复，请重新添加条件。" }
+        return nil
     }
     func matches(_ results: [UUID: TriggerConditionResult]) -> Bool {
         guard enabled, validationError == nil else { return false }
-        let matches = conditions.map { results[$0.id]?.state == .matched }
-        return combination == .all ? matches.allSatisfy { $0 } : matches.contains(true)
+        return effectiveExpression.evaluate(results) == .matched
     }
 }
 
@@ -174,15 +195,24 @@ extension TriggerRule {
         name = try fields.decode(String.self, forKey: .name)
         mode = try fields.decode(WorkMode.self, forKey: .mode)
         enabled = try fields.decode(Bool.self, forKey: .enabled)
-        combination = try fields.decode(TriggerCombination.self, forKey: .combination)
-        conditions = try fields.decode([TriggerCondition].self, forKey: .conditions)
+        combination = try fields.decodeIfPresent(TriggerCombination.self, forKey: .combination) ?? .all
+        conditions = try fields.decodeIfPresent([TriggerCondition].self, forKey: .conditions) ?? []
+        expression = try fields.decodeIfPresent(TriggerExpression.self, forKey: .expression)
+        priority = try fields.decodeIfPresent(Int.self, forKey: .priority) ?? 0
+        sustainedMatchSeconds = try fields.decodeIfPresent(TimeInterval.self, forKey: .sustainedMatchSeconds) ?? 0
+        cooldownSeconds = try fields.decodeIfPresent(TimeInterval.self, forKey: .cooldownSeconds) ?? 0
         preventDisplaySleep = try fields.decodeIfPresent(Bool.self, forKey: .preventDisplaySleep)
         preventScreenSaver = try fields.decodeIfPresent(Bool.self, forKey: .preventScreenSaver)
     }
 }
 
-enum TriggerMatchState: String { case matched, unmatched, unknown }
-struct TriggerConditionResult: Equatable {
+enum TriggerMatchState: String, Codable {
+    case matched, unmatched, unknown
+    var title: String {
+        switch self { case .matched: return "满足"; case .unmatched: return "未满足"; case .unknown: return "未知" }
+    }
+}
+struct TriggerConditionResult: Codable, Equatable {
     var state: TriggerMatchState
     var detail: String
 }
@@ -192,6 +222,7 @@ struct TriggerConditionResult: Equatable {
         didSet {
             preferences.set(enabled, forKey: Self.enabledStorageKey)
             revision += 1
+            engine.reset(); evaluationReport = nil
             if !enabled { observations = [:]; status = "自动触发已暂停。" }
             else { status = "自动触发已启用，等待匹配条件。" }
         }
@@ -204,6 +235,15 @@ struct TriggerConditionResult: Equatable {
     private let preferences: UserDefaults
     private let source: any TriggerObservationSource
     private var revision = 0
+    private var engine = TriggerRuleEngine()
+    @Published private(set) var evaluationReport: TriggerEvaluationReport?
+    var arbitrationContextProvider: (() -> TriggerArbitrationContext)?
+    var arbitrationContext = TriggerArbitrationContext()
+    /// Unknown observations do not establish that a manually suppressed rule cleared.
+    var assertedRuleIDs: Set<UUID> {
+        let enabledIDs = Set(rules.filter(\.enabled).map(\.id))
+        return Set(evaluationReport?.rules.filter { enabledIDs.contains($0.id) && $0.conditionState != .unmatched }.map(\.id) ?? [])
+    }
     private static let enabledStorageKey = "orexin.NativeTriggersEnabled.v1"
     private static let storageKey = "orexin.NativeTriggerRules.v1"
     init(preferences: UserDefaults, source: (any TriggerObservationSource)? = nil) {
@@ -213,16 +253,37 @@ struct TriggerConditionResult: Equatable {
         rules = preferences.data(forKey: Self.storageKey).flatMap { try? JSONDecoder().decode([TriggerRule].self, from: $0) } ?? []
     }
     @discardableResult func save(_ rule: TriggerRule) -> String? {
-        if let error = rule.validationError { return error }
+        if let error = Self.validateRules(rules.filter { $0.id != rule.id } + [rule]) { return error }
         if let index = rules.firstIndex(where: { $0.id == rule.id }) { rules[index] = rule }
         else { rules.append(rule) }
+        engine.reset(rule.id); evaluationReport = nil
         persist(); return nil
     }
-    func remove(_ id: UUID) { rules.removeAll { $0.id == id }; persist() }
+    nonisolated static func validateRules(_ rules: [TriggerRule]) -> String? {
+        if rules.count > 128 { return "最多可配置 128 条规则。" }
+        if Set(rules.map(\.id)).count != rules.count { return "规则标识重复。" }
+        // Condition IDs are scoped to a rule. Reusing an ID across different
+        // rules is allowed only when it represents the identical condition.
+        var conditions: [UUID: TriggerCondition] = [:]
+        for rule in rules {
+            if let error = rule.validationError { return rule.name + ": " + error }
+            for condition in rule.allConditions {
+                if let previous = conditions[condition.id], previous != condition { return "不同条件不能共用同一标识。" }
+                conditions[condition.id] = condition
+            }
+        }
+        return nil
+    }
+    @discardableResult func replaceAllRules(_ replacement: [TriggerRule]) -> String? {
+        if let error = Self.validateRules(replacement) { return error }
+        rules = replacement; engine.reset(); evaluationReport = nil; observations = [:]
+        persist(); return nil
+    }
+    func remove(_ id: UUID) { rules.removeAll { $0.id == id }; engine.reset(id); evaluationReport = nil; persist() }
     func setEnabled(_ id: UUID, _ enabled: Bool) {
         guard let index = rules.firstIndex(where: { $0.id == id }) else { return }
         guard !enabled || rules[index].validationError == nil else { return }
-        rules[index].enabled = enabled; persist()
+        rules[index].enabled = enabled; engine.reset(id); evaluationReport = nil; persist()
     }
     private func persist() {
         revision += 1
@@ -232,27 +293,59 @@ struct TriggerConditionResult: Equatable {
     }
     func matchingRules(now: Date, battery: BatteryReading?) async -> [TriggerRule] {
         guard self.enabled else { observations = [:]; status = "自动触发已暂停。"; return [] }
-        let enabled = rules.filter { $0.enabled && $0.validationError == nil }
-        guard !enabled.isEmpty else { observations = [:]; status = "尚未启用自动触发规则。"; return [] }
+        let enabledRules = rules.filter { $0.enabled && $0.validationError == nil }
+        guard !enabledRules.isEmpty else { observations = [:]; status = "尚未启用自动触发规则。"; return [] }
         let observedRevision = revision
-        await observe(rules: enabled, now: now, battery: battery)
+        let read = await readObservations(rules: enabledRules, now: now, battery: battery)
         guard revision == observedRevision else { observations = [:]; return [] }
-        let matches = enabled.filter { $0.matches(observations) }
-        status = matches.isEmpty ? "没有规则满足条件。" : LF("满足条件：%@", matches.map(\.name).joined(separator: ", "))
+        snapshot = read.snapshot; observations = read.results; lastObservedAt = now
+        // Preserve every eligible rule here. The coordinator applies suppression,
+        // manual/session priority and safety before using the deterministic order.
+        let report = engine.evaluate(rules: rules, observations: observations, now: now)
+        evaluationReport = report
+        let qualified = Set(report.rules.filter { $0.state == .matched || $0.state == .overridden }.map(\.id))
+        let matches = enabledRules.filter { qualified.contains($0.id) }.sorted(by: TriggerRuleEngine.precedes)
+        status = matches.isEmpty ? "没有规则满足条件及时间要求。" : LF("满足条件：%@", matches.map(\.name).joined(separator: ", "))
         return matches
     }
-    func refreshDiagnostics() async { await observe(rules: rules, now: Date(), battery: nil) }
-    private func observe(rules: [TriggerRule], now: Date, battery: BatteryReading?) async {
-        let kinds = Set(rules.flatMap(\.conditions).map(\.kind))
-        snapshot = await source.read(kinds: kinds, now: now)
+    func updateArbitration(_ context: TriggerArbitrationContext) {
+        arbitrationContext = context
+        guard let current = evaluationReport else { return }
+        evaluationReport = engine.preview(rules: rules, observations: observations, now: current.evaluatedAt, context: context)
+    }
+    func refreshDiagnostics() async {
+        let now = Date(), currentRevision = revision
+        let read = await readObservations(rules: rules, now: now, battery: nil)
+        guard currentRevision == revision else { return }
+        snapshot = read.snapshot; observations = read.results; lastObservedAt = now
+        var context = arbitrationContextProvider?() ?? arbitrationContext; context.masterEnabled = enabled
+        evaluationReport = engine.preview(rules: rules, observations: read.results, now: now, context: context)
+    }
+    /// Dry-run reads current observations into local values and evaluates a copy
+    /// of runtime. It never persists, advances timers, publishes diagnostics, or
+    /// calls the coordinator. A draft replaces its saved counterpart for ranking.
+    func dryRun(_ draft: TriggerRule? = nil, now: Date = Date(), battery: BatteryReading? = nil) async -> TriggerEvaluationReport {
+        var candidates = rules
+        if let draft {
+            candidates.removeAll { $0.id == draft.id }; candidates.append(draft)
+        }
+        let currentEngine = engine
+        let read = await readObservations(rules: candidates, now: now, battery: battery)
+        var context = arbitrationContextProvider?() ?? arbitrationContext; context.masterEnabled = enabled
+        var previewEngine = currentEngine
+        if let draft, rules.first(where: { $0.id == draft.id }) != draft { previewEngine.reset(draft.id) }
+        return previewEngine.preview(rules: candidates, observations: read.results, now: now, context: context)
+    }
+    private func readObservations(rules: [TriggerRule], now: Date, battery: BatteryReading?) async -> (snapshot: TriggerSnapshot, results: [UUID: TriggerConditionResult]) {
+        let conditions = rules.flatMap(\.allConditions)
+        var snapshot = await source.read(kinds: Set(conditions.map(\.kind)), now: now)
         if let battery {
             snapshot.batteryPercent = (0...100).contains(battery.percent) ? battery.percent : nil
             snapshot.acConnected = !battery.onBattery
         }
-        lastObservedAt = now
         var results: [UUID: TriggerConditionResult] = [:]
-        for condition in rules.flatMap(\.conditions) { results[condition.id] = snapshot.evaluate(condition, now: now) }
-        observations = results
+        for condition in conditions { results[condition.id] = snapshot.evaluate(condition, now: now) }
+        return (snapshot, results)
     }
     /// Editor preview is read-only and never saves or evaluates an unsaved rule.
     func preview(kinds: Set<TriggerKind>) async -> TriggerSnapshot { await source.read(kinds: kinds, now: Date()) }

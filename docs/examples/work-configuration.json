@@ -1,0 +1,17 @@
+{
+  "format": "org.orexin.work-configuration",
+  "profiles": [
+    {
+      "failure": { "notify": true, "teardown": "restore" },
+      "id": "5B7E5B00-86CF-49AD-AC9C-582CF6E86001",
+      "mode": "desk",
+      "name": "Build and notify",
+      "screen": "idle",
+      "success": { "notify": true, "teardown": "restore" },
+      "timeout": { "notify": true, "teardown": "restore" },
+      "timeoutSeconds": 3600
+    }
+  ],
+  "rules": [],
+  "version": 1
+}

@@ -30,8 +30,11 @@ extension AppModel {
         }
         return name + " · \(max(1, Int(ceil(end.timeIntervalSince(now) / 60))))m"
     }
-    func record(_ text: String, notify: Bool = false) {
-        historyStore.append(text); history = historyStore.entries
+    func historyContext(kind: HistoryEventKind) -> HistoryContext {
+        .init(kind: kind, requestIDs: workRequests.active.map(\.id), ruleID: triggerOwnedRuleID, mode: active?.rawValue)
+    }
+    func record(_ text: String, notify: Bool = false, context: HistoryContext? = nil) {
+        historyStore.append(text, context: context ?? historyContext(kind: .inferred(from: text))); history = historyStore.entries
         if notify { notificationHandler?(text) }
     }
     func scheduleRestore(at date: Date) {
@@ -84,7 +87,12 @@ extension AppModel {
     }
     func tick(now date: Date = Date(), battery reading: BatteryReading?) async {
         now = date
+        if battery?.onBattery != reading?.onBattery {
+            record(reading.map { $0.onBattery ? "电源来源：电池" : "电源来源：外接电源" } ?? "电源来源：未知", context: historyContext(kind: .powerSource))
+        }
         if battery != reading { battery = reading }
+        if backend is MacBackend { await powerAnalysis.refresh(now: date) }
+        if !hooksMayRun { policyHooks.cancelAll() }
         onUpdate?()
         if await protectFromThermalPressure() { return }
         await reapWorkRequests(now: date)
@@ -126,7 +134,8 @@ extension AppModel {
         do {
             let behavior = workScreen.behavior(for: legacyWorkMode ?? .desk)
             handle = try await registerWork(.init(title: "命令任务 " + Date().formatted(date: .omitted, time: .standard), source: "command",
-                screen: behavior == .normalBrightness ? .awake : behavior == .dim ? .dim : .idle, teardown: .sleepOnSuccess))
+                screen: behavior == .normalBrightness ? .awake : behavior == .dim ? .dim : .idle, teardown: .sleepOnSuccess,
+                profileID: selectedWorkProfileID))
         } catch { convenienceMessage = error.localizedDescription; onUpdate?(); return }
         let id = handle.id
         commandHandles[id] = handle; runningCommandIDs.insert(id); jobRunning = true

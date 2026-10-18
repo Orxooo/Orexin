@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>让 Mac 在工作时保持唤醒，在任务结束后安心休息。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><img src="https://img.shields.io/badge/Preview-v0.2.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.2.0 Preview"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><img src="https://img.shields.io/badge/Preview-v0.3.0-56d7df?style=flat-square&amp;labelColor=14232e" alt="V0.3.0 Preview"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 或更新版本">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>简体中文</strong> · <a href="README.en.md">English</a><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview"><strong>下载 V0.2.0 Preview ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview"><strong>下载 V0.3.0 Preview ↗</strong></a> &nbsp; · &nbsp;
   <a href="#开始使用">安装指南</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">使用手册</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">社区讨论</a>
@@ -66,7 +66,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 
 **Apple Silicon Mac · macOS 15 或更新版本。** 当前提供 arm64 安装包。
 
-1. 打开 [V0.2.0 Preview 发布页](https://github.com/Orxooo/Orexin/releases/tag/v0.2.0-preview)，下载 `Orexin-0.2.0-Preview-arm64.zip`。
+1. 打开 [V0.3.0 Preview 发布页](https://github.com/Orxooo/Orexin/releases/tag/v0.3.0-preview)，下载 `Orexin-0.3.0-Preview-arm64.zip`。
 2. 解压，将 `Orexin.app` 移入「应用程序」并打开。升级前等待内置命令结束、结束保活并退出旧版，再替换应用；现有 Orexin 数据与偏好保留。
 3. 选择工作预设和结束条件。需要合盖运行时，按「偏好设置」指引批准辅助服务；本次未锁定工作由你在原生窗口亲自授权。
 
@@ -82,7 +82,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-显示 `Orexin-0.2.0-Preview-arm64.zip: OK` 表示校验值一致。
+显示 `Orexin-0.3.0-Preview-arm64.zip: OK` 表示校验值一致。
 
 </details>
 
@@ -100,7 +100,9 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ## 任务管理与 CLI
 
-V0.2.0 Preview 将「命令任务」升级为「任务管理」：**任务列表 / 运行命令 / 外部接入**。可以并行启动命令，分别查看日志、实际退出码与保活状态，并独立释放每项请求。
+V0.3.0 Preview 新增专业规则、电源分析和可复用工作配置：嵌套条件与只读试运行、系统断言来源与事件时间线、带差异预览的 JSON 配置导入/导出。参见 [工作配置指南](docs/WORK-CONFIGURATION.md)。工作配置可保存通知与本机结果脚本，并在任务开始时采用配置快照。
+
+「任务管理」包含 **任务列表 / 运行命令 / 工作配置 / 外部接入**。可以并行启动命令，分别查看日志、实际退出码与保活状态，并独立释放每项请求。
 
 单项完成不会结束其他任务的保活。只有所有重叠请求成功、且没有手动工作、会话或规则仍需保活时，才进入可取消的 60 秒休眠倒计时。释放保活和全部停止都不会杀死运行中的命令。
 

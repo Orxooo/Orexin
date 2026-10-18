@@ -4,6 +4,7 @@
 import AppKit
 import SwiftUI
 import UniformTypeIdentifiers
+import WakeMacCore
 
 struct HistoryRecordsView: View {
     @ObservedObject var model: AppModel
@@ -23,12 +24,12 @@ struct HistoryRecordsView: View {
     }
 
     private enum Category: String, CaseIterable {
-        case all = "全部", mode = "模式切换", screen = "显示器 / 电源", helper = "守护进程", alert = "异常告警"
+        case all = "全部", request = "工作请求", rule = "自动规则", mode = "模式切换", screen = "显示器 / 电源", helper = "守护进程", alert = "异常告警"
         var token: String {
-            switch self { case .all: "EVENT"; case .mode: "MODES"; case .screen: "HARDWARE"; case .helper: "DAEMON"; case .alert: "ALERTS" }
+            switch self { case .all: "EVENT"; case .request: "REQUESTS"; case .rule: "RULES"; case .mode: "MODES"; case .screen: "HARDWARE"; case .helper: "DAEMON"; case .alert: "ALERTS" }
         }
         var color: Color {
-            switch self { case .all: TerminalStyle.accent; case .mode: TerminalStyle.secondary; case .screen: TerminalStyle.accent; case .helper: TerminalStyle.signal; case .alert: TerminalStyle.warning }
+            switch self { case .all, .request: TerminalStyle.accent; case .mode, .rule: TerminalStyle.secondary; case .screen: TerminalStyle.accent; case .helper: TerminalStyle.signal; case .alert: TerminalStyle.warning }
         }
     }
     private struct StateTag {
@@ -68,7 +69,7 @@ struct HistoryRecordsView: View {
         }
         func update(history updated: [HistoryEntry]) {
             guard history.count != updated.count || !zip(history, updated).allSatisfy({ pair in
-                pair.0.id == pair.1.id && pair.0.date == pair.1.date && pair.0.text == pair.1.text
+                pair.0.id == pair.1.id && pair.0.date == pair.1.date && pair.0.text == pair.1.text && pair.0.context == pair.1.context
             }) else { return }
             history = updated
             rebuildEntries()
@@ -99,11 +100,11 @@ struct HistoryRecordsView: View {
         }
         private func rebuildEntries() {
             presented = history.map { entry in
-                let category = HistoryRecordsView.category(entry.text)
+                let category = HistoryRecordsView.category(entry)
                 let state = HistoryRecordsView.stateTag(entry.text)
-                let descriptor = HistoryRecordsView.descriptor(entry.text)
-                let subsystem = HistoryRecordsView.subsystem(entry.text)
-                let searchable = entry.text + " " + L(entry.text) + " " + L(category.rawValue) + " " + category.token + " " + state.title + " " + descriptor + " " + subsystem + " " + entry.id.uuidString
+                let descriptor = HistoryRecordsView.descriptor(entry)
+                let subsystem = HistoryRecordsView.subsystem(entry)
+                let searchable = entry.text + " " + L(entry.text) + " " + L(category.rawValue) + " " + category.token + " " + state.title + " " + descriptor + " " + subsystem + " " + entry.id.uuidString + " " + (entry.context?.searchable ?? "")
                 return PresentedEntry(entry: entry, category: category, state: state, descriptor: descriptor,
                     subsystem: subsystem, searchable: searchable, time: timeFormatter.string(from: entry.date),
                     date: entry.date.formatted(.dateTime.locale(AppLanguage.selected.locale).year().month(.abbreviated).day()))
@@ -130,8 +131,20 @@ struct HistoryRecordsView: View {
                 fileModified.map { $0.formatted(date: .abbreviated, time: .standard) } ?? storageFallback.modified)
         }
     }
+    private static func category(_ entry: HistoryEntry) -> Category {
+        if category(entry.text) == .alert { return .alert }
+        switch entry.context?.kind {
+        case .request: return .request
+        case .rule: return .rule
+        case .mode: return .mode
+        case .sleepWake, .display, .lid, .powerSource, .powerAssertion, .protection: return .screen
+        default: return category(entry.text)
+        }
+    }
     private static func category(_ text: String) -> Category {
         if ["失败", "温度保护触发", "温度保护已结束保活", "低于", "未确认", "无法", "错误", "异常"].contains(where: text.contains) { return .alert }
+        if text.contains("工作请求") || text.contains("命令任务") { return .request }
+        if text.contains("自动触发") || text.contains("自动规则") { return .rule }
         if ["合盖", "开盖", "服务", "授权", "守护"].contains(where: text.contains) { return .helper }
         if ["显示器", "屏幕", "电量", "电源", "温度保护", "休眠请求", "系统即将休眠", "系统已唤醒"].contains(where: text.contains) { return .screen }
         if ["模式", "切换", "会话", "定时"].contains(where: text.contains) { return .mode }
@@ -156,6 +169,8 @@ struct HistoryRecordsView: View {
         if text.contains("切换") { return "MODE_SWITCH" }
         if text.contains("会话") { return "SESSION_EVENT" }
         switch Self.category(text) {
+        case .request: return "REQUEST_EVENT"
+        case .rule: return "RULE_EVENT"
         case .helper: return "DAEMON_EVENT"
         case .screen: return "POWER_EVENT"
         case .alert: return "ALERT_EVENT"
@@ -163,16 +178,38 @@ struct HistoryRecordsView: View {
         case .all: return "APP_EVENT"
         }
     }
+    private static func descriptor(_ entry: HistoryEntry) -> String {
+        switch entry.context?.kind {
+        case .request: return "REQUEST_EVENT"
+        case .rule: return "RULE_EVENT"
+        case .sleepWake: return "SYSTEM_SLEEP_WAKE"
+        case .lid: return "LID_EVENT"
+        case .powerAssertion: return "POWER_ASSERTIONS"
+        case .powerSource: return "POWER_SOURCE"
+        default: return descriptor(entry.text)
+        }
+    }
     private static func subsystem(_ text: String) -> String {
         if text.contains("命令") { return "COMMAND_RUNNER" }
         if text.contains("温度") { return "THERMAL_GUARD" }
         if text.contains("电量") { return "POWER_DEFENSE" }
         switch Self.category(text) {
+        case .request: return "WORK_REQUESTS"
+        case .rule: return "AUTO_RULES"
         case .mode: return "MODE_CONTROL"
         case .screen: return "POWER_EVENT"
         case .helper: return "DAEMON_SERVICE"
         case .alert: return "SAFETY_ALERT"
         case .all: return "APP_EVENT"
+        }
+    }
+    private static func subsystem(_ entry: HistoryEntry) -> String {
+        switch entry.context?.kind {
+        case .request: return "WORK_REQUESTS"
+        case .rule: return "AUTO_RULES"
+        case .powerAssertion: return "POWER_OBSERVER"
+        case .sleepWake, .display, .lid, .powerSource: return "SYSTEM_POWER"
+        default: return subsystem(entry.text)
         }
     }
     private var timestampWidth: CGFloat { min(130, max(94, (availableWidth - 62) * 0.15)) }
@@ -182,6 +219,10 @@ struct HistoryRecordsView: View {
     var body: some View {
         let metadata = presentation.metadata
         return VStack(alignment: .leading, spacing: 20) {
+            PowerAnalysisView(observer: model.powerAnalysis)
+            Text(L("运行时间线")).font(.system(size: 15, weight: .semibold))
+            Text(L("请求、规则、模式和系统事件按时间排列。上下文表示记录时的活动状态，不代表已确认的休眠或唤醒原因。"))
+                .font(WorkType.caption).foregroundStyle(WorkStyle.muted)
             toolbar
             auditFeed(fileSize: metadata.size)
             HStack(spacing: 12) {
@@ -223,9 +264,11 @@ struct HistoryRecordsView: View {
             }
             Rectangle().fill(WorkStyle.line).frame(height: 1)
             if showingClearConfirmation { clearConfirmation }
-            HStack(spacing: 2) {
-                ForEach(Category.allCases, id: \.self) { category in
-                    categoryButton(category)
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 2) {
+                    ForEach(Category.allCases, id: \.self) { category in
+                        categoryButton(category).fixedSize(horizontal: true, vertical: false)
+                    }
                 }
             }.padding(3).background(TerminalStyle.recess)
                 .overlay(Rectangle().strokeBorder(WorkStyle.line))
@@ -356,8 +399,13 @@ struct HistoryRecordsView: View {
                     .textSelection(.enabled)
             }.frame(width: descriptorWidth, alignment: .leading)
                 .accessibilityLabel(LF("根据记录内容分类的事件：%@", row.descriptor))
-            Text(L(entry.text)).font(.system(size: 12)).textSelection(.enabled)
-                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+            VStack(alignment: .leading, spacing: 7) {
+                Text(L(entry.text)).font(.system(size: 12)).textSelection(.enabled)
+                    .fixedSize(horizontal: false, vertical: true)
+                if let context = entry.context {
+                    contextLabels(context)
+                }
+            }.frame(maxWidth: .infinity, alignment: .leading)
             VStack(alignment: .trailing, spacing: 7) {
                 Text(row.subsystem).font(TerminalStyle.mono(8)).foregroundStyle(category.color)
                     .padding(.horizontal, 6).padding(.vertical, 3).background(TerminalStyle.silver)
@@ -367,6 +415,24 @@ struct HistoryRecordsView: View {
             }.frame(width: subsystemWidth, alignment: .trailing)
                 .accessibilityLabel(LF("根据记录内容分类的状态：%@", state.title))
         }.padding(.horizontal, 16).padding(.vertical, 16)
+    }
+
+    private func contextLabels(_ context: HistoryContext) -> some View {
+        VStack(alignment: .leading, spacing: 4) {
+            if let mode = context.mode {
+                Text(L("模式上下文：") + (WorkMode(rawValue: mode)?.title ?? L(mode))).font(.system(size: 10)).foregroundStyle(WorkStyle.muted)
+            }
+            if let rule = context.ruleID {
+                Text(L("规则 ID：") + rule.uuidString).font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.secondary)
+                    .textSelection(.enabled)
+            }
+            if !context.requestIDs.isEmpty {
+                Text(L("请求 ID：") + context.requestIDs.prefix(3).map(\.uuidString).joined(separator: " · ")
+                     + (context.requestIDs.count > 3 ? " +\(context.requestIDs.count - 3)" : ""))
+                    .font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.accent).textSelection(.enabled)
+                    .help(context.requestIDs.map(\.uuidString).joined(separator: "\n"))
+            }
+        }.fixedSize(horizontal: false, vertical: true)
     }
 
     private func clear() {

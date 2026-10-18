@@ -9,24 +9,27 @@ private struct Arguments {
     var positional: [String] = []
     var options: [String: String] = [:]
     var json = false
+    var apply = false
     var command: [String] = []
     init(_ arguments: [String]) throws {
         operation = arguments.first ?? "help"
         var index = 1
-        let allowed: Set<String> = ["--socket", "--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code"]
+        let allowed: Set<String> = ["--socket", "--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code", "--profile", "--strategy", "--expect"]
         while index < arguments.count {
             let item = arguments[index]
             if item == "--" { command = Array(arguments.dropFirst(index + 1)); break }
             if item == "--json" { json = true; index += 1; continue }
+            if item == "--apply", !apply { apply = true; index += 1; continue }
             if item.hasPrefix("--") {
                 guard allowed.contains(item), index + 1 < arguments.count, options[item] == nil else { throw ModeError("Unknown, duplicate or incomplete option: " + item) }
                 options[item] = arguments[index + 1]; index += 2
             } else { positional.append(item); index += 1 }
         }
         let common: Set<String> = ["--socket"]
-        let registration: Set<String> = ["--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after"]
-        let valid = common.union(["register", "run"].contains(operation) ? registration : ["complete", "fail"].contains(operation) ? ["--exit-code"] : [])
+        let registration: Set<String> = ["--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--profile"]
+        let valid = common.union(["register", "run"].contains(operation) ? registration : ["complete", "fail"].contains(operation) ? ["--exit-code"] : operation == "config-import" ? ["--strategy", "--expect"] : [])
         guard Set(options.keys).isSubset(of: valid), operation == "run" || command.isEmpty else { throw ModeError("Option does not apply to this command") }
+        guard !apply || operation == "config-import" else { throw ModeError("--apply is only valid for config-import") }
     }
     var socket: String { options["--socket"] ?? ProcessInfo.processInfo.environment["OREXIN_SOCKET"] ?? LocalControlSocket.defaultPath }
     func handle() throws -> WorkRequestHandle {
@@ -44,6 +47,9 @@ private struct Arguments {
         let lease = try seconds("--lease", fallback: 60)
         guard (5...3600).contains(lease) else { throw ModeError("Lease must be 5–3600 seconds") }
         let deadline = try options["--timeout"].map { _ in Date().addingTimeInterval(try seconds("--timeout", fallback: 60)) }
+        let profile = options["--profile"].flatMap(UUID.init(uuidString:))
+        guard options["--profile"] == nil || profile != nil else { throw ModeError("--profile requires a profile UUID") }
+        guard profile == nil || ["--mode", "--screen", "--after"].allSatisfy({ options[$0] == nil }) else { throw ModeError("A profile supplies mode, screen and teardown; omit --mode/--screen/--after") }
         var process: LocalProcessIdentity?
         if wrapping {
             guard options["--owner-pid"] == nil else { throw ModeError("run monitors its own wrapper; --owner-pid is only for register") }
@@ -54,7 +60,7 @@ private struct Arguments {
             process = identity
         }
         return .init(title: options["--title"] ?? (wrapping ? URL(fileURLWithPath: command.first ?? "command").lastPathComponent : "External task"),
-                     mode: mode, screen: screen, deadline: deadline, leaseSeconds: lease, process: process, teardown: after == "sleep" ? .sleepOnSuccess : .restore)
+                     mode: mode, screen: screen, deadline: deadline, leaseSeconds: lease, process: process, teardown: after == "sleep" ? .sleepOnSuccess : .restore, profileID: profile)
     }
     private func seconds(_ option: String, fallback: Double) throws -> Double {
         guard let text = options[option] else { return fallback }
@@ -75,11 +81,16 @@ private struct Arguments {
       cancel ID:TOKEN                      Alias for release
       status [ID] | list                   Show actual request and power status
       stop-all                            Global user override; processes continue
+      profiles | rules-try | power | events   Read-only configuration/evaluation/analysis
+      config-export                       Print portable JSON (redirect to a file)
+      config-import FILE [--strategy merge|replace]   Validate and preview, no changes
+        --apply --expect TOKEN            Apply this exact preview; scripts stay inactive
     Registration options:
       --title TEXT --mode desk|background --screen idle|dim|awake
       --lease SECONDS (5–3600, default 60) --timeout SECONDS
       --after restore|sleep (default restore; sleep needs successful completion)
       --owner-pid PID (register only, long-lived reporter/shell PID, not the awaited worker; must live through complete)
+      --profile UUID (supplies mode/screen/teardown; optional timeout further bounds it)
     All commands accept --json and --socket PATH (or OREXIN_SOCKET).
     run --json redirects child output to stderr and emits one final JSON reply on stdout.
     Owner handles authorize mutations; status/list never disclose their tokens.
@@ -105,6 +116,17 @@ private struct Arguments {
             case "stop-all":
                 guard args.positional.isEmpty else { throw ModeError("stop-all does not accept arguments") }
                 request = .init("stop-all")
+            case "profiles", "rules-try", "power", "events", "config-export":
+                guard args.positional.isEmpty else { throw ModeError("This command does not accept positional arguments") }
+                request = .init(args.operation)
+            case "config-import":
+                guard args.positional.count == 1 else { throw ModeError("config-import requires one JSON file") }
+                let data = try Data(contentsOf: URL(fileURLWithPath: args.positional[0]))
+                guard data.count <= 32 * 1024 else { throw ModeError("Configuration exceeds 32 KiB") }
+                guard args.apply || args.options["--expect"] == nil else { throw ModeError("--expect requires --apply") }
+                var value = ControlMessage(args.apply ? "config-apply" : "config-preview")
+                value.document = data; value.strategy = args.options["--strategy"] ?? "merge"; value.previewToken = args.options["--expect"]
+                request = value
             default: throw ModeError("Unknown command. Run orexin help.")
             }
             let reply = try LocalControlSocket.call(request, path: args.socket)
@@ -124,6 +146,11 @@ private struct Arguments {
     static func printReply(_ reply: ControlReply, json: Bool) throws {
         if json { print(String(decoding: try ControlCoding.encode(reply), as: UTF8.self)); return }
         if let handle = reply.handle { print("\(handle.id.uuidString):\(handle.token.uuidString)"); return }
+        if let document = reply.document {
+            if let changes = reply.changes { changes.forEach { print($0) } }
+            if let token = reply.previewToken { print("Preview token: " + token) }
+            print(String(decoding: document, as: UTF8.self)); return
+        }
         print("mode=\(reply.mode?.rawValue ?? "unknown") verified=\(reply.verified) tasks=\(reply.tasks.count)")
         for task in reply.tasks {
             let item = task.request

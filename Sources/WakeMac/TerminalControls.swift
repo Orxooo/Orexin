@@ -14,12 +14,16 @@ struct TerminalPicker<Value: Hashable>: View {
     @Binding var selection: Value
     let choices: [TerminalChoice<Value>]
     let selectionSound: Bool
-    init(_ title: String, selection: Binding<Value>, choices: [TerminalChoice<Value>], selectionSound: Bool = true) {
+    let localizeChoices: Bool
+    let controlHeight: CGFloat
+    init(_ title: String, selection: Binding<Value>, choices: [TerminalChoice<Value>], selectionSound: Bool = true, localizeChoices: Bool = true, controlHeight: CGFloat = 32) {
         self.title = title; _selection = selection; self.choices = choices; self.selectionSound = selectionSound
+        self.localizeChoices = localizeChoices
+        self.controlHeight = controlHeight
     }
     var body: some View {
         TerminalMenuControl(title: title, value: choices.first { $0.value == selection }?.title ?? "请选择",
-                            titles: choices.map(\.title), selected: choices.firstIndex { $0.value == selection }, selectionSound: selectionSound) { index in
+                            titles: choices.map(\.title), selected: choices.firstIndex { $0.value == selection }, selectionSound: selectionSound, localizeChoices: localizeChoices, controlHeight: controlHeight) { index in
             guard choices.indices.contains(index) else { return }
             selection = choices[index].value
         }
@@ -39,6 +43,8 @@ private struct TerminalMenuControl: View {
     let titles: [String]
     let selected: Int?
     var selectionSound = true
+    var localizeChoices = true
+    var controlHeight: CGFloat = 32
     let action: (Int) -> Void
     @State private var showing = false
     @Environment(\.isEnabled) private var enabled
@@ -46,21 +52,21 @@ private struct TerminalMenuControl: View {
     var body: some View {
         Button { showing.toggle() } label: {
             HStack(spacing: 6) {
-                Text(L(value)).font(WorkType.body).lineLimit(1).truncationMode(.middle)
+                Text(localizeChoices ? L(value) : value).font(WorkType.body).lineLimit(1).truncationMode(.middle)
                     .frame(maxWidth: .infinity, alignment: .leading)
                 TerminalIcon(name: "chevron.down", size: 12).foregroundStyle(TerminalStyle.accent)
                     .rotationEffect(.degrees(showing && !reduceMotion ? 180 : 0))
                     .frame(width: 24, height: 24).background(TerminalStyle.silver)
-            }.padding(.leading, 9).padding(.trailing, 3).frame(height: 32)
+            }.padding(.leading, 9).padding(.trailing, 3).frame(height: controlHeight)
                 .background(WorkStyle.surface)
                 .overlay(Rectangle().strokeBorder(showing ? TerminalStyle.ink.opacity(0.65) : TerminalStyle.line))
                 .shadow(color: TerminalStyle.accent.opacity(showing ? 0.35 : 0.12), radius: showing ? 8 : 4)
                 .opacity(enabled && !titles.isEmpty ? 1 : 0.45).contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).disabled(titles.isEmpty)
             .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showing)
-            .accessibilityLabel(L(title)).accessibilityValue(L(value)).accessibilityHint("展开选项；方向键选择，回车确认，Esc 取消")
+            .accessibilityLabel(L(title)).accessibilityValue(localizeChoices ? L(value) : value).accessibilityHint("展开选项；方向键选择，回车确认，Esc 取消")
             .terminalPopup(isPresented: $showing, width: 260) {
-                TerminalMenuPanel(title: title, titles: titles, selected: selected, selectionSound: selectionSound) { index in
+                TerminalMenuPanel(title: title, titles: titles, selected: selected, selectionSound: selectionSound, localizeChoices: localizeChoices) { index in
                     if let index { action(index) }
                     showing = false
                 }
@@ -73,6 +79,7 @@ private struct TerminalMenuPanel: View {
     let titles: [String]
     let selected: Int?
     var selectionSound = true
+    var localizeChoices = true
     let finish: (Int?) -> Void
     @State private var highlighted = 0
     @FocusState private var keyboardFocus: Bool
@@ -89,7 +96,7 @@ private struct TerminalMenuPanel: View {
                                 HStack(spacing: 8) {
                                     TerminalIcon(name: selected == index ? "checkmark" : "square", size: 12)
                                         .foregroundStyle(selected == index ? TerminalStyle.accent : TerminalStyle.line)
-                                    Text(L(titles[index])).font(WorkType.body).lineLimit(2)
+                                    Text(localizeChoices ? L(titles[index]) : titles[index]).font(WorkType.body).lineLimit(2)
                                     Spacer(minLength: 0)
                                 }.padding(.horizontal, 9).frame(minHeight: 32)
                                     .foregroundStyle(TerminalStyle.ink)

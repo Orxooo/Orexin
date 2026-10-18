@@ -23,6 +23,8 @@ extension AppModel {
         do {
             guard request.version == 1 else { throw ModeError("Unsupported local API version") }
             try Task.checkCancellation()
+            // Inspection/preview never reaps leases, advances rule timers or changes power.
+            if let reply = try await handleConfigurationControl(request) { return reply }
             await reapWorkRequests(now: Date())
             switch request.operation {
             case "register":

@@ -5,8 +5,8 @@ import SwiftUI
 import WakeMacCore
 
 enum TaskManagementSection: String, CaseIterable {
-    case tasks = "任务列表", run = "运行命令", integrations = "外部接入"
-    var code: String { switch self { case .tasks: "TASKS"; case .run: "RUN"; case .integrations: "CONNECT" } }
+    case tasks = "任务列表", run = "运行命令", configurations = "工作配置", integrations = "外部接入"
+    var code: String { switch self { case .tasks: "TASKS"; case .run: "RUN"; case .configurations: "POLICIES"; case .integrations: "CONNECT" } }
 }
 
 struct CommandTasksView: View {
@@ -66,6 +66,8 @@ struct CommandTasksView: View {
                 }
             case .integrations:
                 TaskIntegrationsView(model: model, availableWidth: availableWidth)
+            case .configurations:
+                WorkConfigurationsView(model: model)
             }
         }.frame(maxWidth: .infinity, alignment: .leading)
             .background(CommandWindowVisibilityProbe { windowVisible = $0 }.frame(width: 0, height: 0))
@@ -132,10 +134,11 @@ struct CommandTasksView: View {
             Text(L("每个命令独立保活并记录退出码；全部成功后才按收尾策略处理，手动模式与会话继续保留。")).font(WorkType.caption)
                 .foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
             HStack(spacing: 8) {
-                Text("SUCCESS: 60s").foregroundStyle(TerminalStyle.accent)
+                Text(model.selectedWorkProfileID == nil ? "SUCCESS: 60s" : "PROFILE POLICY").foregroundStyle(TerminalStyle.accent)
                 Text(L("FAIL: 不休眠")).foregroundStyle(TerminalStyle.secondary)
                 Text(L("STDIN: 非交互")).foregroundStyle(TerminalStyle.muted)
             }.font(TerminalStyle.mono(9))
+            WorkProfilePicker(model: model, store: model.profiles)
             HStack {
                 TerminalLabel("工作目录 // WORKING DIRECTORY", systemImage: "folder").font(WorkType.compactCaption).foregroundStyle(TerminalStyle.muted)
                 Spacer(minLength: 0)

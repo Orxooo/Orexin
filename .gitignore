@@ -9,4 +9,8 @@ dist/
 # Local development history and machine-specific verification records.
 docs/*
 !docs/CLI.md
+!docs/WORK-CONFIGURATION.md
+!docs/examples/
+docs/examples/*
+!docs/examples/work-configuration.json
 design-qa.md
