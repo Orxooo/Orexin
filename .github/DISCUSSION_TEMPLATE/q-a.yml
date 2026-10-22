@@ -10,7 +10,7 @@ body:
     attributes:
       label: 版本与环境 / Version and environment
       description: Orexin 版本、macOS 版本、芯片型号。
-      placeholder: V1.0.1 · macOS 26 · Apple Silicon
+      placeholder: V1.0.2 · macOS 26 · Apple Silicon
     validations:
       required: true
   - type: textarea

@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>Keep your Mac awake while you work. Let it rest when the job is done.</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><img src="https://img.shields.io/badge/Release-v1.0.1-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.1"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><img src="https://img.shields.io/badge/Release-v1.0.2-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.2"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 or later">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <a href="README.md">简体中文</a> · <strong>English</strong><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.1"><strong>Download V1.0.1 ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><strong>Download V1.0.2 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#get-started">Installation</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">Handbook</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">Discussions</a>
@@ -64,7 +64,7 @@ Screen behavior is independent of the preset: choose **0% brightness, normal bri
 
 **Apple Silicon Mac · macOS 15 or later.** The current download is arm64.
 
-1. Open the [V1.0.1 release](https://github.com/Orxooo/Orexin/releases/tag/v1.0.1) and download `Orexin-1.0.1-arm64.zip`.
+1. Open the [V1.0.2 release](https://github.com/Orxooo/Orexin/releases/tag/v1.0.2) and download `Orexin-1.0.2-arm64.zip`.
 2. Extract it, move `Orexin.app` to Applications, and open it. When upgrading, wait for commands and execution plans to finish and end wakefulness. If the old version has a background service, run the bundled CLI’s `service-stop`, then quit the interface and replace the app. Existing Orexin preferences and local data are retained.
 3. Choose a preset and an end condition. For lid-closed work, approve the helper in Settings and personally authorize unlocked work in the native dialog.
 
@@ -80,7 +80,7 @@ Download the ZIP and `SHA256SUMS.txt` into the same directory, then run:
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-`Orexin-1.0.1-arm64.zip: OK` confirms that the checksum matches.
+`Orexin-1.0.2-arm64.zip: OK` confirms that the checksum matches.
 
 </details>
 

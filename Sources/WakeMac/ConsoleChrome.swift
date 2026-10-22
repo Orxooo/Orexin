@@ -6,6 +6,16 @@ import SwiftUI
 final class ConsoleWindow: NSWindow {
     override var canBecomeKey: Bool { true }
     override var canBecomeMain: Bool { true }
+    override func performClose(_ sender: Any?) {
+        // Borderless consoles have no native close button for AppKit to perform.
+        guard styleMask.contains(.closable) else { super.performClose(sender); return }
+        guard delegate?.windowShouldClose?(self) != false else { return }
+        close()
+    }
+    override func validateMenuItem(_ menuItem: NSMenuItem) -> Bool {
+        if menuItem.action == #selector(NSWindow.performClose(_:)) { return styleMask.contains(.closable) }
+        return super.validateMenuItem(menuItem)
+    }
 }
 final class ConsoleMenuPanel: NSPanel {
     var acceptsInteraction = true
@@ -41,12 +51,14 @@ enum ConsoleAssets {
 }
 
 struct ConsoleWindowControls: View {
+    @State private var windowAnchor = NSView()
     var body: some View {
         HStack(spacing: 6) {
-            control("关闭窗口", symbol: "xmark", color: TerminalStyle.warning) { NSApp.keyWindow?.performClose(nil) }
-            control("最小化窗口", symbol: "minus", color: TerminalStyle.amber) { NSApp.keyWindow?.miniaturize(nil) }
-            control("缩放窗口", symbol: "arrow.up.left.and.arrow.down.right", color: TerminalStyle.signal) { NSApp.keyWindow?.zoom(nil) }
+            control("关闭窗口", symbol: "xmark", color: TerminalStyle.warning) { windowAnchor.window?.performClose(nil) }
+            control("最小化窗口", symbol: "minus", color: TerminalStyle.amber) { windowAnchor.window?.miniaturize(nil) }
+            control("缩放窗口", symbol: "arrow.up.left.and.arrow.down.right", color: TerminalStyle.signal) { windowAnchor.window?.zoom(nil) }
         }
+        .background(ConsoleWindowAnchor(view: windowAnchor).frame(width: 0, height: 0))
     }
     private func control(_ label: String, symbol: String, color: Color, action: @escaping () -> Void) -> some View {
         Button(action: action) {
@@ -54,6 +66,12 @@ struct ConsoleWindowControls: View {
                 .frame(width: 13, height: 13).background(color)
         }.buttonStyle(TerminalPlainButtonStyle()).accessibilityLabel(L(label)).help(L(label)).workKeyboardFocus(radius: 0)
     }
+}
+
+private struct ConsoleWindowAnchor: NSViewRepresentable {
+    let view: NSView
+    func makeNSView(context: Context) -> NSView { view }
+    func updateNSView(_ view: NSView, context: Context) {}
 }
 
 struct WindowDragRegion: NSViewRepresentable {
