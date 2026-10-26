@@ -42,6 +42,8 @@ public struct ControlReply: Codable, Sendable {
     public var sleepAt: Date?
     public var batterySleepAt: Date?
     public var timeline: Data?
+    public var notices: Data?
+    public var capabilities: [String]?
     public var document: Data?
     public var changes: [String]?
     public var previewToken: String?

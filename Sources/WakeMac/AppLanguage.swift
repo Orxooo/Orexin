@@ -51,7 +51,7 @@ func localizedMessage(_ key: String, bundle: Bundle, language: AppLanguage) -> S
         let range = NSRange(key.startIndex..<key.endIndex, in: key)
         guard let match = format.expression.firstMatch(in: key, range: range) else { continue }
         let values: [CVarArg] = (1..<match.numberOfRanges).compactMap { index in
-            Range(match.range(at: index), in: key).map { String(key[$0]) as CVarArg }
+            Range(match.range(at: index), in: key).map { localizedMessage(String(key[$0]), bundle: bundle, language: language) as CVarArg }
         }
         let template = bundle.localizedString(forKey: format.key, value: format.key, table: nil)
         return String(format: template, locale: language.locale, arguments: values)
@@ -72,6 +72,7 @@ private let languageBundles: [String: Bundle] = Dictionary(uniqueKeysWithValues:
 })
 
 private let eventPrefixes = [
+    "工作状态无法确认：", "消息记录保存失败：", "系统通知发送失败：",
     "模式已核验：", "切换模式：", "自动切换：", "自动触发：", "会话已开始：", "会话已结束：", "会话结束：", "会话启动失败：", "定时休眠：",
     "切换失败：", "状态读取失败：", "温度保护释放失败：", "登录启动设置失败：", "命令启动或日志处理失败：", "操作超时：",
     "清空失败，现有记录已保留：", "导出失败：", "屏幕策略未核验：", "屏幕亮度恢复失败：",
@@ -84,6 +85,9 @@ private struct HistoryFormat {
     let key: String
 }
 private let historyFormats: [HistoryFormat] = [
+    (#"^(.+)：期限或心跳租约已到期，已撤销此请求的保活需求，正在核验电源状态；其他工作请求可能仍在运行。$"#, "%@：期限或心跳租约已到期，已撤销此请求的保活需求，正在核验电源状态；其他工作请求可能仍在运行。"),
+    (#"^温度保护触发：系统温度压力达到(.+)，正在释放保活并取消自动休眠；正在执行的命令继续运行。$"#, "温度保护触发：系统温度压力达到%@，正在释放保活并取消自动休眠；正在执行的命令继续运行。"),
+    (#"^温度保护触发：系统温度压力达到(.+)；紧急释放已关闭，保活状态保持不变。$"#, "温度保护触发：系统温度压力达到%@；紧急释放已关闭，保活状态保持不变。"),
     (#"^低电量保护：([0-9]+)%$"#, "低电量保护：%@%%"),
     (#"^电量 ([0-9]+)%，低于 ([0-9]+)% 时将倒计时休眠。$"#, "电量 %@%%，低于 %@%% 时将倒计时休眠。"),
     (#"^工作会话已延长 ([0-9.,]+) 分钟。$"#, "工作会话已延长 %@ 分钟。"),

@@ -76,11 +76,15 @@ enum FeatureNotification: String { case sessionStart, sessionEnd, triggerChange,
     private let readAuthorization: () async -> UNAuthorizationStatus
     private let askAuthorization: () async throws -> Bool
     private let openSettings: (URL) -> Bool
+    private let thermalAlarmPlayer: (() -> Void)?
+    var notificationSelected: ((String) -> Void)?
     init(readAuthorization: @escaping () async -> UNAuthorizationStatus = { await UNUserNotificationCenter.current().notificationSettings().authorizationStatus },
          askAuthorization: @escaping () async throws -> Bool = { try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound]) },
-         openSettings: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }, preferences: UserDefaults = .standard) {
+         openSettings: @escaping (URL) -> Bool = { NSWorkspace.shared.open($0) }, preferences: UserDefaults = .standard,
+         thermalAlarmPlayer: (() -> Void)? = nil) {
         self.preferences = preferences
         self.readAuthorization = readAuthorization; self.askAuthorization = askAuthorization; self.openSettings = openSettings
+        self.thermalAlarmPlayer = thermalAlarmPlayer
         sessionStart = preferences.object(forKey: "orexin.notifications.sessionStart") as? Bool ?? true
         sessionEnd = preferences.object(forKey: "orexin.notifications.sessionEnd") as? Bool ?? true
         triggerChange = preferences.object(forKey: "orexin.notifications.triggerChange") as? Bool ?? true
@@ -96,8 +100,10 @@ enum FeatureNotification: String { case sessionStart, sessionEnd, triggerChange,
         return url.url!
     }
     func refresh() async {
+        let wasEnabled = enabled
         authorizationStatus = await readAuthorization()
         enabled = authorizationStatus == .authorized || authorizationStatus == .provisional
+        if enabled && !wasEnabled { message = "" }
     }
     func configure() {
         let center = UNUserNotificationCenter.current(); center.delegate = self
@@ -124,7 +130,48 @@ enum FeatureNotification: String { case sessionStart, sessionEnd, triggerChange,
         let name = UserDefaults.standard.string(forKey: "orexin.appearance.sound") ?? ""
         content.sound = (sound ?? notificationSound) ? (name.isEmpty ? .default : UNNotificationSound(named: UNNotificationSoundName(rawValue: name))) : nil
         if autoClear { UNUserNotificationCenter.current().removeAllDeliveredNotifications() }
-        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil))
+        UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)) { [weak self] error in
+            if let error { Task { @MainActor in self?.message = "系统通知发送失败：" + error.localizedDescription } }
+        }
+    }
+    @discardableResult func sendNotice(_ notice: ClientNotice) async -> Bool {
+        guard notice.systemNotification else { return false }
+        if notice.kind == .thermal, preferences.object(forKey: "orexin.thermal.audibleAlert") as? Bool ?? true {
+            if let thermalAlarmPlayer { thermalAlarmPlayer() }
+            else {
+                let name = preferences.string(forKey: "orexin.appearance.sound") ?? ""
+                eventSound = name.isEmpty ? nil : NSSound(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Sounds/" + name).path, byReference: true)
+                if eventSound == nil { eventSound = NSSound(named: NSSound.Name("Basso")) }
+                eventSound?.play()
+            }
+        }
+        await refresh()
+        guard enabled else { message = "系统通知未获允许；重要消息仍保留在应用内。"; return false }
+        let content = UNMutableNotificationContent()
+        content.title = L(notice.title); content.body = L(notice.body)
+        if notice.kind != .thermal, notificationSound {
+            let name = preferences.string(forKey: "orexin.appearance.sound") ?? ""
+            content.sound = name.isEmpty ? .default : UNNotificationSound(named: UNNotificationSoundName(rawValue: name))
+        }
+        do {
+            let center = UNUserNotificationCenter.current()
+            try await center.add(.init(identifier: notice.id, content: content, trigger: nil))
+            if notice.kind == .test {
+                // Delivery is asynchronous even after add() accepts the request.
+                try? await Task.sleep(for: .milliseconds(500))
+                let delivered = await center.deliveredNotifications()
+                message = delivered.contains { $0.request.identifier == notice.id }
+                    ? "已在系统通知中心确认测试提醒。"
+                    : "测试提醒已提交给系统；如未显示，请检查专注模式与通知设置。"
+            }
+            return true
+        } catch { message = "系统通知发送失败：" + error.localizedDescription; return false }
+    }
+    func requestIfNeeded() async {
+        await refresh()
+        guard authorizationStatus == .notDetermined else { return }
+        do { _ = try await askAuthorization(); await refresh() }
+        catch { message = "通知授权请求失败：" + error.localizedDescription }
     }
     func allows(_ event: FeatureNotification) -> Bool {
         switch event { case .sessionStart: sessionStart; case .sessionEnd: sessionEnd; case .triggerChange: triggerChange; case .sessionExtended: false }
@@ -138,5 +185,9 @@ enum FeatureNotification: String { case sessionStart, sessionEnd, triggerChange,
         }
         guard allows(event) else { return }; send(text, sound: standaloneSound ? false : nil)
     }
-    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [.banner, .sound] }
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions { [.banner, .list, .sound] }
+    nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        let identifier = response.notification.request.identifier
+        await MainActor.run { notificationSelected?(identifier) }
+    }
 }

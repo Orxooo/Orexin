@@ -7,12 +7,12 @@ import ServiceManagement
 import WakeMacCore
 
 private enum PreferencePage: String, CaseIterable {
-    case power = "工作模式", sessions = "工作会话", triggers = "自动触发", automation = "自动收尾", command = "任务管理", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", history = "运行记录", about = "关于软件"
+    case power = "工作模式", sessions = "工作会话", triggers = "自动触发", automation = "自动收尾", command = "任务管理", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", notices = "消息提醒", history = "运行记录", about = "关于软件"
     var icon: String {
-        switch self { case .power: "sun.max"; case .sessions: "hourglass"; case .triggers: "bolt.badge.clock"; case .automation: "timer"; case .command: "terminal"; case .settings: "slider.horizontal.3"; case .thermal: "thermometer"; case .advanced: "paintbrush.pointed"; case .history: "clock.arrow.circlepath"; case .about: "info.circle" }
+        switch self { case .power: "sun.max"; case .sessions: "hourglass"; case .triggers: "bolt.badge.clock"; case .automation: "timer"; case .command: "terminal"; case .settings: "slider.horizontal.3"; case .thermal: "thermometer"; case .advanced: "paintbrush.pointed"; case .notices: "bell"; case .history: "clock.arrow.circlepath"; case .about: "info.circle" }
     }
     var code: String {
-        switch self { case .power: "MODES"; case .sessions: "SESS"; case .triggers: "TRIG"; case .automation: "TEAR"; case .command: "TASKS"; case .settings: "CONF"; case .thermal: "TEMP"; case .advanced: "STYLE"; case .history: "LOGS"; case .about: "ABOUT" }
+        switch self { case .power: "MODES"; case .sessions: "SESS"; case .triggers: "TRIG"; case .automation: "TEAR"; case .command: "TASKS"; case .settings: "CONF"; case .thermal: "TEMP"; case .advanced: "STYLE"; case .notices: "ALERTS"; case .history: "LOGS"; case .about: "ABOUT" }
     }
     var number: String { String(format: "%02d", (Self.allCases.firstIndex(of: self) ?? 0) + 1) }
     var englishTitle: String {
@@ -25,6 +25,7 @@ private enum PreferencePage: String, CaseIterable {
         case .settings: "SYSTEM & DAEMON PREFERENCES"
         case .thermal: "THERMAL SAFEGUARD"
         case .advanced: "CONSOLE STYLE MATRIX"
+        case .notices: "MESSAGES & NOTIFICATIONS"
         case .history: "SYSTEM AUDIT & EVENT LOGS"
         case .about: "ABOUT & UPDATES"
         }
@@ -39,6 +40,7 @@ private enum PreferencePage: String, CaseIterable {
         case .settings: "按你的习惯，安排每一次切换。"
         case .thermal: "监测系统温度压力，在过热时释放保活。"
         case .advanced: "调整主题、语言、菜单栏与声音。"
+        case .notices: "更新、服务状态和保护事件，集中查看。"
         case .history: "模式切换与运行状态，都留在这里。"
         case .about: "了解 Orexin，查看更新与开源主页。"
         }
@@ -49,6 +51,7 @@ struct PreferencesView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var hotkeys: GlobalHotKeys
     @ObservedObject var notifier: LocalNotifier
+    @ObservedObject private var notices: ClientNoticeCenter
     @ObservedObject private var appearance: AppearanceController
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @AppStorage("orexin.appearance.language") private var languageID = "zh-Hans"
@@ -61,7 +64,7 @@ struct PreferencesView: View {
     @State private var shortcutDraft = ShortcutBinding.defaults
     @State private var shortcutEnabled = true
     init(model: AppModel, hotkeys: GlobalHotKeys, notifier: LocalNotifier) {
-        self.model = model; self.hotkeys = hotkeys; self.notifier = notifier; self.appearance = model.appearance
+        self.model = model; self.hotkeys = hotkeys; self.notifier = notifier; self.appearance = model.appearance; self.notices = model.notices
     }
 
     var body: some View {
@@ -84,6 +87,7 @@ struct PreferencesView: View {
         .font(WorkType.body).foregroundStyle(TerminalStyle.ink).tint(TerminalStyle.accent)
         .buttonStyle(TerminalButtonStyle()).focusEffectDisabled().preferredColorScheme(appearance.theme.colorScheme)
         .onChange(of: model.requestedTaskPage) { _, _ in page = .command; taskSection = .tasks }
+        .onChange(of: model.requestedNoticePage) { _, _ in page = .notices }
         .onAppear { shortcutDraft = hotkeys.bindings; shortcutEnabled = hotkeys.enabled }
         .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenTemperature)) { _ in page = .thermal }
         .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenCommandTask)) { _ in page = .command; taskSection = .run }
@@ -107,6 +111,13 @@ struct PreferencesView: View {
                     if page == .history { historyHeaderStatus }
                 }.padding(.vertical, 18).padding(.horizontal, 22)
                     .overlay(alignment: .bottom) { Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1) }
+                if notices.unreadCount > 0 && page != .notices {
+                    HStack {
+                        Text(LF("有 %d 条未读提醒", notices.unreadCount)).font(.system(size: 11, weight: .semibold))
+                        Spacer()
+                        Button(L("查看消息")) { page = .notices }
+                    }.padding(.horizontal, 22).padding(.vertical, 10).background(TerminalStyle.recess)
+                }
                 ScrollViewReader { proxy in
                 ScrollView {
                     VStack(spacing: 0) {
@@ -144,8 +155,9 @@ struct PreferencesView: View {
         case .settings: settingsTab(contentWidth: contentWidth)
         case .thermal: ThermalProtectionView(model: model, availableWidth: max(0, contentWidth - 40))
         case .advanced: AdvancedView(appearance: model.appearance, notifier: notifier, availableWidth: max(0, contentWidth - 40))
+        case .notices: ClientNoticesView(notices: notices, notifier: notifier, updates: model.updates, serviceNoticeSupport: model.serviceNoticeSupport)
         case .history: HistoryRecordsView(model: model, availableWidth: max(0, contentWidth - 40))
-        case .about: AboutSoftwareView(availableWidth: max(0, contentWidth - 40))
+        case .about: AboutSoftwareView(updates: model.updates, availableWidth: max(0, contentWidth - 40))
         }
     }
 

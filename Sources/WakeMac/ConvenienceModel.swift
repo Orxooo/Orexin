@@ -93,6 +93,7 @@ extension AppModel {
     func tick(now date: Date = Date(), battery reading: BatteryReading?) async {
         if serviceSocket != nil { await refreshTaskService(renew: true) }
         now = date
+        checkSessionEndingNotice(now: date)
         if battery?.onBattery != reading?.onBattery {
             record(reading.map { $0.onBattery ? "电源来源：电池" : "电源来源：外接电源" } ?? "电源来源：未知", context: historyContext(kind: .powerSource))
         }

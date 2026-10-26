@@ -32,6 +32,17 @@ extension AppModel {
         return reply
     }
     func adoptServiceReply(_ reply: ControlReply) {
+        if let service = reply.service {
+            let supported = reply.capabilities?.contains("notices-v1") == true
+            if !supported {
+                notices.post(.serviceUpgradeRequired, title: "后台提醒尚未完整启用",
+                             body: "旧后台服务仍在运行，暂不支持新的消息提醒。请完成当前任务，再退出并重新启动后台服务；现有任务不会被强行中断。",
+                             id: "service-upgrade.\(service.instanceID)")
+            } else if serviceNoticeSupport == false {
+                notices.post(.serviceRecovery, title: "后台事件提醒已启用", body: "已连接支持消息提醒的后台服务。")
+            }
+            serviceNoticeSupport = supported
+        }
         profiles.reload(); triggers.reload()
         workRequests = WorkRequestLedger(observing: reply.tasks.map(\.request))
         remoteTaskStatus = Dictionary(uniqueKeysWithValues: reply.tasks.map { ($0.request.id, $0) })
@@ -39,6 +50,9 @@ extension AppModel {
         commandLogs = reply.commandLogs?.mapValues { URL(fileURLWithPath: $0) } ?? [:]
         jobRunning = !runningCommandIDs.isEmpty; servicePlans = reply.plans ?? []
         snapshot = reply.snapshot; active = reply.mode; serviceSleepAt = reply.sleepAt
+        if let data = reply.notices, let remote = try? ControlCoding.decode([ClientNotice].self, from: data) {
+            notices.ingest(remote)
+        }
         automation.observeServiceCountdowns(battery: reply.batterySleepAt, job: reply.sleepAt)
         if let data = reply.timeline, let events = try? ControlCoding.decode([HistoryEntry].self, from: data) {
             history = Array((events + historyStore.entries).sorted { $0.date > $1.date }.prefix(200))
@@ -52,7 +66,10 @@ extension AppModel {
             let socket = serviceSocket ?? TaskServiceLauncher.socketPath
             let reply = try await Task.detached { try TaskServiceLauncher.start(executable: executable, socket: socket) }.value
             adoptServiceReply(reply); error = false; message = "已连接后台任务服务。"
-        } catch { self.error = true; message = error.localizedDescription; requestServiceMessage = message }
+        } catch {
+            self.error = true; message = error.localizedDescription; requestServiceMessage = message
+            reportPowerServiceFailure(message)
+        }
     }
     func refreshTaskService(renew: Bool = false) async {
         guard !serviceRefreshRunning else { return }
@@ -64,10 +81,16 @@ extension AppModel {
                 catch { interfaceHandle = nil; interfaceSpec = nil; manualWorkMode = nil; sessionWorkMode = nil; triggerOwnedMode = nil }
             }
             adoptServiceReply(try await serviceCall(.init("status")))
+            reportPowerServiceRecovery()
             if serviceConnectionFailed { serviceConnectionFailed = false; error = false; message = "已重新连接后台任务服务。" }
-        } catch { serviceConnectionFailed = true; requestServiceMessage = error.localizedDescription; snapshot = nil; active = nil; remoteTaskStatus = [:]; self.error = true; message = requestServiceMessage }
+        } catch {
+            serviceConnectionFailed = true; requestServiceMessage = error.localizedDescription
+            snapshot = nil; active = nil; remoteTaskStatus = [:]; self.error = true; message = requestServiceMessage
+            reportPowerServiceFailure(message)
+        }
     }
     func chooseThroughService(_ mode: WorkMode, sleep: Bool, automatic: Bool, reconcilingRequests: Bool) async {
+        let attemptStarted = Date()
         if busy && mode != .normal { return }
         // The timer already renews the lease and reads service state. Reconcile
         // unchanged, verified work without publishing a user-visible transition.
@@ -114,7 +137,15 @@ extension AppModel {
             } else { adoptServiceReply(try await serviceCall(.init("status"))) }
             preferences.set(true, forKey: "orexin.HasConfiguredMode")
             message = "后台服务已核验当前工作需求。"
-        } catch { self.error = true; message = error.localizedDescription; await refreshTaskService(); self.error = true }
+        } catch {
+            self.error = true; message = error.localizedDescription
+            let failure = message
+            await refreshTaskService()
+            if !notices.entries.contains(where: { $0.kind == .operationFailed && $0.date >= attemptStarted }) {
+                notices.post(.operationFailed, title: "工作模式未通过核验", body: failure)
+            }
+            self.error = true; message = failure
+        }
     }
     private func interfaceRequestSpec(for mode: WorkMode) -> WorkRequestSpec {
         let screen = workScreen.runtimeBehavior ?? (mode == .background ? workScreen.background : workScreen.desktop)

@@ -30,6 +30,7 @@ extension WorkMode {
         self.backend = backend; self.preferences = preferences
         self.triggerSource = triggerSource; self.sessionEffects = sessionEffects
         self.historyStore = HistoryStore(url: historyURL)
+        self.notices = ClientNoticeCenter(url: historyURL?.deletingPathExtension().appendingPathExtension("notices.json"), preferences: preferences)
         self.history = historyStore.entries
         self.jobLogDirectory = jobLogDirectory ?? AppPaths.root.appendingPathComponent("Task Logs")
         thermalThreshold = ThermalThreshold(rawValue: preferences.string(forKey: "orexin.thermal.threshold") ?? "") ?? .critical
@@ -46,6 +47,11 @@ extension WorkMode {
         }
     }
     let historyStore: HistoryStore
+    let notices: ClientNoticeCenter
+    lazy var updates = UpdateMonitor(notices: notices, preferences: preferences)
+    var powerServiceIncident = false
+    @Published var requestedNoticePage = UUID()
+    @Published var serviceNoticeSupport: Bool?
     let jobLogDirectory: URL
     @Published var history: [HistoryEntry] = []
     @Published var automation = AutomationPolicy()
@@ -264,6 +270,7 @@ extension WorkMode {
             let current = try await backend.snapshot()
             guard generation == version, !busy, refreshID == id else { return }
             snapshot = current; observeDisplay(DisplayState.read())
+            reportPowerServiceRecovery()
             if !lockRequirement.accepts(current.lockPolicy) && current.idleSleepPrevented == true {
                 refreshID = nil
                 await choose(.normal, automatic: true)
@@ -282,6 +289,7 @@ extension WorkMode {
             let reason = error.localizedDescription
             if !self.error || message != reason { record("状态读取失败：" + reason) }
             self.error = true; message = reason
+            reportPowerServiceFailure(reason)
         }
     }
     func choose(_ requestedMode: WorkMode, sleep: Bool = false, automatic: Bool = false, batterySleep: Bool = false, startupRecovery: Bool = false, reconcilingRequests: Bool = false) async {
@@ -395,7 +403,10 @@ extension WorkMode {
             return
         }
         if error {
-            record((thermalCleanupPending ? "温度保护释放失败：" : "切换失败：") + message, notify: !thermalCleanupPending)
+            record((thermalCleanupPending ? "温度保护释放失败：" : "切换失败：") + message)
+            if !thermalCleanupPending {
+                notices.post(.operationFailed, title: "工作模式未通过核验", body: message)
+            }
         }
         else if pending != nil { record("等待恢复立即锁屏保护。", notify: !thermalCleanupPending) }
         else { record(result == .sleepCancelled ? message : (sleep ? "已发送系统休眠请求。" : "模式已核验：" + mode.recordTitle)) }
@@ -452,6 +463,8 @@ extension WorkMode {
     let hotkeys = GlobalHotKeys()
     let notifier = LocalNotifier()
     private var thermalAlertSound: NSSound?
+    private var noticeQueue: [ClientNotice] = []
+    private var showingNotice = false
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         NSApp.appearance = model.appearance.theme.appearance
@@ -490,17 +503,27 @@ extension WorkMode {
                 await self?.notifier.refresh()
             }
         })
-        model.notificationHandler = { [weak self] text in self?.notifier.send(text) }
-        model.thermalNotificationHandler = { [weak self] text, audible in
+        model.notices.onArrival = { [weak self] notice, external in
             guard let self else { return }
-            self.notifier.send(text, sound: false)
-            guard audible else { return }
-            let name = self.model.appearance.soundName
-            let custom = name.isEmpty ? nil : NSSound(contentsOfFile: FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library/Sounds/" + name).path, byReference: true)
-            self.thermalAlertSound = custom ?? NSSound(named: NSSound.Name("Basso"))
-            self.thermalAlertSound?.play()
+            if external { Task { await self.notifier.sendNotice(notice) } }
+            if notice.kind.requiresPopup && self.model.notices.popupEnabled {
+                self.noticeQueue.append(notice); self.presentNextNotice()
+            }
         }
-        model.featureNotificationHandler = { [weak self] text, event in self?.notifier.send(text, event: event) }
+        notifier.notificationSelected = { [weak self] id in
+            self?.model.notices.acknowledge(id)
+            self?.model.requestedNoticePage = UUID(); self?.showPreferences()
+        }
+        model.notificationHandler = { [weak self] text in
+            self?.model.notices.post(.activity, title: "工作提醒", body: text)
+        }
+        model.thermalNotificationHandler = { [weak self] text, _ in
+            self?.model.notices.post(.thermal, title: "温度保护触发", body: text)
+        }
+        model.featureNotificationHandler = { [weak self] text, event in
+            self?.model.notices.post(.activity, title: "工作会话", body: text, systemNotification: false)
+            self?.notifier.send(text, event: event)
+        }
         hotkeys.handler = { [weak self] id in
             guard let self else { return }
             self.model.quitWhenReady = false
@@ -537,14 +560,41 @@ extension WorkMode {
             await model.connectTaskService()
             if model.behavior.startAtLaunch { await model.beginDefaultSession() }
         }
+        Task { await notifier.requestIfNeeded() }
+        Task { await model.updates.check() }
         timer = Timer(timeInterval: 10, repeats: true) { [weak self] _ in
-            Task { @MainActor in await self?.model.refresh() }
+            Task { @MainActor in
+                await self?.model.refresh()
+                await self?.model.updates.check()
+            }
         }
         // Keep readback fresh while controls track. The backend's independent
         // loop renews its lease even when a readback command or UI is delayed.
         if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
     func applicationWillTerminate(_ notification: Notification) { automationTimer?.invalidate(); timer?.invalidate() }
+    private func presentNextNotice() {
+        guard !showingNotice, !noticeQueue.isEmpty else { return }
+        showingNotice = true
+        let notice = noticeQueue.removeFirst()
+        showPreferences()
+        guard let window = preferencesWindow else { showingNotice = false; return }
+        let alert = NSAlert()
+        alert.messageText = L(notice.title); alert.informativeText = L(notice.body)
+        alert.alertStyle = notice.kind == .update ? .informational : .warning
+        alert.addButton(withTitle: L(notice.releaseURL == nil ? "查看消息" : "查看发布页"))
+        alert.addButton(withTitle: L("稍后"))
+        // A sheet leaves the run loop and all safety/lease work responsive.
+        alert.beginSheetModal(for: window) { [weak self] response in
+            guard let self else { return }
+            self.model.notices.acknowledge(notice.id)
+            if response == .alertFirstButtonReturn {
+                if let url = notice.releaseURL { NSWorkspace.shared.open(url) }
+                else { self.model.requestedNoticePage = UUID() }
+            }
+            self.showingNotice = false; self.presentNextNotice()
+        }
+    }
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool { showPreferences(); return true }
     func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
         if allowExit { return .terminateNow }

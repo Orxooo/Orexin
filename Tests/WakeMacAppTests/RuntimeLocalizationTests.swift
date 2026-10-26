@@ -38,4 +38,28 @@ final class RuntimeLocalizationTests: XCTestCase {
         let commandOutput = "自定义任务完成 / Users / 2049"
         XCTAssertEqual(localizedMessage(commandOutput, bundle: try bundle(.english), language: .english), commandOutput)
     }
+
+    func testCriticalClientAlertsAndDynamicBodiesResolveAcrossShippedLanguages() throws {
+        let messages = [
+            "Orexin 有新版本", "后台提醒尚未完整启用", "工作状态无法确认", "温度压力已回落",
+            "工作保活请求已到期", "工作会话即将结束", "消息提醒", "发送测试提醒",
+            "任务 Alpha：期限或心跳租约已到期，已撤销此请求的保活需求，正在核验电源状态；其他工作请求可能仍在运行。",
+            "温度保护触发：系统温度压力达到严重，正在释放保活并取消自动休眠；正在执行的命令继续运行。",
+            "保活或权限服务的状态读取失败，请检查当前工作模式。\n系统尚未恢复即时密码保护。",
+        ]
+        for language in AppLanguage.allCases where language != .simplifiedChinese {
+            let resources = try bundle(language)
+            for message in messages {
+                let output = localizedMessage(message, bundle: resources, language: language)
+                if language != .traditionalChinese || message != "Orexin 有新版本" {
+                    XCTAssertNotEqual(output, message, "\(language.rawValue): \(message)")
+                }
+                if language != .traditionalChinese {
+                    XCTAssertFalse(output.contains("期限或心跳租约"), language.rawValue)
+                    XCTAssertFalse(output.contains("正在释放保活"), language.rawValue)
+                    XCTAssertFalse(output.contains("请检查当前"), language.rawValue)
+                }
+            }
+        }
+    }
 }

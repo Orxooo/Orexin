@@ -4,10 +4,11 @@ import AppKit
 import SwiftUI
 
 struct AboutSoftwareView: View {
+    @ObservedObject var updates: UpdateMonitor
     let availableWidth: CGFloat
-    @State private var checking = false
-    @State private var updateMessage = ""
-    @State private var releaseURL: URL?
+    private var checking: Bool { updates.checking }
+    private var updateMessage: String { updates.message }
+    private var releaseURL: URL? { updates.releaseURL }
 
     private var build: String { Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "—" }
 
@@ -23,7 +24,7 @@ struct AboutSoftwareView: View {
                 communityInformation
             }
 
-            updates
+            updateSection
         }.frame(maxWidth: .infinity, alignment: .leading)
     }
 
@@ -72,17 +73,17 @@ struct AboutSoftwareView: View {
         }.padding(12).background(TerminalStyle.recess)
     }
 
-    private var updates: some View {
+    private var updateSection: some View {
             VStack(alignment: .leading, spacing: 14) {
                 HStack {
                     TerminalLabel("软件更新", systemImage: "arrow.clockwise").font(.system(size: 16, weight: .semibold))
                     Spacer(minLength: 0)
                     Text("GITHUB RELEASES").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
                 }
-                Text(L("手动检查 GitHub 发布版本。Preview 版本也会检查预发布更新。"))
+                Text(L("启动后及每 6 小时自动检查更新，也可手动检查。Preview 版本会检查预发布更新。"))
                     .font(.system(size: 11)).foregroundStyle(TerminalStyle.muted)
                 HStack(spacing: 10) {
-                    Button(L(checking ? "检查中…" : "检查更新")) { Task { await checkForUpdates() } }
+                    Button(L(checking ? "检查中…" : "检查更新")) { Task { await updates.check(manual: true) } }
                         .disabled(checking)
                     if let releaseURL { Button(L("查看发布页")) { NSWorkspace.shared.open(releaseURL) } }
                     Spacer(minLength: 0)
@@ -94,35 +95,4 @@ struct AboutSoftwareView: View {
             }.padding(18).terminalSurface()
     }
 
-    @MainActor private func checkForUpdates() async {
-        checking = true
-        defer { checking = false }
-        releaseURL = nil
-        do {
-            var request = URLRequest(url: ReleaseCatalog.apiURL)
-            request.setValue("application/vnd.github+json", forHTTPHeaderField: "Accept")
-            request.setValue("Orexin/\(OrexinRelease.versionTag)", forHTTPHeaderField: "User-Agent")
-            request.timeoutInterval = 12
-            let (data, response) = try await URLSession.shared.data(for: request)
-            guard let response = response as? HTTPURLResponse else {
-                updateMessage = "无法读取 GitHub 的响应。"; return
-            }
-            if response.statusCode == 404 {
-                updateMessage = "Orexin 仓库尚未发布版本。"; return
-            }
-            guard response.statusCode == 200 else {
-                updateMessage = LF("检查失败：GitHub 返回 HTTP %d。", response.statusCode); return
-            }
-            let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
-            guard let release = ReleaseCatalog.latest(in: releases, includePreviews: !OrexinRelease.channel.isEmpty),
-                  let latest = release.version, let current = ReleaseVersion(OrexinRelease.versionTag) else {
-                updateMessage = "Orexin 仓库尚未发布版本。"; return
-            }
-            releaseURL = release.url
-            updateMessage = current < latest
-                ? LF("发现新版本：%@", release.tagName) : LF("当前已是最新公开版本（%@）。", release.tagName)
-        } catch {
-            updateMessage = LF("暂时无法连接 GitHub：%@", error.localizedDescription)
-        }
-    }
 }

@@ -4,7 +4,7 @@
 
 ## 安装包用法
 
-打开 V1.0.0 界面会启动后台服务；也可以直接使用内置 CLI 启动服务，无需打开界面或配置 PATH：
+打开当前版本界面会启动后台服务；也可以直接使用内置 CLI 启动服务，无需打开界面或配置 PATH：
 
 ```sh
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
@@ -121,7 +121,7 @@ orexin stop-all --json              # 明确的全局用户操作
 
 默认地址 `/tmp/orexin-<uid>/control.sock`。父目录权限 0700，socket 权限 0600；客户端和服务端都检查对端 UID。端点锁防止第二个实例覆盖正在使用的接口，不监听 TCP、不对外公开、不提供远程服务。
 
-每条连接处理一行 UTF-8 JSON 请求和一行 JSON 响应。请求上限 64 KiB，读取/写入有超时；字段与 CLI 共用 `WakeMacCore/LocalControlProtocol.swift`。接口仅登记生命周期及控制现有电源路径，不接受执行命令的 API。
+每条连接处理一行 UTF-8 JSON 请求和一行 JSON 响应。请求上限 64 KiB、响应上限 512 KiB，读取/写入有超时；字段与 CLI 共用 `WakeMacCore/LocalControlProtocol.swift`。除请求生命周期与电源控制外，当前用户服务也接受明确提交的命令和执行计划（`command-start` / `plan-run`），以当前用户身份执行，不提权。它与仅执行固定电源接口的系统合盖辅助服务不同。
 
 登记示例（用调用方生成的随机 UUID 替换占位符）：
 
@@ -134,6 +134,8 @@ orexin stop-all --json              # 明确的全局用户操作
 其他操作为 `heartbeat`、`complete`、`release`、`status`、`list`、`stop-all`。前三者需要 `handle`，`complete` 另需整数 `exitCode`；`status` 可带 `id`。
 
 响应的 `ok` 表示接口操作是否成功，任务真实结果看 `tasks[].request.state` 和 `exitCode`；当前保活是否满足看 `tasks[].satisfied`、`detail`、顶层 `mode` 与 `verified`。`commandRunning` 只描述应用内置命令，不推测外部任务。终态包括 `succeeded`、`failed`、`cancelled`、`lost`、`expired`、`overridden`、`rejected`。协议错误或不可核验状态不包装成成功。
+
+V1.0.3 保持协议版本 1，新增可选 `capabilities` 和 `notices`。支持后台事件提醒的服务会返回 `capabilities: ["notices-v1"]`；`notices` 是经 JSON 编码后由 `Data` 字段转为 Base64 的有界消息数组，包含最多 64 KiB 的原始 JSON。旧服务不含这些字段时，界面提示提醒能力尚未完整启用；先完成任务，再退出旧服务并重开应用。
 
 ## 验证边界
 

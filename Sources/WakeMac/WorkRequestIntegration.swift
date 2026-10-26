@@ -152,6 +152,14 @@ extension AppModel {
         let previous = workRequests.records
         let teardown = workRequests.reap(now: now, processAlive: { $0.isAlive })
         guard workRequests.records != previous else { return }
+        let newlyExpired = workRequests.records.filter { item in
+            item.state == .expired && previous.contains { $0.id == item.id && $0.state == .active }
+        }
+        for item in newlyExpired {
+            notices.post(.leaseExpired, title: "工作保活请求已到期",
+                         body: item.spec.title + "：期限或心跳租约已到期，已撤销此请求的保活需求，正在核验电源状态；其他工作请求可能仍在运行。",
+                         id: "expired.\(item.id.uuidString)", at: now)
+        }
         saveWorkRequests(); await finishWorkMutation(teardown, now: now)
     }
     func finishWorkMutation(_ teardown: RequestTeardown?, now: Date) async {

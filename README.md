@@ -1,12 +1,12 @@
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.3"><img src="Assets/README/cover.svg" width="100%" alt="Orexin — Stay awake. Rest on time."></a>
 </p>
 
 <h1 align="center">Orexin</h1>
 <p align="center"><strong>让 Mac 在工作时保持唤醒，在任务结束后安心休息。</strong></p>
 
 <p align="center">
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><img src="https://img.shields.io/badge/Release-v1.0.2-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.2"></a>
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.3"><img src="https://img.shields.io/badge/Release-v1.0.3-56d7df?style=flat-square&amp;labelColor=14232e" alt="V1.0.3"></a>
   <img src="https://img.shields.io/badge/macOS-15%2B-8ba6b8?style=flat-square&amp;labelColor=14232e" alt="macOS 15 或更新版本">
   <a href="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml"><img src="https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main" alt="macOS compatibility CI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6?style=flat-square&amp;labelColor=14232e" alt="GPL-3.0-only"></a>
@@ -14,7 +14,7 @@
 
 <p align="center">
   <strong>简体中文</strong> · <a href="README.en.md">English</a><br><br>
-  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.2"><strong>下载 V1.0.2 ↗</strong></a> &nbsp; · &nbsp;
+  <a href="https://github.com/Orxooo/Orexin/releases/tag/v1.0.3"><strong>下载 V1.0.3 ↗</strong></a> &nbsp; · &nbsp;
   <a href="#开始使用">安装指南</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/wiki">使用手册</a> &nbsp; · &nbsp;
   <a href="https://github.com/Orxooo/Orexin/discussions">社区讨论</a>
@@ -28,33 +28,22 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 
 ## 看看它的样子
 
-<a href="Assets/README/power-terminal.png"><img src="Assets/README/power-terminal.png" width="100%" alt="Orexin V0.1.0 Preview 的工作模式页面，创主题，显示正常休眠与后台、桌面两个工作预设"></a>
+<a href="Assets/README/orexin-1.0.3-modes.png"><img src="Assets/README/orexin-1.0.3-modes.png" width="100%" alt="Orexin V1.0.3 正式版工作模式页面，显示正常休眠及后台、桌面两个工作预设"></a>
 
-<p align="center"><sub>V0.1.0 Preview · 创：电子世界争霸战主题 · 软件真实截图</sub></p>
+<p align="center"><sub>V1.0.3 · 正式版真实截图 · 创：电子世界争霸战主题</sub></p>
 
-<table>
-  <tr>
-    <td width="50%"><a href="Assets/README/zima-blue.png"><img src="Assets/README/zima-blue.png" alt="齐马蓝主题：浅色面板与克莱因蓝强调色"></a></td>
-    <td width="50%"><a href="Assets/README/blade-runner.png"><img src="Assets/README/blade-runner.png" alt="银翼杀手 2049 主题：深色面板与琥珀色强调色"></a></td>
-  </tr>
-  <tr>
-    <td align="center"><strong>齐马蓝</strong><br><sub>冷静的浅色工作台</sub></td>
-    <td align="center"><strong>银翼杀手 2049</strong><br><sub>深色中的琥珀光</sub></td>
-  </tr>
-</table>
-
-三套主题同步更换界面色彩与月相素材。支持简体中文、繁体中文、English、日本語、Français、Deutsch、Español，以及可选的短促机械点击声。
+提供创、齐马蓝、银翼杀手 2049 三套主题和跟随系统选项。支持简体中文、繁体中文、English、日本語、Français、Deutsch、Español，以及可选的机械点击声。
 
 ## 把工作交给会话
 
 | 你要做的事 | Orexin 如何配合 |
 | --- | --- |
-| **合上屏幕继续工作** | 后台工作预设保持系统运行；按提示授权合盖服务与本次未锁定工作。 |
+| **合上屏幕继续工作** | 后台工作预设阻止合盖休眠；需批准合盖辅助服务。“工作时保持未锁定”是另一个可选设置。 |
 | **在桌面演示或处理长任务** | 桌面工作预设防止闲置休眠，合盖后仍允许系统休眠。 |
 | **到点或任务完成后结束** | 按持续时长、指定时间、应用／进程退出或所选下载完成来收尾。 |
-| **让命令自己跑完** | 并行执行非交互前台 zsh 命令；各项独立保活与记录日志，满足全部成功和无其他保活来源时再倒计时休眠。 |
+| **让命令自己跑完** | 并行执行非交互前台命令，分别保活并记录退出码、日志；可选择完成后释放保活或在满足条件后倒计时休眠。 |
 | **让常用场景自动开始** | 用电源、显示器、设备、应用、网络或周计划组合触发条件；手动操作始终优先。 |
-| **及时释放保活** | 会话结束、低电量或温度保护触发时进入收尾流程，恢复系统休眠与密码策略。 |
+| **及时释放保活** | 会话结束或所启用的低电量、高温保护触发时收尾，释放 Orexin 的保活；其他应用仍可能阻止休眠。 |
 
 屏幕行为独立于工作预设：可选**亮度 0%、正常亮度、按系统时间熄屏**，也可一次性立即熄屏。后台与桌面工作分别记住你的选择。
 
@@ -66,9 +55,10 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 
 **Apple Silicon Mac · macOS 15 或更新版本。** 当前提供 arm64 安装包。
 
-1. 打开 [V1.0.2 发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.2)，下载 `Orexin-1.0.2-arm64.zip`。
+1. 打开 [V1.0.3 发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3)，下载 `Orexin-1.0.3-arm64.zip`。
 2. 解压，将 `Orexin.app` 移入「应用程序」并打开。升级前等待命令与执行计划结束、结束保活；若旧版支持后台服务，运行内置 CLI 的 `service-stop`，再退出界面并替换应用。现有 Orexin 数据与偏好保留。
-3. 选择工作预设和结束条件。需要合盖运行时，按「偏好设置」指引批准辅助服务；本次未锁定工作由你在原生窗口亲自授权。
+3. 选择工作预设和结束条件。需要合盖运行时，按「偏好设置」指引批准辅助服务。只有启用了“工作时保持未锁定”，才需要你在原生窗口亲自授权本次工作。
+4. 在「消息提醒」中检查系统通知权限，可点击“发送测试提醒”验证；也可调整自动检查更新与重要事件弹窗。
 
 > [!IMPORTANT]
 > 安装包使用 Apple Development 签名，尚未完成 Developer ID 公证。首次打开可能被 macOS 阻止，请核对来源和发布页的 `SHA256SUMS.txt`，再按系统「隐私与安全性」提示处理。无需关闭全局 Gatekeeper 或系统完整性保护。
@@ -82,7 +72,7 @@ Orexin 是一款原生 macOS 菜单栏工具。为编译、下载、演示或一
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-显示 `Orexin-1.0.2-arm64.zip: OK` 表示校验值一致。
+显示 `Orexin-1.0.3-arm64.zip: OK` 表示校验值一致。
 
 </details>
 
@@ -98,15 +88,27 @@ shasum -a 256 -c SHA256SUMS.txt
 
 </details>
 
+## 消息提醒与更新
+
+V1.0.3 将提醒集中在「消息提醒」页面，保留最近 100 条记录及未读状态：
+
+- 新版本、服务连接异常与恢复、保活请求到期、工作会话结束前 5 分钟、温度保护触发与降温。
+- 新版、服务中断、请求到期、模式核验失败和高温等重要事件可显示应用内弹窗；后台服务的事件同步到界面时不会重复发送系统通知。
+- 系统通知受 macOS 通知权限、专注模式及通知设置控制。未允许系统通知时，应用内记录和已启用的重要弹窗仍可用；高温提示音由独立开关控制。
+- 启动后及每 6 小时自动检查 GitHub Release，同一版本只主动提醒一次。也可在「关于软件」手动检查；正式版仅检查正式更新，不自动下载或安装。
+- 关闭窗口后，菜单栏应用继续检查更新。完全退出界面后停止更新检查；仍在运行的后台服务继续处理自身的任务和保护事件，记录可在重开界面后查看。
+
+[查看本版更新记录 →](CHANGELOG.md)
+
 ## 任务管理与 CLI
 
-V1.0.0 是首个正式版本，新增独立后台任务服务与执行计划，并统一界面控件、对齐和间距。执行计划支持依赖、串行/并行、并发上限、失败分支和逐项日志；参见 [执行计划指南](docs/EXECUTION-PLANS.md)。
+当前版本包含独立后台任务服务与执行计划。执行计划支持依赖、串行/并行、并发上限、失败分支和逐项日志；参见 [执行计划指南](docs/EXECUTION-PLANS.md)。
 
 专业规则、电源分析和可复用工作配置继续提供：嵌套条件与只读试运行、系统断言来源与事件时间线、带差异预览的 JSON 配置导入/导出。参见 [工作配置指南](docs/WORK-CONFIGURATION.md)。工作配置可保存通知与本机结果脚本，并在任务开始时采用配置快照。
 
 「任务管理」包含 **任务列表 / 运行命令 / 工作配置 / 外部接入**。可以并行启动命令，分别查看日志、实际退出码与保活状态，并独立释放每项请求。
 
-单项完成不会结束其他任务的保活。只有所有重叠请求成功、且没有手动工作、会话或规则仍需保活时，才进入可取消的 60 秒休眠倒计时。释放保活和全部停止都不会杀死运行中的命令。
+单项完成不会结束其他任务的保活。**选择“成功后休眠”或 CLI 的 `--after sleep`** 时，只有所有重叠请求成功、且没有手动工作、会话或规则仍需保活，才进入可取消的 60 秒休眠倒计时。CLI 默认 `--after restore`，只释放自己的保活；释放请求和全部停止都不会杀死运行中的命令。
 
 安装后可以直接使用内置 CLI，无需保持界面打开：
 
@@ -114,17 +116,22 @@ V1.0.0 是首个正式版本，新增独立后台任务服务与执行计划，�
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
 "$orexin" service-start
 "$orexin" help
+# 完成后释放本请求的保活，不主动请求整机休眠
 "$orexin" run --title Build -- make
+# 如需成功后倒计时休眠，使用：
+# "$orexin" run --title Build --after sleep -- make
 "$orexin" list --json
 ```
 
 `run` 包装前台命令并报告实际结果；外部工具也可用 `register`、`heartbeat`、`complete` 等命令管理任务生命周期。本地接口仅对当前用户开放，不监听网络端口。独立后台服务承载请求和计划，退出或重开界面不影响它们；手动会话、自动规则和界面辅助功能仍依赖界面进程。服务重启会把未完成工作标为失联，不重放命令或恢复旧保活。
 
+若开启了“工作时保持未锁定”，需先在界面完成本次授权。CLI 本身不会弹出密码授权窗口。
+
 完整选项和外部工具接入示例见 [CLI 与并行请求指南](docs/CLI.md)。应用安装在其他位置时，可从「外部接入」复制准确路径。
 
 ## 从源码构建
 
-需要 **Xcode 26+ 与 Swift 6**；持续集成使用 Xcode 26.3，在 macOS 15 和 26 上编译、测试并生成应用包。
+需要 **Xcode 26+ 与 Swift 6 工具链**。GitHub Actions 当前配置为 Xcode 26.3、macOS 15 / 26 的 ARM64 测试与打包；各运行器的实际结果见 [Actions](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml)，不能把工作流配置视为全部系统已验证。
 
 ```sh
 git clone https://github.com/Orxooo/Orexin.git
@@ -152,7 +159,7 @@ tell application "Orexin"
 end tell
 ```
 
-脚本、快捷键与界面共用状态核验。完整词典见 [Orexin.sdef](Resources/Orexin.sdef)。
+AppleScript 控制界面会话，需要 Orexin 界面进程运行，并遵循当前授权与状态核验。后台独立任务请使用 CLI。完整词典见 [Orexin.sdef](Resources/Orexin.sdef)。
 
 - Bundle ID：`com.orxooo.Orexin`
 - 偏好设置键：`orexin.` 前缀
@@ -160,6 +167,12 @@ end tell
 - 旧 WakeMac 的数据不会自动迁移或删除；分享日志前请检查私人信息。
 
 </details>
+
+## 常见问题
+
+- **切换时显示“需要检查”**：先查看「消息提醒」和「运行记录」中的具体错误。“合盖服务已授权”只代表注册与授权状态，不证明服务正在响应。升级时若提示旧后台服务，先完成任务，再 `service-stop`、退出并重新打开应用。不要为此关闭 SIP。
+- **恢复正常模式后仍不休眠**：Orexin 只释放自身保活。AlDente 的“充电未达到限值时阻止睡眠”、校准或合盖放电也可能禁用休眠；同时使用时应避免重叠控制。参见 [AlDente 官方说明](https://apphousekitchen.com/faq/)。
+- **没有看到温度数值**：温度保护依据 macOS 的温度压力等级，不读取或推测摄氏温度；降温后不会自动重启已停止的工作。
 
 ## 一起把它做好
 

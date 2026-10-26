@@ -59,10 +59,13 @@ extension AppModel {
         guard !thermalIncidentNotified else { return }
         thermalIncidentNotified = true
         let text = "温度保护触发：系统温度压力达到" + thermalSummary
-            + (releasing ? "，暂停保活并取消自动休眠；正在执行的命令继续运行。" : "；紧急释放已关闭，保活状态保持不变。")
+            + (releasing ? "，正在释放保活并取消自动休眠；正在执行的命令继续运行。" : "；紧急释放已关闭，保活状态保持不变。")
         record(text)
-        if let thermalNotificationHandler { thermalNotificationHandler(text, thermalAudibleAlertEnabled) }
-        else { notificationHandler?(text) }
+        notices.post(.thermal, title: "温度保护触发", body: text)
+        if notices.onArrival == nil {
+            if let thermalNotificationHandler { thermalNotificationHandler(text, thermalAudibleAlertEnabled) }
+            else { notificationHandler?(text) }
+        }
     }
 
     /// Release our inhibitors; do not terminate a command or force system sleep.
@@ -73,7 +76,11 @@ extension AppModel {
         let required = thermalReleaseEnabled && aboveThreshold
         if aboveThreshold || thermalCleanupPending { notifyThermalIncident(releasing: required || thermalCleanupPending) }
         guard required || thermalCleanupPending else {
-            if !aboveThreshold { thermalIncidentNotified = false }
+            if !aboveThreshold, thermalIncidentNotified {
+                thermalIncidentNotified = false
+                notices.post(.thermalRecovery, title: "温度压力已回落",
+                             body: "系统温度压力已低于保护阈值。已停止的工作不会自动恢复，可按需重新开始。")
+            }
             return false
         }
         suppressCurrentTriggers()

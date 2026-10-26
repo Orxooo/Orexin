@@ -25,8 +25,19 @@ import WakeMacCore
             if Bundle.main.bundleIdentifier != nil {
                 let notifier = LocalNotifier(preferences: defaults)
                 notifier.configure(); self.notifier = notifier
-                model.notificationHandler = { [weak notifier] text in notifier?.send(text) }
-                model.featureNotificationHandler = { [weak notifier] text, event in notifier?.send(text, event: event) }
+                model.notices.onArrival = { [weak notifier] notice, external in
+                    if external { Task { await notifier?.sendNotice(notice) } }
+                }
+                model.notificationHandler = { [weak model] text in
+                    model?.notices.post(.activity, title: "工作提醒", body: text)
+                }
+                model.thermalNotificationHandler = { [weak model] text, _ in
+                    model?.notices.post(.thermal, title: "温度保护触发", body: text)
+                }
+                model.featureNotificationHandler = { [weak model, weak notifier] text, event in
+                    model?.notices.post(.activity, title: "工作会话", body: text, systemNotification: false)
+                    notifier?.send(text, event: event)
+                }
             }
             model.serviceInfo = TaskServiceInfo(stateDirectory: root.path)
             model.stopTaskService = { [weak self] in self?.shutdown() }
