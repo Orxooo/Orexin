@@ -1,5 +1,9 @@
 # 更新记录
 
+**简体中文** · [繁體中文](CHANGELOG.zh-Hant.md) · [English](CHANGELOG.en.md) · [日本語](CHANGELOG.ja.md) · [Français](CHANGELOG.fr.md) · [Deutsch](CHANGELOG.de.md) · [Español](CHANGELOG.es.md)
+
+[返回 README](README.md)
+
 安装包与升级说明见 [Releases](https://github.com/Orxooo/Orexin/releases)。
 
 ## V1.0.3 — 2026-10-25

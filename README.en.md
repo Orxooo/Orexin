@@ -4,7 +4,7 @@
 
 # Orexin
 
-[简体中文](README.md) · **English**
+[简体中文](README.md) · [繁體中文](README.zh-Hant.md) · **English** · [日本語](README.ja.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Español](README.es.md)
 
 [![Release](https://img.shields.io/github/v/release/Orxooo/Orexin?color=56d7df&label=release)](https://github.com/Orxooo/Orexin/releases/latest)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-8ba6b8)
@@ -15,7 +15,7 @@ Orexin is a macOS menu bar utility for controlling when your Mac stays awake and
 
 Use it for builds, downloads, presentations or long-running tasks, at your desk or with the lid closed. Timed sessions, automatic rules and command tasks let you choose when to stop keeping the Mac awake.
 
-[Download latest](https://github.com/Orxooo/Orexin/releases/latest) · [Changelog](CHANGELOG.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
+[Download latest](https://github.com/Orxooo/Orexin/releases/latest) · [Changelog](CHANGELOG.en.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
 
 ![Orexin work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.0.3-modes.png)
 
@@ -35,7 +35,7 @@ Includes Tron, Zima Blue and Blade Runner 2049 themes, with Simplified Chinese, 
 Requires **Apple Silicon and macOS 15 or later**.
 
 1. Download the Apple Silicon package (filename ending in `-arm64.zip`) from the [release page](https://github.com/Orxooo/Orexin/releases/latest), extract it and move `Orexin.app` to Applications.
-2. Open the app and choose a work mode and end condition. Working with the lid closed requires helper approval in Settings.
+2. Open the app and choose a work mode and end condition. Working with the lid closed requires helper approval in Preferences.
 3. To receive system notifications, allow them in **Messages & alerts** and send a test alert.
 
 The package is **Apple Development-signed and has not been Developer ID-notarized**. If macOS blocks the first launch, check the download source and follow the Privacy & Security prompt. There is no need to disable SIP or Gatekeeper globally.
