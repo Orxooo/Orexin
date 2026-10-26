@@ -5,7 +5,7 @@
 ## 开发
 
 - 支持 Apple Silicon 与 macOS 15+；构建需要 Xcode 26+、Swift 6。
-- 按 [README](README.md#从源码构建) 构建；开发分支不必切到发布标签。
+- 按 [README](README.zh-Hans.md#从源码构建) 构建；开发分支不必切到发布标签。
 - 使用 `swift test --arch arm64 --scratch-path /tmp/orexin-test-build` 验证相关逻辑。
 - 使用 `./scripts/build-app.sh` 检查 Release 包；需要合盖服务时用自己的 Apple 开发者证书签名。
 - 不提交 `.build`、应用包、日志、签名证书、凭据或本机偏好。

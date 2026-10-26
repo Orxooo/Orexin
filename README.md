@@ -1,75 +1,73 @@
 <p align="center">
-  <img src="Assets/README/cover.png" width="100%" alt="Orexin：深蓝月蚀与琥珀色光弧，Stay awake. Rest on time.">
+  <img src="Assets/README/cover.png" width="100%" alt="Orexin: a midnight-blue eclipse and amber orbital arcs. Stay awake. Rest on time.">
 </p>
 
 # Orexin
 
-**简体中文** · [繁體中文](README.zh-Hant.md) · [English](README.en.md) · [日本語](README.ja.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Español](README.es.md)
+[简体中文](README.zh-Hans.md) · [繁體中文](README.zh-Hant.md) · **English** · [日本語](README.ja.md) · [Français](README.fr.md) · [Deutsch](README.de.md) · [Español](README.es.md)
 
 [![Release](https://img.shields.io/github/v/release/Orxooo/Orexin?color=56d7df&label=release)](https://github.com/Orxooo/Orexin/releases/latest)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-8ba6b8)
 [![CI](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main)](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6)](LICENSE)
 
-Orexin 是 macOS 菜单栏工具，用来控制 Mac 何时保持唤醒、何时允许休眠。
+Orexin is a macOS menu bar utility for controlling when your Mac stays awake and when it can sleep.
 
-编译、下载、演示或运行长任务时，可以选择桌面或合盖工作，通过定时会话、自动规则和命令任务管理结束条件。
+Use it for builds, downloads, presentations or long-running tasks, at your desk or with the lid closed. Timed sessions, automatic rules and command tasks let you choose when to stop keeping the Mac awake.
 
-[下载最新版](https://github.com/Orxooo/Orexin/releases/latest) · [更新记录](CHANGELOG.md) · [使用手册](https://github.com/Orxooo/Orexin/wiki)
+[Download latest](https://github.com/Orxooo/Orexin/releases/latest) · [Changelog](CHANGELOG.en.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
 
-![Orexin 工作模式页面，创主题](Assets/README/orexin-1.0.3-modes.png)
+![Orexin work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.0.3-modes.png)
 
-## 功能
+## Features
 
-- **工作模式**：后台工作可阻止合盖休眠；桌面工作防止闲置休眠，合盖时仍可休眠。
-- **屏幕控制**：亮度降至 0%、正常亮度、按系统时间熄屏，或立即熄屏。两种工作模式分别记住设置。
-- **工作会话**：按时长、指定时间、应用或进程退出、下载完成等条件结束。
-- **命令与执行计划**：并行运行命令，查看退出码和日志；用 JSON 编排依赖、并发数量和失败分支。
-- **自动规则与配置**：按电源、显示器、设备、应用、网络或时间触发；支持嵌套条件、试运行和配置导入导出。
-- **保护与提醒**：可启用低电量和高温保护，查看服务异常、会话结束预告和更新提醒；支持系统通知与应用内弹窗，更新由用户手动安装。
+- **Work modes:** Background Work prevents sleep with the lid closed. Desktop Work prevents idle sleep but allows sleep when the lid closes.
+- **Screen controls:** Set brightness to 0%, keep normal brightness, follow the system display timer or turn the display off immediately. Each work mode remembers its setting.
+- **Sessions:** End after a duration, at a set time, when an app or process exits, or when a download finishes.
+- **Commands and plans:** Run commands concurrently with exit codes and logs. Define dependencies, concurrency limits and failure branches in JSON.
+- **Rules and profiles:** Trigger work from power, display, device, app, network or time conditions. Supports nested conditions, trial runs and configuration import/export.
+- **Protection and alerts:** Optional low-battery and thermal protection, service alerts, session-end warnings and update reminders, with system notifications and in-app popups. Updates are installed manually.
 
-提供创、齐马蓝、银翼杀手 2049 三套主题，支持中简、中繁、英、日、法、德、西七种语言。详细说明见 [功能清单](FEATURES.md)。
+Includes Tron, Zima Blue and Blade Runner 2049 themes, with Simplified Chinese, Traditional Chinese, English, Japanese, French, German and Spanish. See the [feature reference](FEATURES.md) for details.
 
-## 开始使用
+## Get started
 
-<a id="系统要求"></a>
+Requires **Apple Silicon and macOS 15 or later**.
 
-需要 **Apple Silicon Mac、macOS 15 或更新版本**。
+1. Download the Apple Silicon package (filename ending in `-arm64.zip`) from the [release page](https://github.com/Orxooo/Orexin/releases/latest), extract it and move `Orexin.app` to Applications.
+2. Open the app and choose a work mode and end condition. Working with the lid closed requires helper approval in Preferences.
+3. To receive system notifications, allow them in **Messages & alerts** and send a test alert.
 
-1. 从 [发布页](https://github.com/Orxooo/Orexin/releases/latest) 下载 Apple Silicon 安装包（文件名以 `-arm64.zip` 结尾），解压并将 `Orexin.app` 放入「应用程序」。
-2. 打开应用，选择工作模式和结束条件。合盖运行需要在「偏好设置」批准辅助服务。
-3. 如需系统通知，在「消息提醒」中允许通知并发送测试提醒。
+The package is **Apple Development-signed and has not been Developer ID-notarized**. If macOS blocks the first launch, check the download source and follow the Privacy & Security prompt. There is no need to disable SIP or Gatekeeper globally.
 
-安装包使用 **Apple Development 签名，尚未完成 Developer ID 公证**。首次打开被拦截时，核对下载来源后按 macOS「隐私与安全性」提示操作，无需关闭 SIP 或全局 Gatekeeper。
-
-将 ZIP 和发布页的 `SHA256SUMS.txt` 放在同一目录，可校验下载：
+To verify the download, place the ZIP and the release's `SHA256SUMS.txt` in the same directory:
 
 ```sh
 shasum -a 256 -c SHA256SUMS.txt
 ```
 
-### 升级
+### Upgrading
 
-等待命令和执行计划完成，结束保活，然后退出后台任务服务：
+Wait for commands and plans to finish, end all keep-awake requests, then stop the background task service:
 
 ```sh
 /Applications/Orexin.app/Contents/Helpers/orexin service-stop
 ```
 
-再退出 Orexin，替换应用并重新打开。旧版没有 `service-stop` 命令时跳过此步。现有偏好、记录和日志会保留，旧任务不会重放。
+Quit Orexin, replace the app and reopen it. Skip this step if your old version has no `service-stop` command. Preferences, history and logs are retained; old tasks are not replayed.
 
-### 使用注意
+### Before use
 
-- “工作时保持未锁定”是可选设置，需单独授权。它会在本次工作期间关闭唤醒密码要求，结束后恢复即时密码保护；Orexin 不保存密码，也不会解锁已锁定的 Mac。
-- 亮度 0% 与熄屏不同。依赖显示器的截图或界面自动化可能在熄屏后受影响。
-- 恢复正常模式只释放 Orexin 的保活，其他应用仍可能阻止休眠。
-- 高温保护依据 macOS 的温度压力等级，不提供摄氏温度；降温后不会自动重启已停止的工作。
+- “Keep unlocked while working” is optional and requires separate authorization. It disables the wake-password requirement for the session and restores immediate password protection when work ends. Orexin does not store passwords or unlock a locked Mac.
+- Zero brightness differs from display sleep. Turning the display off may affect screenshots or UI automation that depend on it.
+- Returning to Normal Sleep releases Orexin's requests. Other apps may still prevent sleep.
+- Thermal protection uses macOS thermal-pressure levels, not Celsius readings. Cooling does not restart stopped work.
 
-## 任务管理与 CLI
+## Task management and CLI
 
-后台命令和执行计划可在退出界面后继续运行；手动会话和自动规则需要界面进程运行。服务重启后，未完成任务记为失联，不会自动重跑。
+Background commands and plans continue after you quit the interface. Manual sessions and automatic rules require the interface process. Restarting the service marks unfinished tasks as lost without rerunning them.
 
-内置 CLI 位于应用包中，无需另行安装：
+The CLI is bundled with the app:
 
 ```sh
 orexin=/Applications/Orexin.app/Contents/Helpers/orexin
@@ -78,13 +76,13 @@ orexin=/Applications/Orexin.app/Contents/Helpers/orexin
 "$orexin" list --json
 ```
 
-默认在命令结束后释放该任务的保活。加上 `--after sleep`，可在成功后进入 60 秒休眠倒计时；需要所有重叠请求成功，且没有其他会话或规则仍在保活。释放保活不会终止命令。
+By default, finishing a command releases that task's keep-awake request. Add `--after sleep` to start a 60-second sleep countdown after success. All overlapping requests must succeed, and no other session or rule may still require wakefulness. Releasing a request does not terminate its command.
 
-“工作时保持未锁定”的授权需先在界面完成，CLI 不会弹出密码窗口。参数、外部任务接入和计划格式见 [CLI 指南](docs/CLI.md) 与 [执行计划指南](docs/EXECUTION-PLANS.md)。
+If “Keep unlocked while working” is enabled, authorize it in the interface first; the CLI does not show password dialogs. See the [CLI guide](docs/CLI.md) and [execution-plan guide](docs/EXECUTION-PLANS.md) for options, external integrations and plan formats.
 
-## 从源码构建
+## Build from source
 
-需要 **Xcode 26+、Swift 6**。
+Requires **Xcode 26+ and Swift 6**.
 
 ```sh
 git clone https://github.com/Orxooo/Orexin.git
@@ -93,22 +91,22 @@ swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
 
-输出为 `/tmp/orexin-dist/Orexin.app`，默认使用 ad hoc 签名。合盖服务要求主程序和辅助服务使用同一 Apple 开发者证书：
+The output is `/tmp/orexin-dist/Orexin.app`, signed ad hoc by default. Lid-closed operation requires the app and helper to use the same Apple developer certificate:
 
 ```sh
-OREXIN_SIGN_IDENTITY='证书名称或 SHA-1' ./scripts/build-app.sh
+OREXIN_SIGN_IDENTITY='Certificate name or SHA-1' ./scripts/build-app.sh
 ```
 
-可用 `OREXIN_BUILD_DIR`、`OREXIN_OUTPUT_DIR` 指定构建与输出目录。CI 配置为 Xcode 26.3、macOS 15 / 26，运行结果见 [Actions](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml)。
+Use `OREXIN_BUILD_DIR` and `OREXIN_OUTPUT_DIR` to set build and output directories. CI is configured for Xcode 26.3 on macOS 15 / 26; see [Actions](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml) for results.
 
-## 文档与反馈
+## Documentation and feedback
 
-- [工作配置](docs/WORK-CONFIGURATION.md) · [AppleScript 词典](Resources/Orexin.sdef) · [安全说明](SECURITY.md)
-- [报告问题](https://github.com/Orxooo/Orexin/issues/new/choose) · [讨论](https://github.com/Orxooo/Orexin/discussions) · [私密漏洞报告](https://github.com/Orxooo/Orexin/security/advisories/new)
-- [贡献指南](CONTRIBUTING.md) · [行为准则](CODE_OF_CONDUCT.md)
+- [Work profiles](docs/WORK-CONFIGURATION.md) · [AppleScript dictionary](Resources/Orexin.sdef) · [Security](SECURITY.md)
+- [Report a bug](https://github.com/Orxooo/Orexin/issues/new/choose) · [Discussions](https://github.com/Orxooo/Orexin/discussions) · [Private vulnerability reports](https://github.com/Orxooo/Orexin/security/advisories/new)
+- [Contributing](CONTRIBUTING.md) · [Code of conduct](CODE_OF_CONDUCT.md)
 
-本地记录与日志位于 `~/Library/Application Support/Orexin/`。旧 WakeMac 数据不会自动迁移或删除，分享日志前请检查私人信息。
+Local history and logs are stored in `~/Library/Application Support/Orexin/`. Legacy WakeMac data is not migrated or deleted automatically. Check logs for private information before sharing them.
 
-## 许可
+## License
 
-[GPL-3.0-only](LICENSE) · © 2026 Orxooo。第三方资源许可见 [NOTICE](NOTICE)。
+[GPL-3.0-only](LICENSE) · © 2026 Orxooo. Third-party licenses are listed in [NOTICE](NOTICE).

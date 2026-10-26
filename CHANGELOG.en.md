@@ -2,7 +2,7 @@
 
 [简体中文](CHANGELOG.md) · [繁體中文](CHANGELOG.zh-Hant.md) · **English** · [日本語](CHANGELOG.ja.md) · [Français](CHANGELOG.fr.md) · [Deutsch](CHANGELOG.de.md) · [Español](CHANGELOG.es.md)
 
-[Back to README](README.en.md)
+[Back to README](README.md)
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
