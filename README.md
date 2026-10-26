@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Assets/README/cover.png" width="100%" alt="Orexin：深蓝月蚀与琥珀色光弧，Stay awake. Rest on time.">
+</p>
+
 # Orexin
 
 **简体中文** · [English](README.en.md)

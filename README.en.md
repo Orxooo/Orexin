@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="Assets/README/cover.png" width="100%" alt="Orexin: a midnight-blue eclipse and amber orbital arcs. Stay awake. Rest on time.">
+</p>
+
 # Orexin
 
 [简体中文](README.md) · **English**
