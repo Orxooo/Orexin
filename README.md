@@ -2,16 +2,18 @@
 
 **简体中文** · [English](README.en.md)
 
-[![Release](https://img.shields.io/badge/Release-v1.0.3-56d7df)](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3)
+[![Release](https://img.shields.io/github/v/release/Orxooo/Orexin?color=56d7df&label=release)](https://github.com/Orxooo/Orexin/releases/latest)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-8ba6b8)
 [![CI](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main)](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6)](LICENSE)
 
-Orexin 是 macOS 菜单栏保活工具，适合编译、下载和演示。支持合盖运行，按时间或任务完成情况结束保活。
+Orexin 是 macOS 菜单栏工具，用来控制 Mac 何时保持唤醒、何时允许休眠。
 
-[下载 V1.0.3](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3) · [更新记录](CHANGELOG.md) · [使用手册](https://github.com/Orxooo/Orexin/wiki)
+编译、下载、演示或运行长任务时，可以选择桌面或合盖工作，通过定时会话、自动规则和命令任务管理结束条件。
 
-![Orexin V1.0.3 工作模式页面，创主题](Assets/README/orexin-1.0.3-modes.png)
+[下载最新版](https://github.com/Orxooo/Orexin/releases/latest) · [更新记录](CHANGELOG.md) · [使用手册](https://github.com/Orxooo/Orexin/wiki)
+
+![Orexin 工作模式页面，创主题](Assets/README/orexin-1.0.3-modes.png)
 
 ## 功能
 
@@ -20,7 +22,7 @@ Orexin 是 macOS 菜单栏保活工具，适合编译、下载和演示。支持
 - **工作会话**：按时长、指定时间、应用或进程退出、下载完成等条件结束。
 - **命令与执行计划**：并行运行命令，查看退出码和日志；用 JSON 编排依赖、并发数量和失败分支。
 - **自动规则与配置**：按电源、显示器、设备、应用、网络或时间触发；支持嵌套条件、试运行和配置导入导出。
-- **保护与提醒**：可启用低电量和高温保护，查看服务异常、会话结束预告和更新提醒。
+- **保护与提醒**：可启用低电量和高温保护，查看服务异常、会话结束预告和更新提醒；支持系统通知与应用内弹窗，更新由用户手动安装。
 
 提供创、齐马蓝、银翼杀手 2049 三套主题，支持中简、中繁、英、日、法、德、西七种语言。详细说明见 [功能清单](FEATURES.md)。
 
@@ -30,7 +32,7 @@ Orexin 是 macOS 菜单栏保活工具，适合编译、下载和演示。支持
 
 需要 **Apple Silicon Mac、macOS 15 或更新版本**。
 
-1. 从 [发布页](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3) 下载 `Orexin-1.0.3-arm64.zip`，解压并将 `Orexin.app` 放入「应用程序」。
+1. 从 [发布页](https://github.com/Orxooo/Orexin/releases/latest) 下载 Apple Silicon 安装包（文件名以 `-arm64.zip` 结尾），解压并将 `Orexin.app` 放入「应用程序」。
 2. 打开应用，选择工作模式和结束条件。合盖运行需要在「偏好设置」批准辅助服务。
 3. 如需系统通知，在「消息提醒」中允许通知并发送测试提醒。
 
@@ -44,13 +46,13 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ### 升级
 
-等待命令和执行计划完成，结束保活。旧版为 V1.0.0 或更新版本时，先退出后台任务服务：
+等待命令和执行计划完成，结束保活，然后退出后台任务服务：
 
 ```sh
 /Applications/Orexin.app/Contents/Helpers/orexin service-stop
 ```
 
-再退出 Orexin，替换应用并重新打开。预览版无需运行上述命令。现有偏好、记录和日志会保留，旧任务不会重放。
+再退出 Orexin，替换应用并重新打开。旧版没有 `service-stop` 命令时跳过此步。现有偏好、记录和日志会保留，旧任务不会重放。
 
 ### 使用注意
 
@@ -75,12 +77,6 @@ orexin=/Applications/Orexin.app/Contents/Helpers/orexin
 默认在命令结束后释放该任务的保活。加上 `--after sleep`，可在成功后进入 60 秒休眠倒计时；需要所有重叠请求成功，且没有其他会话或规则仍在保活。释放保活不会终止命令。
 
 “工作时保持未锁定”的授权需先在界面完成，CLI 不会弹出密码窗口。参数、外部任务接入和计划格式见 [CLI 指南](docs/CLI.md) 与 [执行计划指南](docs/EXECUTION-PLANS.md)。
-
-## 消息提醒与更新
-
-「消息提醒」保留最近 100 条消息。应用在启动后及每 6 小时检查正式版更新，同一版本只提醒一次，下载和安装需手动完成。完全退出界面后停止检查。
-
-系统通知受 macOS 权限和专注模式控制；未开启时仍可查看应用内消息。重要事件弹窗和高温提示音可单独设置。
 
 ## 从源码构建
 

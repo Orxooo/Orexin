@@ -2,16 +2,18 @@
 
 [简体中文](README.md) · **English**
 
-[![Release](https://img.shields.io/badge/Release-v1.0.3-56d7df)](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3)
+[![Release](https://img.shields.io/github/v/release/Orxooo/Orexin?color=56d7df&label=release)](https://github.com/Orxooo/Orexin/releases/latest)
 ![macOS 15+](https://img.shields.io/badge/macOS-15%2B-8ba6b8)
 [![CI](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml/badge.svg?branch=main)](https://github.com/Orxooo/Orexin/actions/workflows/compatibility.yml)
 [![GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-b7c8d6)](LICENSE)
 
-Orexin is a macOS menu bar utility that keeps your Mac awake for builds, downloads and presentations. It supports working with the lid closed and ending sessions on a timer or when tasks finish.
+Orexin is a macOS menu bar utility for controlling when your Mac stays awake and when it can sleep.
 
-[Download V1.0.3](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3) · [Changelog](CHANGELOG.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
+Use it for builds, downloads, presentations or long-running tasks, at your desk or with the lid closed. Timed sessions, automatic rules and command tasks let you choose when to stop keeping the Mac awake.
 
-![Orexin V1.0.3 work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.0.3-modes.png)
+[Download latest](https://github.com/Orxooo/Orexin/releases/latest) · [Changelog](CHANGELOG.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
+
+![Orexin work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.0.3-modes.png)
 
 ## Features
 
@@ -20,7 +22,7 @@ Orexin is a macOS menu bar utility that keeps your Mac awake for builds, downloa
 - **Sessions:** End after a duration, at a set time, when an app or process exits, or when a download finishes.
 - **Commands and plans:** Run commands concurrently with exit codes and logs. Define dependencies, concurrency limits and failure branches in JSON.
 - **Rules and profiles:** Trigger work from power, display, device, app, network or time conditions. Supports nested conditions, trial runs and configuration import/export.
-- **Protection and alerts:** Optional low-battery and thermal protection, service alerts, session-end warnings and update notifications.
+- **Protection and alerts:** Optional low-battery and thermal protection, service alerts, session-end warnings and update reminders, with system notifications and in-app popups. Updates are installed manually.
 
 Includes Tron, Zima Blue and Blade Runner 2049 themes, with Simplified Chinese, Traditional Chinese, English, Japanese, French, German and Spanish. See the [feature reference](FEATURES.md) for details.
 
@@ -28,7 +30,7 @@ Includes Tron, Zima Blue and Blade Runner 2049 themes, with Simplified Chinese, 
 
 Requires **Apple Silicon and macOS 15 or later**.
 
-1. Download `Orexin-1.0.3-arm64.zip` from the [release page](https://github.com/Orxooo/Orexin/releases/tag/v1.0.3), extract it and move `Orexin.app` to Applications.
+1. Download the Apple Silicon package (filename ending in `-arm64.zip`) from the [release page](https://github.com/Orxooo/Orexin/releases/latest), extract it and move `Orexin.app` to Applications.
 2. Open the app and choose a work mode and end condition. Working with the lid closed requires helper approval in Settings.
 3. To receive system notifications, allow them in **Messages & alerts** and send a test alert.
 
@@ -42,13 +44,13 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ### Upgrading
 
-Wait for commands and plans to finish, then end all keep-awake requests. If upgrading from V1.0.0 or later, stop the background task service:
+Wait for commands and plans to finish, end all keep-awake requests, then stop the background task service:
 
 ```sh
 /Applications/Orexin.app/Contents/Helpers/orexin service-stop
 ```
 
-Quit Orexin, replace the app and reopen it. Preview versions do not need the command above. Preferences, history and logs are retained; old tasks are not replayed.
+Quit Orexin, replace the app and reopen it. Skip this step if your old version has no `service-stop` command. Preferences, history and logs are retained; old tasks are not replayed.
 
 ### Before use
 
@@ -73,12 +75,6 @@ orexin=/Applications/Orexin.app/Contents/Helpers/orexin
 By default, finishing a command releases that task's keep-awake request. Add `--after sleep` to start a 60-second sleep countdown after success. All overlapping requests must succeed, and no other session or rule may still require wakefulness. Releasing a request does not terminate its command.
 
 If “Keep unlocked while working” is enabled, authorize it in the interface first; the CLI does not show password dialogs. See the [CLI guide](docs/CLI.md) and [execution-plan guide](docs/EXECUTION-PLANS.md) for options, external integrations and plan formats.
-
-## Messages and updates
-
-**Messages & alerts** keeps the latest 100 messages. The app checks for stable updates at launch and every six hours, announcing each version once. Downloads and installation are manual. Quitting the interface stops update checks.
-
-System notifications depend on macOS permissions and Focus settings. Messages remain available in the app when notifications are disabled. Important-event popups and thermal alert sounds have separate settings.
 
 ## Build from source
 
