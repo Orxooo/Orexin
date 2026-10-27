@@ -135,7 +135,10 @@ enum BuiltInBrightness {
     }
     func behavior(for mode: WorkMode) -> WorkScreenBehavior {
         if runtimeBehavior == .immediateSleep { return .immediateSleep }
-        return requestBehavior ?? runtimeBehavior ?? (mode == .background ? background : desktop)
+        return requestBehavior ?? ownBehavior(for: mode)
+    }
+    func ownBehavior(for mode: WorkMode) -> WorkScreenBehavior {
+        runtimeBehavior ?? (mode == .background ? background : desktop)
     }
     func resumeAfterDisplayWake() {
         guard runtimeBehavior == .immediateSleep else { return }

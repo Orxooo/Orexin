@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Orxooo
 
 import AppKit
+import ApplicationServices
 import Combine
 import WakeMacCore
 
@@ -73,10 +74,22 @@ struct SessionBehaviorOverride: Equatable {
     } }
     @Published var defaultMode: WorkMode = .desk { didSet { preferences.set(defaultMode == .background ? "background" : "desk", forKey: "orexin.session.defaultMode") } }
     @Published var preventDisplaySleep = false { didSet { saveChoices() } }
-    @Published var preventScreenSaver = false { didSet { saveChoices() } }
+    @Published var preventScreenSaver = false { didSet { hasScreenSaverPreference = true; saveChoices() } }
+    private var hasScreenSaverPreference = false
     var screenPolicyPreventsSleep: Bool?
+    var requestedScreenSaverPrevention: Bool?
+    var configuredScreenPolicyProvider: (() -> Bool)?
+    @Published var screenSaverControlAvailable = true
     // Cursor motion always starts disabled. Granting Accessibility is a separate explicit action.
     @Published var moveCursor = false
+    @Published private(set) var cursorAccessGranted = false
+    @Published private(set) var cursorAccessStatus = "尚未检查辅助功能权限"
+    var cursorAccessCheck: () -> Bool = { AXIsProcessTrusted() }
+    var cursorAccessRequest: () -> Bool = NativeSessionEffects.requestAccessibility
+    var cursorAccessSettings: () -> Bool = {
+        guard let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility") else { return false }
+        return NSWorkspace.shared.open(url)
+    }
     @Published var driveAlive = false { didSet { saveChoices() } }
     @Published var driveDirectories: [URL] = [] { didSet { preferences.set(driveDirectories.map(\.path), forKey: "orexin.session.driveDirectories") } }
     @Published private(set) var isActive = false
@@ -121,7 +134,10 @@ struct SessionBehaviorOverride: Equatable {
         screenSaverExceptionBundleIDs = Array(Set(preferences.stringArray(forKey: "orexin.session.screenSaverExceptions") ?? [])).filter { !$0.isEmpty }.sorted()
         defaultMode = preferences.string(forKey: "orexin.session.defaultMode") == "background" ? .background : .desk
         preventDisplaySleep = preferences.bool(forKey: "orexin.session.preventDisplaySleep")
-        preventScreenSaver = preferences.bool(forKey: "orexin.session.preventScreenSaver")
+        // Initializing through the backing wrapper avoids treating the default
+        // value as a user choice when no saver preference has been stored.
+        _preventScreenSaver = Published(initialValue: preferences.bool(forKey: "orexin.session.preventScreenSaver"))
+        hasScreenSaverPreference = preferences.object(forKey: "orexin.session.preventScreenSaver") != nil
         driveAlive = preferences.bool(forKey: "orexin.session.driveAlive")
         downloadStabilitySeconds = Self.validInterval(preferences.object(forKey: "orexin.session.downloadStabilitySeconds") as? Double ?? 30, fallback: 30)
         mouseMovementIntervalSeconds = Self.validInterval(preferences.object(forKey: "orexin.session.mouseMovementIntervalSeconds") as? Double ?? 60, fallback: 60)
@@ -133,10 +149,21 @@ struct SessionBehaviorOverride: Equatable {
     }
 
     var choices: SessionEffectChoices {
-        SessionEffectChoices(preventDisplaySleep: effectivePreventDisplaySleep, preventScreenSaver: screenPolicyPreventsSleep ?? effectivePreventScreenSaver, moveCursor: moveCursor && screenPolicyPreventsSleep != false, driveAlive: driveAlive, mouseMovementIntervalSeconds: mouseMovementIntervalSeconds, mouseOnlyWhenIdle: mouseOnlyWhenIdle, mouseIdleThresholdSeconds: mouseIdleThresholdSeconds, mouseStopAfterIdleSeconds: mouseStopAfterIdleSeconds, diskAccessIntervalSeconds: diskAccessIntervalSeconds)
+        SessionEffectChoices(preventDisplaySleep: effectivePreventDisplaySleep, preventScreenSaver: effectivePreventScreenSaver, moveCursor: moveCursor && screenPolicyPreventsSleep != false, driveAlive: driveAlive, mouseMovementIntervalSeconds: mouseMovementIntervalSeconds, mouseOnlyWhenIdle: mouseOnlyWhenIdle, mouseIdleThresholdSeconds: mouseIdleThresholdSeconds, mouseStopAfterIdleSeconds: mouseStopAfterIdleSeconds, diskAccessIntervalSeconds: diskAccessIntervalSeconds)
     }
-    var effectivePreventDisplaySleep: Bool { screenPolicyPreventsSleep ?? effectOverrides?.display ?? preventDisplaySleep }
-    var effectivePreventScreenSaver: Bool { screenPolicyPreventsSleep ?? effectOverrides?.saver ?? preventScreenSaver }
+    var effectivePreventDisplaySleep: Bool {
+        screenPolicyPreventsSleep ?? effectOverrides?.display ?? configuredScreenPolicyProvider?() ?? preventDisplaySleep
+    }
+    var effectivePreventScreenSaver: Bool {
+        // Allowing display sleep must release activity assertions. While keeping
+        // the display awake, an explicit saver choice remains independent.
+        let displayPrevention = screenPolicyPreventsSleep ?? configuredScreenPolicyProvider?()
+        if displayPrevention == false { return false }
+        return requestedScreenSaverPrevention ?? screenSaverChoice(keepingDisplayActive: displayPrevention ?? false)
+    }
+    func screenSaverChoice(keepingDisplayActive: Bool) -> Bool {
+        effectOverrides?.saver ?? (hasScreenSaverPreference ? preventScreenSaver : keepingDisplayActive)
+    }
     var screenSaverExceptionActive: Bool {
         guard workingProvider?() == true else { return false }
         for identifier in screenSaverExceptionBundleIDs {
@@ -176,13 +203,13 @@ struct SessionBehaviorOverride: Equatable {
     }
     private func saveChoices() {
         preferences.set(preventDisplaySleep, forKey: "orexin.session.preventDisplaySleep")
-        preferences.set(preventScreenSaver, forKey: "orexin.session.preventScreenSaver")
+        if hasScreenSaverPreference { preferences.set(preventScreenSaver, forKey: "orexin.session.preventScreenSaver") }
         preferences.set(driveAlive, forKey: "orexin.session.driveAlive")
     }
 
     func start(now: Date = Date()) async {
         guard !stopped, !isActive, !isStarting else { return }
-        effects.release(); effectReport = SessionEffectReport()
+        effects.release(); effectReport = inactiveEffectReport()
         downloadProgressObserver.stop(); downloadProgressPercent = nil
         downloadStamp = nil; downloadObservedProgress = false; downloadStableSince = nil; downloadObservedURL = nil; downloadFinalBaseline = nil
         let newPlan: SessionPlan
@@ -245,13 +272,13 @@ struct SessionBehaviorOverride: Equatable {
     /// Called before every manual mode/lock action, so a monitored session cannot later undo it.
     func manualModeChanged() {
         if isActive || isStarting { clear(status: "会话已随手动操作取消") }
-        else { effects.release(); effectReport = SessionEffectReport() }
+        else { effects.release(); effectReport = inactiveEffectReport() }
     }
     func shutdown() { stopped = true; clear(status: "会话已退出") }
 
     private func clear(status: String) {
         generation = UUID(); plan = nil; deadline = nil; isActive = false; isStarting = false
-        effects.release(); effectReport = SessionEffectReport(); self.status = status
+        effects.release(); effectReport = inactiveEffectReport(); self.status = status
         downloadProgressObserver.stop(); downloadProgressPercent = nil
         downloadStamp = nil; downloadStableSince = nil; downloadObservedProgress = false; downloadObservedURL = nil; downloadFinalBaseline = nil
     }
@@ -267,11 +294,11 @@ struct SessionBehaviorOverride: Equatable {
                 await onEnd?()
                 // Do not mutate state after the callback: a manual mode change
                 // may have taken ownership while its asynchronous cleanup awaited.
-            } else { effects.release(); effectReport = SessionEffectReport() }
+            } else { effects.release(); effectReport = inactiveEffectReport() }
             return
         }
         guard isActive, let plan else {
-            effectReport = effects.update(working: true, choices: choices, directories: driveDirectories, now: now)
+            updateEffectReport(now: now)
             return
         }
         var finished = false
@@ -302,7 +329,7 @@ struct SessionBehaviorOverride: Equatable {
             return
         }
         // Effects never substitute for the coordinator's verified system-sleep/lock contract.
-        effectReport = effects.update(working: workingProvider?() == true, choices: choices, directories: driveDirectories, now: now)
+        updateEffectReport(now: now)
     }
 
     private func sessionStatus(now: Date) -> String {
@@ -425,5 +452,43 @@ struct SessionBehaviorOverride: Equatable {
         panel.prompt = "添加目录"; panel.message = "仅选择本地磁盘目录；工作期间按所设间隔写入并同步一个临时小文件，然后删除。"
         if panel.runModal() == .OK, let url = panel.url, !driveDirectories.contains(url) { driveDirectories.append(url) }
     }
-    func requestCursorAccess() { NativeSessionEffects.requestAccessibility() }
+    private func inactiveEffectReport() -> SessionEffectReport {
+        var report = SessionEffectReport()
+        if effectivePreventDisplaySleep { report.display = "等待进入工作模式" }
+        if effectivePreventScreenSaver { report.screenSaver = "等待进入工作模式" }
+        if moveCursor { report.cursor = "等待进入工作模式" }
+        return report
+    }
+    private func updateEffectReport(now: Date) {
+        let working = workingProvider?() == true
+        guard working else { effects.release(); effectReport = inactiveEffectReport(); return }
+        var report = effects.update(working: true, choices: choices, directories: driveDirectories, now: now)
+        if moveCursor, screenPolicyPreventsSleep == false {
+            report.cursor = "当前屏幕策略允许熄屏，鼠标移动已暂停"
+        }
+        if screenPolicyPreventsSleep == true, effectOverrides?.display == false {
+            report.display = "其他工作任务要求显示器保持唤醒"
+        }
+        if requestedScreenSaverPrevention == true,
+           !screenSaverChoice(keepingDisplayActive: screenPolicyPreventsSleep == true) {
+            report.screenSaver = "其他工作任务仍要求暂停屏保"
+        }
+        effectReport = report
+    }
+    func refreshCursorAccess() {
+        cursorAccessGranted = cursorAccessCheck()
+        cursorAccessStatus = cursorAccessGranted ? "辅助功能已授权" : "需要在系统设置中授予辅助功能权限"
+    }
+    func requestCursorAccess() {
+        refreshCursorAccess()
+        guard !cursorAccessGranted else { return }
+        if cursorAccessRequest() {
+            cursorAccessGranted = true
+            cursorAccessStatus = "辅助功能已授权"
+        } else {
+            cursorAccessStatus = cursorAccessSettings()
+                ? "已打开辅助功能设置，请开启 Orexin 后返回"
+                : "无法打开权限设置，请前往系统设置的隐私与安全性检查辅助功能"
+        }
+    }
 }

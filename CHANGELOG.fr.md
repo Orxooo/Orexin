@@ -6,6 +6,12 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.4 — 2026-10-26
+
+- Correction des options de session écrasées par la politique d’écran. Le blocage de l’économiseur peut être désactivé séparément ; son activation sélectionne une politique compatible.
+- L’autorisation d’accessibilité affiche son état et ouvre les Réglages Système. Le pointeur indique pourquoi son déplacement est en attente ou suspendu.
+- Éditeur de règles réorganisé : champs étiquetés, options avancées repliables, actions Enregistrer et Annuler fixes, et moins de bordures et de zones de défilement imbriquées.
+
 ## V1.0.3 — 2026-10-25
 
 - Ajout de « Messages et alertes », qui conserve les messages de mise à jour, d’anomalie du service, d’expiration des demandes, d’avertissement de fin de session et de protection thermique.

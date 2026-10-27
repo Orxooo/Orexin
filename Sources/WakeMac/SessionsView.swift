@@ -5,6 +5,7 @@ import SwiftUI
 import WakeMacCore
 
 struct SessionsView: View {
+    @ObservedObject var model: AppModel
     @ObservedObject var controller: SessionController
     @State private var extensionMinutes: Double = 15
     @State private var processSearch = ""
@@ -19,14 +20,12 @@ struct SessionsView: View {
     }
     private var displayPrevention: Binding<Bool> {
         Binding(get: { controller.effectivePreventDisplaySleep }, set: { value in
-            if controller.workingProvider?() == true { controller.setDisplayPrevention(value) }
-            else { controller.preventDisplaySleep = value }
+            Task { await model.changeDisplayPrevention(value) }
         })
     }
     private var saverPrevention: Binding<Bool> {
         Binding(get: { controller.effectivePreventScreenSaver }, set: { value in
-            if controller.workingProvider?() == true { controller.setScreenSaverPrevention(value) }
-            else { controller.preventScreenSaver = value }
+            Task { await model.changeScreenSaverPrevention(value) }
         })
     }
 
@@ -34,6 +33,10 @@ struct SessionsView: View {
         VStack(alignment: .leading, spacing: 18) {
             settingsPanel
             effectsPanel
+        }
+        .task { controller.refreshCursorAccess() }
+        .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
+            controller.refreshCursorAccess()
         }
     }
 
@@ -184,9 +187,15 @@ struct SessionsView: View {
     private var effectsPanel: some View {
         sessionPanel(number: "02", title: "会话效果", subtitle: "HARDWARE ASSERTION MATRIX", signal: TerminalStyle.signal) {
             VStack(alignment: .leading, spacing: 12) {
-                effectText("手动、会话和自动触发的工作模式均适用；恢复正常休眠后停止。")
-                effectRow(code: "DISPLAY", descriptor: "IDLE DISPLAY", title: "防止显示器闲时休眠", detail: "不会改变锁屏或密码设置；锁定后暂停。", isOn: displayPrevention, report: controller.effectReport.display) { EmptyView() }
-                effectRow(code: "SAVER", descriptor: "USER ACTIVITY", title: "防止闲时屏保", detail: "声明用户活动延后屏保和显示器休眠；锁定后暂停。", isOn: saverPrevention, report: controller.effectReport.screenSaver,
+                effectText("开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。")
+                if model.screenEffectsControlledByOtherTasks {
+                    WorkNote(text: "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。")
+                }
+                if !controller.screenSaverControlAvailable {
+                    WorkNote(text: "当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。")
+                }
+                effectRow(code: "DISPLAY", descriptor: "IDLE DISPLAY", title: "防止显示器闲时休眠", detail: "不会改变锁屏或密码设置；锁定后暂停。", isOn: displayPrevention, report: controller.effectReport.display, enabled: !model.screenEffectsControlledByOtherTasks) { EmptyView() }
+                effectRow(code: "SAVER", descriptor: "USER ACTIVITY", title: "防止闲时屏保", detail: "开启时也会保持显示器唤醒；锁定后暂停。", isOn: saverPrevention, report: controller.effectReport.screenSaver, enabled: controller.screenSaverControlAvailable && !model.screenEffectsControlledByOtherTasks,
                           actionTitle: L("例外应用") + (controller.screenSaverExceptionBundleIDs.isEmpty ? "" : " · \(controller.screenSaverExceptionBundleIDs.count)"), action: { showingSaverOptions.toggle() }) {
                     if showingSaverOptions {
                         VStack(alignment: .leading, spacing: 10) {
@@ -217,8 +226,12 @@ struct SessionsView: View {
                                 secondsField("闲置多久后停止移动", value: Binding(get: { controller.mouseStopAfterIdleSeconds ?? 3600 }, set: { controller.mouseStopAfterIdleSeconds = $0 }))
                             }
                             WorkNote(text: "保留系统闲置计时；显示器和屏保由各自开关控制。")
-                            Button(L("授权辅助功能")) { controller.requestCursorAccess() }
+                            Text(L(controller.cursorAccessStatus)).font(WorkType.caption)
+                                .foregroundStyle(controller.cursorAccessGranted ? TerminalStyle.signal : WorkStyle.muted)
+                                .fixedSize(horizontal: false, vertical: true)
+                            Button(L(controller.cursorAccessGranted ? "辅助功能已授权" : "授权辅助功能")) { controller.requestCursorAccess() }
                                 .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+                                .disabled(controller.cursorAccessGranted)
                         }
                     }
                 }
@@ -250,6 +263,7 @@ struct SessionsView: View {
     }
 
     private func effectRow<Content: View>(code: String, descriptor: String, title: String, detail: String, isOn: Binding<Bool>, report: String,
+                                          enabled: Bool = true,
                                           actionTitle: String? = nil, action: (() -> Void)? = nil,
                                           @ViewBuilder controls: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -276,6 +290,7 @@ struct SessionsView: View {
                 Spacer(minLength: 0)
                 VStack(alignment: .trailing, spacing: 8) {
                     Toggle(L(title), isOn: isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
+                            .disabled(!enabled)
                         .accessibilityLabel(title).accessibilityHint(detail)
                     if let actionTitle, let action {
                         Button(L(actionTitle), action: action).font(WorkType.caption)

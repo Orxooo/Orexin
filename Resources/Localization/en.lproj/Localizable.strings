@@ -1390,3 +1390,33 @@
 "温度保护触发：系统温度压力达到%@；紧急释放已关闭，保活状态保持不变。" = "Temperature protection trigger: System temperature pressure reaches%@; Emergency release has been closed, and the survival status remains unchanged.";
 "已在系统通知中心确认测试提醒。" = "Test alert confirmed in Notification Center.";
 "测试提醒已提交给系统；如未显示，请检查专注模式与通知设置。" = "Test alert submitted. If it does not appear, check Focus and notification settings.";
+
+// Orexin 1.0.4: session controls and rule editor
+"仅在本规则接管工作模式时生效；锁屏后暂停亮屏与屏保保活。" = "Applies only while this rule controls work mode. Display and screen saver prevention pause when locked.";
+"仅预览结果，不保存或切换模式。" = "Preview only. Does not save or switch modes.";
+"优先级越高越先执行；时间设为 0 表示不等待。" = "Higher priority runs first. Set a duration to 0 for no delay.";
+"保存后按规则启用状态生效。" = "After saving, the rule follows its enabled state.";
+"匹配与竞争说明" = "Matching and priority details";
+"匹配方式" = "Match conditions";
+"尚未检查辅助功能权限" = "Accessibility access has not been checked.";
+"已打开辅助功能设置，请开启 Orexin 后返回" = "Accessibility settings opened. Enable Orexin, then return here.";
+"开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。" = "Configure these switches in advance. Effects run in Desktop or Background Work and stop in Normal Sleep.";
+"开启时也会保持显示器唤醒；锁定后暂停。" = "Also keeps the display awake. Pauses when locked.";
+"当前屏幕策略允许熄屏，鼠标移动已暂停" = "Pointer movement is paused because the current display policy allows sleep.";
+"执行效果" = "Effects";
+"无法打开权限设置，请前往系统设置的隐私与安全性检查辅助功能" = "Could not open permissions. Check Accessibility under Privacy & Security in System Settings.";
+"时间与优先级" = "Timing and priority";
+"更多操作" = "More actions";
+"条件满足时开始工作，条件解除后释放保活。" = "Start work when conditions match; release keep-awake when they clear.";
+"条件组" = "Condition group";
+"正在检查…" = "Checking…";
+"满足以下条件时执行规则。" = "Run this rule when the following conditions match.";
+"等待进入工作模式" = "Waiting for a work mode.";
+"自动触发总开关已关闭，保存后仍需开启自动触发。" = "Automatic triggers are paused. Enable them after saving to run this rule.";
+"触发条件" = "Trigger conditions";
+"辅助功能已授权" = "Accessibility access granted.";
+"允许熄屏时，屏保延后会暂停。" = "Allowing display sleep pauses screen saver prevention.";
+"当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。" = "The current background service does not support independent screen saver control. Finish your tasks, then restart the background service.";
+"其他工作任务要求显示器保持唤醒" = "Other work tasks require the display to stay awake.";
+"其他工作任务仍要求暂停屏保" = "Other work tasks still require screen saver prevention.";
+"当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Only other tasks are running. Start a work session to adjust display and screen saver settings.";

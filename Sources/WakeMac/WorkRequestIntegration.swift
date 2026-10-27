@@ -13,7 +13,7 @@ extension AppModel {
         guard let demand = workRequests.demand else { workScreen.requestBehavior = nil; return }
         let requested: WorkScreenBehavior = demand.screen == .awake ? .normalBrightness : demand.screen == .dim ? .dim : .systemIdle
         if let legacy = legacyWorkMode {
-            let base = workScreen.runtimeBehavior ?? (legacy == .background ? workScreen.background : workScreen.desktop)
+            let base = workScreen.ownBehavior(for: legacy)
             if base == .normalBrightness || requested == .normalBrightness { workScreen.requestBehavior = .normalBrightness }
             else if base == .dim || requested == .dim { workScreen.requestBehavior = .dim }
             else { workScreen.requestBehavior = .systemIdle }
@@ -48,6 +48,7 @@ extension AppModel {
         workRequests.stopAll(reason: reason, now: Date())
         manualWorkMode = nil; sessionWorkMode = nil
         requestCountdownMode = nil; workScreen.requestBehavior = nil
+        sessions.requestedScreenSaverPrevention = nil
         saveWorkRequests()
     }
     @discardableResult func registerWork(_ spec: WorkRequestSpec, handle: WorkRequestHandle = .init(), now: Date = Date()) async throws -> WorkRequestHandle {
@@ -191,6 +192,10 @@ extension AppModel {
         } while requestReconcileNeeded && !busy
     }
     func endOwnedSession(conditionMet: Bool) async {
+        if sessionWorkMode != nil {
+            sessions.effectOverrides = nil
+            workScreen.runtimeBehavior = nil
+        }
         sessionWorkMode = nil
         if workRequests.active.isEmpty && manualWorkMode == nil && triggerOwnedMode == nil {
             await choose(.normal, sleep: conditionMet, automatic: true)

@@ -6,6 +6,12 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.4 — 2026-10-26
+
+- Fixed session effect switches being overridden by display policy. Screen saver prevention can be turned off independently; enabling it selects a compatible display policy.
+- Accessibility authorization now reports its state and opens System Settings. Pointer movement explains why it is waiting or paused.
+- Reorganized the trigger rule editor with labeled fields, collapsible advanced options, fixed Save and Cancel actions, and fewer nested borders and scroll areas.
+
 ## V1.0.3 — 2026-10-25
 
 - Added Messages & alerts to retain update notices, service errors, expired requests, session-end warnings and thermal-protection messages.

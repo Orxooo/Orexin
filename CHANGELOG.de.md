@@ -6,6 +6,12 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.4 — 2026-10-26
+
+- Die Display-Richtlinie überschreibt Sitzungsschalter nicht mehr unbemerkt. Der Bildschirmschonerschutz lässt sich separat deaktivieren; seine Aktivierung wählt eine kompatible Display-Richtlinie.
+- Die Bedienungshilfen-Berechtigung zeigt ihren Status und öffnet die Systemeinstellungen. Die Zeigerbewegung erklärt Wartezeiten und Pausen.
+- Regel-Editor mit beschrifteten Feldern, einklappbaren erweiterten Optionen, festen Speichern- und Abbrechen-Aktionen sowie weniger verschachtelten Rahmen und Scrollbereichen überarbeitet.
+
 ## V1.0.3 — 2026-10-25
 
 - „Meldungen und Hinweise“ hinzugefügt: Speichert Nachrichten zu Updates, Dienstproblemen, abgelaufenen Anforderungen, bevorstehendem Sitzungsende und Wärmeschutz.

@@ -204,9 +204,9 @@ struct SessionEffectReport: Equatable {
         // macOS omits this flag for a normal unlocked console session.
         return session["CGSSessionScreenIsLocked"] as? Bool != true
     }
-    static func requestAccessibility() {
+    @discardableResult static func requestAccessibility() -> Bool {
         // Invoked only by the user pressing the permission button, never by tick/start/tests.
-        _ = AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
+        AXIsProcessTrustedWithOptions([kAXTrustedCheckOptionPrompt.takeUnretainedValue() as String: true] as CFDictionary)
     }
     deinit {
         if let lockObserver { DistributedNotificationCenter.default().removeObserver(lockObserver) }

@@ -6,6 +6,12 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.4 — 2026-10-26
+
+- Corregidos los interruptores de sesión anulados por la política de pantalla. La prevención del salvapantallas se puede desactivar por separado; al activarla se elige una política compatible.
+- La autorización de accesibilidad muestra su estado y abre Ajustes del Sistema. El movimiento del puntero explica por qué está esperando o en pausa.
+- Editor de reglas reorganizado con campos etiquetados, opciones avanzadas plegables, acciones Guardar y Cancelar fijas y menos bordes y zonas de desplazamiento anidados.
+
 ## V1.0.3 — 2026-10-25
 
 - Se añade «Mensajes y avisos», que guarda los mensajes de actualización, fallos del servicio, vencimiento de solicitudes, advertencias de fin de sesión y protección térmica.

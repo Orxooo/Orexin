@@ -15,7 +15,7 @@ extension AppModel {
         reply.batterySleepAt = automation.batterySleepAt
         reply.timeline = try? ControlCoding.encode(Array(history.prefix(100)))
         reply.notices = notices.controlPayload()
-        reply.capabilities = ["notices-v1"]
+        reply.capabilities = ["notices-v1", "session-effects-v1"]
         reply.service = serviceInfo; reply.snapshot = snapshot
         reply.plans = planRuns.reversed().map(PlanRunSummary.init)
         reply.commandLogs = commandLogs.mapValues(\.path)

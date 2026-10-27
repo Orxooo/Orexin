@@ -33,6 +33,7 @@ extension AppModel {
     }
     func adoptServiceReply(_ reply: ControlReply) {
         if let service = reply.service {
+            sessions.screenSaverControlAvailable = reply.capabilities?.contains("session-effects-v1") == true
             let supported = reply.capabilities?.contains("notices-v1") == true
             if !supported {
                 notices.post(.serviceUpgradeRequired, title: "后台提醒尚未完整启用",
@@ -101,11 +102,17 @@ extension AppModel {
         busy = true; error = false; pending = nil
         defer { busy = false; onUpdate?() }
         do {
+            if !reconcilingRequests && (!automatic || mode == .normal) {
+                sessions.effectOverrides = nil
+                workScreen.runtimeBehavior = nil
+            }
             if mode == .normal && !reconcilingRequests {
                 interfaceHandle = nil; interfaceSpec = nil
                 overrideWorkRequests(reason: "User or interface stopped all work")
                 sessions.manualModeChanged(); suppressCurrentTriggers()
                 adoptServiceReply(try await serviceCall(.init(sleep ? "sleep-now" : "stop-all")))
+                sessions.screenPolicyPreventsSleep = nil
+                sessions.requestedScreenSaverPrevention = nil
                 message = sleep ? "已向系统发送休眠请求。" : "已停止全部保活；运行中的命令继续。"
                 return
             }
@@ -126,15 +133,17 @@ extension AppModel {
                         } catch { _ = try? await serviceCall(.init("stop-all")); throw error }
                     }
                     let handle = WorkRequestHandle(), previous = interfaceHandle
-                    let reply = try await serviceCall(.init("interface-register", handle: handle, spec: spec))
+                    _ = try await serviceCall(.init("interface-register", handle: handle, spec: spec))
                     interfaceHandle = handle; interfaceSpec = spec
                     if let previous { _ = try? await serviceCall(.init("complete", handle: previous, exitCode: 0)) }
-                    adoptServiceReply(reply)
-                } else { adoptServiceReply(try await serviceCall(.init("heartbeat", handle: interfaceHandle))) }
+                } else { _ = try await serviceCall(.init("heartbeat", handle: interfaceHandle)) }
             } else if let handle = interfaceHandle {
                 interfaceHandle = nil; interfaceSpec = nil
-                adoptServiceReply(try await serviceCall(.init("complete", handle: handle, exitCode: 0)))
-            } else { adoptServiceReply(try await serviceCall(.init("status"))) }
+                _ = try await serviceCall(.init("complete", handle: handle, exitCode: 0))
+            }
+            // Registration, heartbeat and completion replies contain one task.
+            // Read the full ledger before calculating effects from all owners.
+            adoptServiceReply(try await serviceCall(.init("status")))
             preferences.set(true, forKey: "orexin.HasConfiguredMode")
             message = "后台服务已核验当前工作需求。"
         } catch {
@@ -148,10 +157,11 @@ extension AppModel {
         }
     }
     private func interfaceRequestSpec(for mode: WorkMode) -> WorkRequestSpec {
-        let screen = workScreen.runtimeBehavior ?? (mode == .background ? workScreen.background : workScreen.desktop)
+        let screen = workScreen.ownBehavior(for: mode)
         return WorkRequestSpec(title: "Orexin interface", source: "interface", mode: mode,
                                screen: screen == .normalBrightness ? .awake : screen == .dim ? .dim : .idle,
-                               leaseSeconds: 15, process: LocalProcessIdentity.capture(pid: getpid()))
+                               leaseSeconds: 15, process: LocalProcessIdentity.capture(pid: getpid()),
+                               preventScreenSaver: screen.keepsDisplayActive && sessions.screenSaverChoice(keepingDisplayActive: true))
     }
     func disconnectInterface() async {
         if let handle = interfaceHandle { _ = try? await serviceCall(.init("complete", handle: handle, exitCode: 0)) }

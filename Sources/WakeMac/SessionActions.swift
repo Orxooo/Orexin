@@ -6,17 +6,29 @@ import WakeMacCore
 
 extension AppModel {
     var verifiedWork: Bool { !busy && !error && pending == nil && (active == .desk || active == .background) && keepsAwake && snapshot.map { lockRequirement.accepts($0.lockPolicy) } == true }
+    var screenEffectsControlledByOtherTasks: Bool { verifiedWork && legacyWorkMode == nil && workRequests.demand != nil }
     func changeDisplayPrevention(_ enabled: Bool) async {
-        let mode = active == .background ? WorkMode.background : .desk
-        workScreen.select(enabled ? (mode == .background ? .dim : .normalBrightness) : .systemIdle, for: mode)
-        if verifiedWork { sessions.setDisplayPrevention(enabled) }
-        else { sessions.preventDisplaySleep = enabled }
+        guard !screenEffectsControlledByOtherTasks else {
+            message = "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。"
+            onUpdate?(); return
+        }
+        let mode = legacyWorkMode ?? (active == .background ? WorkMode.background : .desk)
+        if verifiedWork {
+            workScreen.runtimeBehavior = enabled ? (mode == .background ? .dim : .normalBrightness) : .systemIdle
+            sessions.setDisplayPrevention(enabled)
+        } else {
+            for target in [WorkMode.desk, .background] {
+                workScreen.select(enabled ? (target == .background ? .dim : .normalBrightness) : .systemIdle, for: target)
+            }
+            sessions.preventDisplaySleep = enabled
+        }
         await applyWorkScreenPolicy(now: Date())
         onUpdate?()
     }
     func setWorkScreenBehavior(_ behavior: WorkScreenBehavior) async {
         guard verifiedWork, let active else { return }
-        workScreen.select(behavior, for: active)
+        workScreen.select(behavior, for: legacyWorkMode ?? active)
+        sessions.setDisplayPrevention(behavior.keepsDisplayActive)
         await applyWorkScreenPolicy(now: Date())
         onUpdate?()
     }
@@ -44,6 +56,13 @@ extension AppModel {
         if verifiedWork, let active {
             sessions.screenPolicyPreventsSleep = workScreen.behavior(for: active).keepsDisplayActive
         } else { sessions.screenPolicyPreventsSleep = nil }
+        sessions.requestedScreenSaverPrevention = workRequests.demand.map { demand in
+            let ownChoice = legacyWorkMode.map { mode in
+                workScreen.ownBehavior(for: mode).keepsDisplayActive
+                    && sessions.screenSaverChoice(keepingDisplayActive: true)
+            } ?? false
+            return demand.preventScreenSaver || ownChoice
+        }
         await sessions.tick(now: now)
         let state = DisplayState.read()
         observeDisplay(state)
@@ -51,9 +70,33 @@ extension AppModel {
                               onBattery: battery?.onBattery == true, now: now)
     }
     func changeScreenSaverPrevention(_ enabled: Bool) async {
-        if verifiedWork { sessions.setScreenSaverPrevention(enabled) }
-        else { sessions.preventScreenSaver = enabled }
-        await sessions.tick(now: Date())
+        guard !screenEffectsControlledByOtherTasks else {
+            message = "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。"
+            onUpdate?(); return
+        }
+        guard sessions.screenSaverControlAvailable else {
+            message = "当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。"
+            onUpdate?(); return
+        }
+        let mode = legacyWorkMode ?? (active == .background ? WorkMode.background : verifiedWork ? .desk : sessions.defaultMode)
+        if enabled {
+            if verifiedWork {
+                if !workScreen.ownBehavior(for: mode).keepsDisplayActive {
+                    workScreen.runtimeBehavior = mode == .background ? .dim : .normalBrightness
+                    sessions.setDisplayPrevention(true)
+                }
+            } else {
+                for target in [WorkMode.desk, .background] where !workScreen.ownBehavior(for: target).keepsDisplayActive {
+                    workScreen.select(target == .background ? .dim : .normalBrightness, for: target)
+                }
+            }
+        }
+        if verifiedWork {
+            sessions.setScreenSaverPrevention(enabled)
+            // Declaring activity also delays display sleep. Select the matching
+            // policy instead of silently discarding the user's ON action.
+        } else { sessions.preventScreenSaver = enabled }
+        await applyWorkScreenPolicy(now: Date())
         onUpdate?()
     }
     func setTriggersEnabled(_ enabled: Bool) async {
@@ -61,6 +104,7 @@ extension AppModel {
         if !enabled, triggerOwnedMode != nil, !sessions.isActive {
             triggerOwnedMode = nil; triggerOwnedRuleID = nil; appliedTriggerBehavior = nil
             triggerRuntimeMode = nil; sessions.effectOverrides = nil
+            workScreen.runtimeBehavior = nil
             await reconcileWorkRequests()
         }
         if enabled { suppressedTriggerIDs.removeAll() }

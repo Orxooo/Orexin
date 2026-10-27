@@ -257,7 +257,7 @@ struct PreferencesView: View {
     private func sessionsTab(contentWidth: CGFloat) -> some View {
         VStack(alignment: .leading, spacing: 16) {
             orbitalColumns(contentWidth: contentWidth) {
-                SessionsView(controller: model.sessions)
+                SessionsView(model: model, controller: model.sessions)
                 IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: model.snapshot?.lockPolicy == .immediate)
             } trailing: {
                 VStack(spacing: 16) {

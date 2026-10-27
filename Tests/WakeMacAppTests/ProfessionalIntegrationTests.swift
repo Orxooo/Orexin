@@ -110,7 +110,7 @@ import WakeMacCore
         }
         model.appearance.theme = .light
         for width in [CGFloat(1100), CGFloat(614)] {
-            try await capture(ScrollView { SessionsView(controller: model.sessions).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()).preferredColorScheme(.light), name: "sessions-\(Int(width))", width: width)
+            try await capture(ScrollView { SessionsView(model: model, controller: model.sessions).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()).preferredColorScheme(.light), name: "sessions-\(Int(width))", width: width)
             try await capture(IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: true).padding(20).background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).preferredColorScheme(.light), name: "idle-\(Int(width))", width: width)
             try await capture(ScrollView { WorkConfigurationsView(model: model).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()), name: "policies-\(Int(width))", width: width)
             try model.profiles.replace([], revoke: [])

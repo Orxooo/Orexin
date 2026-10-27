@@ -27,10 +27,15 @@ extension AppModel {
     func makeSessionController() -> SessionController {
         let controller = SessionController(preferences: preferences, effects: sessionEffects)
         controller.workingProvider = { [weak self] in self?.verifiedWork == true }
+        controller.configuredScreenPolicyProvider = { [weak self, weak controller] in
+            guard let self, let controller else { return false }
+            return (controller.defaultMode == .background ? self.workScreen.background : self.workScreen.desktop).keepsDisplayActive
+        }
         controller.onBegin = { [weak self] mode in
             guard let self, !self.busy else { return false }
             self.suppressCurrentTriggers()
             self.sessions.effectOverrides = nil
+            self.workScreen.runtimeBehavior = nil
             self.manualWorkMode = nil; self.sessionWorkMode = mode
             await self.choose(mode, automatic: true)
             let verified = self.verifiedWork && (mode != .background || self.active == .background)
@@ -62,6 +67,7 @@ extension AppModel {
         return controller
     }
     func suppressCurrentTriggers() {
+        if triggerOwnedRuleID != nil { workScreen.runtimeBehavior = nil }
         if let id = triggerOwnedRuleID {
             record("自动规则已抑制：手动操作、会话或保护策略优先。",
                    context: HistoryContext(kind: .rule, requestIDs: workRequests.active.map(\.id), ruleID: id, mode: active?.rawValue))
@@ -115,7 +121,9 @@ extension AppModel {
                 sessions.effectOverrides = behavior
                 if let display = desired.preventDisplaySleep {
                     workScreen.runtimeBehavior = display ? (targetMode == .background ? .dim : .normalBrightness) : .systemIdle
-                }
+                } else if desired.preventScreenSaver == true {
+                    workScreen.runtimeBehavior = targetMode == .background ? .dim : .normalBrightness
+                } else { workScreen.runtimeBehavior = nil }
                 await applyWorkScreenPolicy(now: date)
                 await sessions.tick(now: date)
                 featureNotificationHandler?("自动触发：" + desired.name, .triggerChange)
@@ -127,6 +135,7 @@ extension AppModel {
             let endedRuleID = triggerOwnedRuleID
             triggerOwnedMode = nil; triggerOwnedRuleID = nil; appliedTriggerBehavior = nil
             triggerRuntimeMode = nil; sessions.effectOverrides = nil
+            workScreen.runtimeBehavior = nil
             await reconcileWorkRequests()
             if let endedRuleID {
                 record("自动规则结束：条件或时间要求已解除。",

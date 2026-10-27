@@ -366,41 +366,125 @@ struct TriggerRuleEditor: View {
     @State private var preview = TriggerSnapshot()
     @State private var trial: TriggerEvaluationReport?
     @State private var trying = false
+    @State private var showingAdvanced = false
+    private var editorHeight: CGFloat { min(740, max(440, (NSScreen.main?.visibleFrame.height ?? 836) - 96)) }
     private var expression: Binding<TriggerExpression> {
         Binding(get: { rule.effectiveExpression }, set: { rule.expression = $0; trial = nil })
     }
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text(L("编辑触发规则")).font(WorkType.dialogTitle).accessibilityAddTraits(.isHeader)
-            TextField(L("规则名称"), text: $rule.name).textFieldStyle(TerminalTextFieldStyle())
-            HStack {
-                TerminalPicker("进入模式", selection: $rule.mode, choices: [TerminalChoice("桌面工作", .desk), TerminalChoice("后台工作", .background)])
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L("优先级（-1000 至 1000）")).font(.system(size: 10))
-                    TextField(L("优先级"), value: $rule.priority, format: .number).frame(width: 160)
-                }
-            }
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L("持续满足（秒）")).font(.system(size: 10))
-                    TextField(L("持续满足秒数"), value: $rule.sustainedMatchSeconds, format: .number)
-                }
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(L("匹配结束后冷却（秒）")).font(.system(size: 10))
-                    TextField(L("冷却秒数"), value: $rule.cooldownSeconds, format: .number)
-                }
-            }
+        VStack(spacing: 0) {
+            editorHeader
+            separator
             ScrollView {
-                VStack(alignment: .leading, spacing: 10) {
-                    WorkNote(text: "高优先级先执行；同级后台优先，再按规则 ID 升序。未知不会被取反成满足，并会中断持续计时。冷却从已满足时间要求的匹配解除时开始；每约 5 秒采样，超过 15 秒未采样会中断持续计时。")
-                    TriggerExpressionEditor(expression: expression, depth: 0) { condition in
-                        AnyView(conditionFields(condition))
+                VStack(alignment: .leading, spacing: 22) {
+                    basicFields
+                    separator
+                    editorSection("触发条件", detail: "满足以下条件时执行规则。") {
+                        TriggerExpressionEditor(expression: expression, depth: 0) { condition in
+                            AnyView(conditionFields(condition))
+                        }
                     }
-                    if let error = rule.validationError { Text(L(error)).foregroundStyle(.red) }
+                    separator
+                    displayFields
+                    advancedFields
+                    trialControls
+                    if rule.enabled, !controller.enabled {
+                        WorkNote(text: "自动触发总开关已关闭，保存后仍需开启自动触发。")
+                    }
+                }.padding(22).frame(maxWidth: .infinity, alignment: .leading)
+            }.frame(maxWidth: .infinity, maxHeight: .infinity)
+            separator
+            editorFooter
+        }.frame(width: 650, height: editorHeight).background(WorkStyle.canvas).foregroundStyle(WorkStyle.ink)
+            .font(.system(size: 12)).tint(WorkStyle.blue)
+            .buttonStyle(WorkButtonStyle()).focusEffectDisabled().textFieldStyle(TerminalTextFieldStyle())
+            .task(id: rule.allConditions.map(\.kind)) { await refreshPreview() }
+            .onChange(of: rule) { _, _ in trial = nil }
+    }
+    private var separator: some View { Rectangle().fill(WorkStyle.line.opacity(0.6)).frame(height: 1) }
+    private var editorHeader: some View {
+        HStack(alignment: .center, spacing: 18) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L("编辑触发规则")).font(.system(size: 20, weight: .semibold)).accessibilityAddTraits(.isHeader)
+                Text(L("条件满足时开始工作，条件解除后释放保活。"))
+                    .font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
+            }
+            Spacer(minLength: 8)
+            VStack(spacing: 5) {
+                Text(L("启用这条规则")).font(.system(size: 10)).foregroundStyle(WorkStyle.muted)
+                Toggle(L("启用这条规则"), isOn: $rule.enabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
+            }
+        }.padding(.horizontal, 22).padding(.vertical, 18)
+    }
+    private var basicFields: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            labeledField("规则名称") { TextField(L("规则名称"), text: $rule.name) }
+            labeledField("进入模式") {
+                TerminalPicker("进入模式", selection: $rule.mode, choices: [TerminalChoice("桌面工作", .desk), TerminalChoice("后台工作", .background)])
+            }
+        }
+    }
+    private func labeledField<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(L(title)).font(.system(size: 11, weight: .medium)).foregroundStyle(WorkStyle.muted)
+            content().frame(maxWidth: .infinity, alignment: .leading)
+        }.frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+    private func editorSection<Content: View>(_ title: String, detail: String, @ViewBuilder content: () -> Content) -> some View {
+        VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L(title)).font(.system(size: 13, weight: .semibold)).accessibilityAddTraits(.isHeader)
+                Text(L(detail)).font(.system(size: 11)).foregroundStyle(WorkStyle.muted).fixedSize(horizontal: false, vertical: true)
+            }
+            content()
+        }
+    }
+    private var displayFields: some View {
+        editorSection("执行效果", detail: "仅在本规则接管工作模式时生效；锁屏后暂停亮屏与屏保保活。") {
+            HStack(alignment: .top, spacing: 14) {
+                labeledField("显示器") {
+                    TerminalPicker("显示器", selection: $rule.preventDisplaySleep, choices: [TerminalChoice("使用全局设置", nil), TerminalChoice("保持亮屏", true), TerminalChoice("允许闲时息屏", false)])
                 }
-            }.frame(minHeight: 160, maxHeight: 300)
+                labeledField("屏幕保护") {
+                    TerminalPicker("屏幕保护", selection: $rule.preventScreenSaver, choices: [TerminalChoice("使用全局设置", nil), TerminalChoice("暂停屏保", true), TerminalChoice("允许屏保", false)])
+                }
+            }
+            if rule.preventDisplaySleep == false, rule.preventScreenSaver == true {
+                Text(L("允许熄屏时，屏保延后会暂停。")).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
+            }
+        }
+    }
+    private var advancedFields: some View {
+        DisclosureGroup(isExpanded: $showingAdvanced) {
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(alignment: .top, spacing: 14) {
+                    labeledField("优先级") {
+                        TextField(L("优先级"), value: $rule.priority, format: .number)
+                            .accessibilityHint(L("优先级（-1000 至 1000）"))
+                    }
+                    labeledField("持续满足（秒）") { TextField(L("持续满足秒数"), value: $rule.sustainedMatchSeconds, format: .number) }
+                    labeledField("匹配结束后冷却（秒）") { TextField(L("冷却秒数"), value: $rule.cooldownSeconds, format: .number) }
+                }
+                Text(L("优先级越高越先执行；时间设为 0 表示不等待。"))
+                    .font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
+                DisclosureGroup(L("匹配与竞争说明")) {
+                    WorkNote(text: "高优先级先执行；同级后台优先，再按规则 ID 升序。未知不会被取反成满足，并会中断持续计时。冷却从已满足时间要求的匹配解除时开始；每约 5 秒采样，超过 15 秒未采样会中断持续计时。")
+                        .padding(.top, 6)
+                }
+            }.padding(.top, 12)
+        } label: {
             HStack {
-                Button(L("只读试运行")) {
+                Text(L("时间与优先级")).font(.system(size: 12, weight: .medium))
+                Spacer()
+                Text("\(rule.priority) · \(rule.sustainedMatchSeconds.formatted())s · \(rule.cooldownSeconds.formatted())s")
+                    .font(TerminalStyle.mono(10)).foregroundStyle(WorkStyle.muted)
+            }
+        }.padding(12).background(TerminalStyle.surface)
+    }
+    private var trialControls: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 12) {
+                Button(L(trying ? "正在检查…" : "只读试运行")) {
                     Task {
                         trying = true
                         let original = rule
@@ -410,51 +494,40 @@ struct TriggerRuleEditor: View {
                         trying = false
                     }
                 }.disabled(trying || rule.validationError != nil).workKeyboardFocus(radius: 0)
-                Text(L("按启用此规则预览；不保存、不切换模式、不推进计时。")).font(.system(size: 10)).foregroundStyle(WorkStyle.muted)
+                Text(L("仅预览结果，不保存或切换模式。")).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
             }
             if let trial, let result = trial.rules.first(where: { $0.id == rule.id }) {
-                VStack(alignment: .leading, spacing: 6) {
+                VStack(alignment: .leading, spacing: 7) {
                     Text(L(result.state.title)).font(WorkType.controlLabel)
                     Text(L(result.detail)).font(.system(size: 11)).fixedSize(horizontal: false, vertical: true)
                     DisclosureGroup(L("查看条件和竞争规则")) {
-                        ScrollView {
-                            VStack(alignment: .leading, spacing: 5) {
-                                ForEach(rule.allConditions) { condition in
-                                    if let value = trial.conditions[condition.id] {
-                                        Text(condition.kind.title + ": " + L(value.state.title) + " · " + L(value.detail)).font(.system(size: 10))
-                                    }
+                        VStack(alignment: .leading, spacing: 5) {
+                            ForEach(rule.allConditions) { condition in
+                                if let value = trial.conditions[condition.id] {
+                                    Text(condition.kind.title + ": " + L(value.state.title) + " · " + L(value.detail))
                                 }
-                                ForEach(trial.rules.filter { $0.id != rule.id }) { other in
-                                    Text(other.name + ": " + L(other.state.title) + " · " + L(other.detail)).font(.system(size: 10))
-                                }
-                            }.frame(maxWidth: .infinity, alignment: .leading)
-                        }.frame(maxHeight: 100)
+                            }
+                            ForEach(trial.rules.filter { $0.id != rule.id }) { other in
+                                Text(other.name + ": " + L(other.state.title) + " · " + L(other.detail))
+                            }
+                        }.font(.system(size: 10)).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
                     }
-                }.padding(10).background(WorkStyle.canvas)
+                }.padding(12).background(TerminalStyle.surface)
             }
-            VStack(alignment: .leading, spacing: 10) {
-                Text(L("规则生效时的显示行为")).font(WorkType.controlLabel)
-                HStack {
-                    TerminalPicker("显示器", selection: $rule.preventDisplaySleep, choices: [TerminalChoice("使用全局设置", nil), TerminalChoice("保持亮屏", true), TerminalChoice("允许闲时息屏", false)])
-                    TerminalPicker("屏幕保护", selection: $rule.preventScreenSaver, choices: [TerminalChoice("使用全局设置", nil), TerminalChoice("暂停屏保", true), TerminalChoice("允许屏保", false)])
-                }
-                WorkNote(text: "覆盖仅在本规则控制工作模式时生效；系统锁定后亮屏与屏保保活会暂停，密码要求由所选锁屏策略决定。")
-            }
-            WorkToggle(title: "启用这条规则", detail: "启用后会开始自动匹配条件。", isOn: $rule.enabled)
-            if let error { Text(L(error)).font(.system(size: 12)).foregroundStyle(.red) }
-            HStack {
-                Spacer()
-                Button(L("取消"), action: finish).buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
-                Button(L("保存")) {
-                    error = controller.save(rule)
-                    if error == nil { finish() }
-                }.buttonStyle(WorkButtonStyle(prominent: true)).workKeyboardFocus(radius: 0)
-            }
-        }.padding(26).frame(width: 650).background(WorkStyle.canvas).foregroundStyle(WorkStyle.ink)
-            .font(.system(size: 12)).tint(WorkStyle.blue)
-            .buttonStyle(WorkButtonStyle()).focusEffectDisabled().textFieldStyle(TerminalTextFieldStyle())
-            .task(id: rule.allConditions.map(\.kind)) { await refreshPreview() }
-            .onChange(of: rule) { _, _ in trial = nil }
+        }
+    }
+    private var editorFooter: some View {
+        HStack(spacing: 14) {
+            Text(L(error ?? rule.validationError ?? "保存后按规则启用状态生效。"))
+                .font(.system(size: 11)).foregroundStyle(error == nil ? WorkStyle.muted : TerminalStyle.warning)
+                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, alignment: .leading)
+            Button(L("取消"), action: finish).workKeyboardFocus(radius: 0)
+            Button(L("保存")) {
+                error = controller.save(rule)
+                if error == nil { finish() }
+            }.buttonStyle(WorkButtonStyle(prominent: true)).workKeyboardFocus(radius: 0)
+                .disabled(rule.validationError != nil || trying)
+        }.padding(.horizontal, 22).padding(.vertical, 14)
     }
     private func conditionFields(_ condition: Binding<TriggerCondition>) -> some View {
         VStack(alignment: .leading, spacing: 7) {
@@ -469,7 +542,6 @@ struct TriggerRuleEditor: View {
                     Text(L(condition.wrappedValue.kind.hint)).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
                 }
             }
-            if let validation = condition.wrappedValue.validationError { Text(L(validation)).font(.system(size: 11)).foregroundStyle(.red) }
         }.onChange(of: condition.wrappedValue.kind) { _, kind in
             if kind == .weeklySchedule && condition.wrappedValue.schedule == nil { condition.wrappedValue.schedule = TriggerWeeklySchedule() }
         }
@@ -546,7 +618,7 @@ struct TriggerRuleEditor: View {
     private func suggestionMenu(_ suggestions: [TriggerSuggestion], condition: Binding<TriggerCondition>, title: String) -> some View {
         TerminalActionMenu(title: title, titles: suggestions.map(\.title)) { index in
             if suggestions.indices.contains(index) { condition.wrappedValue.value = suggestions[index].value }
-        }.frame(width: 250)
+        }.frame(maxWidth: .infinity)
     }
     private func refreshPreview() async {
         let kinds = Set(rule.allConditions.map(\.kind))
@@ -576,6 +648,7 @@ private struct TriggerExpressionEditor: View {
     @Binding var expression: TriggerExpression
     let depth: Int
     let conditionFields: (Binding<TriggerCondition>) -> AnyView
+    var remove: (() -> Void)?
     private var operatorBinding: Binding<TriggerExpression.Kind> {
         Binding(get: { expression.kind }, set: { kind in
             let children = expression.children
@@ -590,36 +663,54 @@ private struct TriggerExpressionEditor: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
             if case .condition(let item) = expression {
+                HStack(spacing: 8) {
+                    Text(L("条件")).font(.system(size: 10, weight: .medium)).foregroundStyle(WorkStyle.muted)
+                    Spacer(minLength: 0)
+                    TerminalActionMenu(title: "更多操作", titles: ["取反 NOT", "扩展为条件组"]) { index in
+                        if index == 0 { expression = .not(expression) }
+                        else { expression = .all([expression, .condition(TriggerCondition())]) }
+                    }.frame(width: 118).disabled(depth >= 7)
+                    removeButton
+                }
                 conditionFields(Binding(get: {
                     if case .condition(let current) = expression { return current }; return item
                 }, set: { expression = .condition($0) }))
-                HStack {
-                    Button(L("取反 NOT")) { expression = .not(expression) }.disabled(depth >= 7)
-                    Button(L("扩展为条件组")) { expression = .all([expression, .condition(TriggerCondition())]) }.disabled(depth >= 7)
-                }.font(.system(size: 10))
             } else {
-                TerminalPicker("逻辑组合", selection: operatorBinding, choices: [TerminalChoice("全部满足 ALL", .all), TerminalChoice("任一满足 ANY", .any), TerminalChoice("不满足 NOT", .not)])
-                ForEach(Array(expression.children.indices), id: \.self) { index in
-                    HStack(alignment: .top, spacing: 5) {
-                        AnyView(TriggerExpressionEditor(expression: childBinding(index), depth: depth + 1, conditionFields: conditionFields))
-                        if expression.kind != .not {
-                            Button { removeChild(index) } label: { Image(systemName: "minus.circle") }
-                                .accessibilityLabel(L("移除此条件或分组"))
-                        }
+                HStack(spacing: 10) {
+                    Text(L(depth == 0 ? "匹配方式" : "条件组")).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
+                    Spacer(minLength: 0)
+                    TerminalPicker("逻辑组合", selection: operatorBinding, choices: [TerminalChoice("全部满足 ALL", .all), TerminalChoice("任一满足 ANY", .any), TerminalChoice("不满足 NOT", .not)])
+                        .frame(width: 190)
+                    if expression.children.count == 1 {
+                        Button { expression = expression.children[0] } label: { TerminalIcon(name: "arrow.up.left", size: 13).frame(width: 24, height: 26) }
+                            .buttonStyle(TerminalPlainButtonStyle()).help(L("移除这层逻辑")).accessibilityLabel(L("移除这层逻辑"))
                     }
+                    removeButton
                 }
-                if expression.children.count == 1 {
-                    Button(L("移除这层逻辑")) { expression = expression.children[0] }.font(.system(size: 10))
+                ForEach(Array(expression.children.indices), id: \.self) { index in
+                    AnyView(TriggerExpressionEditor(expression: childBinding(index), depth: depth + 1,
+                                                    conditionFields: conditionFields,
+                                                    remove: expression.kind == .not ? nil : { removeChild(index) }))
                 }
                 if expression.kind != .not {
-                    HStack {
-                        Button(L("添加条件")) { append(.condition(TriggerCondition())) }.disabled(depth >= 7)
-                        Button(L("添加分组")) { append(.any([.condition(TriggerCondition())])) }.disabled(depth >= 6)
-                    }.font(.system(size: 10))
+                    HStack(spacing: 18) {
+                        Button { append(.condition(TriggerCondition())) } label: { TerminalLabel("添加条件", systemImage: "plus") }.disabled(depth >= 7)
+                        Button { append(.any([.condition(TriggerCondition())])) } label: { TerminalLabel("添加分组", systemImage: "plus.rectangle") }.disabled(depth >= 6)
+                    }.font(.system(size: 11)).buttonStyle(TerminalPlainButtonStyle()).padding(.top, 5)
                 }
             }
-        }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
-            .overlay(Rectangle().strokeBorder(WorkStyle.muted.opacity(0.25)))
+        }.padding(depth == 0 ? 0 : 12).frame(maxWidth: .infinity, alignment: .leading)
+            .background(depth == 0 ? Color.clear : TerminalStyle.surface)
+            .overlay(alignment: .leading) {
+                if depth > 0 { Rectangle().fill(WorkStyle.line.opacity(0.6)).frame(width: 2) }
+            }
+    }
+    @ViewBuilder private var removeButton: some View {
+        if let remove {
+            Button(action: remove) { TerminalIcon(name: "trash", size: 13).frame(width: 24, height: 26) }
+                .buttonStyle(TerminalPlainButtonStyle()).foregroundStyle(WorkStyle.muted)
+                .help(L("移除此条件或分组")).accessibilityLabel(L("移除此条件或分组"))
+        }
     }
     private func childBinding(_ index: Int) -> Binding<TriggerExpression> {
         Binding(get: { expression.children.indices.contains(index) ? expression.children[index] : .all([]) }, set: { value in

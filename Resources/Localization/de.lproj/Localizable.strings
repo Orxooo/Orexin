@@ -1390,3 +1390,33 @@
 "温度保护触发：系统温度压力达到%@；紧急释放已关闭，保活状态保持不变。" = "Temperaturschutzauslöser: Systemtemperaturdruck erreicht%@Die Notentlassung ist geschlossen, der Status des Überlebens bleibt unverändert.";
 "已在系统通知中心确认测试提醒。" = "Testmeldung in der Mitteilungszentrale bestätigt.";
 "测试提醒已提交给系统；如未显示，请检查专注模式与通知设置。" = "Testmeldung übermittelt. Falls sie nicht erscheint, Fokus und Mitteilungseinstellungen prüfen.";
+
+// Orexin 1.0.4: session controls and rule editor
+"仅在本规则接管工作模式时生效；锁屏后暂停亮屏与屏保保活。" = "Gilt nur, solange diese Regel den Arbeitsmodus steuert. Bei gesperrtem Mac werden Display- und Bildschirmschonerschutz pausiert.";
+"仅预览结果，不保存或切换模式。" = "Nur Vorschau. Speichert nicht und wechselt keinen Modus.";
+"优先级越高越先执行；时间设为 0 表示不等待。" = "Höhere Priorität wird zuerst ausgeführt. Eine Dauer von 0 bedeutet keine Wartezeit.";
+"保存后按规则启用状态生效。" = "Nach dem Speichern gilt der Aktivierungsstatus der Regel.";
+"匹配与竞争说明" = "Details zu Bedingungen und Priorität";
+"匹配方式" = "Bedingungen verknüpfen";
+"尚未检查辅助功能权限" = "Der Bedienungshilfenzugriff wurde noch nicht geprüft.";
+"已打开辅助功能设置，请开启 Orexin 后返回" = "Die Bedienungshilfen-Einstellungen sind geöffnet. Orexin aktivieren und hierher zurückkehren.";
+"开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。" = "Die Schalter können vorab eingestellt werden. Sie wirken im Desktop- oder Hintergrundmodus und enden im normalen Ruhezustand.";
+"开启时也会保持显示器唤醒；锁定后暂停。" = "Hält auch das Display aktiv. Pausiert bei gesperrtem Mac.";
+"当前屏幕策略允许熄屏，鼠标移动已暂停" = "Die Zeigerbewegung ist pausiert, da die aktuelle Display-Richtlinie den Ruhezustand erlaubt.";
+"执行效果" = "Auswirkungen";
+"无法打开权限设置，请前往系统设置的隐私与安全性检查辅助功能" = "Die Berechtigungen konnten nicht geöffnet werden. Bedienungshilfen unter Datenschutz & Sicherheit in den Systemeinstellungen prüfen.";
+"时间与优先级" = "Zeit und Priorität";
+"更多操作" = "Weitere Aktionen";
+"条件满足时开始工作，条件解除后释放保活。" = "Startet bei erfüllten Bedingungen und beendet das Wachhalten, wenn sie entfallen.";
+"条件组" = "Bedingungsgruppe";
+"正在检查…" = "Wird geprüft…";
+"满足以下条件时执行规则。" = "Führt diese Regel aus, wenn die folgenden Bedingungen erfüllt sind.";
+"等待进入工作模式" = "Wartet auf einen Arbeitsmodus.";
+"自动触发总开关已关闭，保存后仍需开启自动触发。" = "Automatische Auslöser sind pausiert. Nach dem Speichern aktivieren, um diese Regel auszuführen.";
+"触发条件" = "Auslösebedingungen";
+"辅助功能已授权" = "Bedienungshilfenzugriff erteilt.";
+"允许熄屏时，屏保延后会暂停。" = "Bei erlaubtem Display-Ruhezustand wird der Bildschirmschonerschutz pausiert.";
+"当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。" = "Der aktuelle Hintergrunddienst unterstützt keine getrennte Bildschirmschonersteuerung. Aufgaben abschließen und den Hintergrunddienst neu starten.";
+"其他工作任务要求显示器保持唤醒" = "Andere Aufgaben erfordern ein aktives Display.";
+"其他工作任务仍要求暂停屏保" = "Andere Aufgaben erfordern weiterhin den Bildschirmschonerschutz.";
+"当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Nur andere Aufgaben sind aktiv. Starte eine Arbeitssitzung, um Anzeige und Bildschirmschoner einzustellen.";

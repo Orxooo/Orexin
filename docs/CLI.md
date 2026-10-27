@@ -137,6 +137,8 @@ orexin stop-all --json              # 明确的全局用户操作
 
 V1.0.3 保持协议版本 1，新增可选 `capabilities` 和 `notices`。支持后台事件提醒的服务会返回 `capabilities: ["notices-v1"]`；`notices` 是经 JSON 编码后由 `Data` 字段转为 Base64 的有界消息数组，包含最多 64 KiB 的原始 JSON。旧服务不含这些字段时，界面提示提醒能力尚未完整启用；先完成任务，再退出旧服务并重开应用。
 
+V1.0.4 的后台服务额外声明 `session-effects-v1`，工作请求可选 `preventScreenSaver` 以独立设置屏保行为。该字段未指定时沿用旧版行为；连接不支持此能力的旧服务时，界面会说明需要重启后台服务。
+
 ## 验证边界
 
 V0.3.0 Preview.1 新增 `profiles`、`rules-try`、`power`、`events`、`config-export`、`config-import` 和注册/运行时的 `--profile UUID`。原有 v1 字段与操作兼容；检查操作不清理到期任务、不推进规则计时。配置导入默认只预览，应用要求精确预览令牌，导入脚本没有自动启用路径。完整格式、合并/替换、结果脚本与边界见 [工作配置指南](WORK-CONFIGURATION.md)。

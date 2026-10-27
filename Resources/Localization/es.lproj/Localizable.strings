@@ -1390,3 +1390,33 @@
 "温度保护触发：系统温度压力达到%@；紧急释放已关闭，保活状态保持不变。" = "Desencendido por protección térmica: la temperatura del sistema alcanza el umbral de presión.%@; La liberación de emergencia ya está cerrada, el estado de supervivencia permanece sin cambios.";
 "已在系统通知中心确认测试提醒。" = "Aviso de prueba confirmado en el Centro de notificaciones.";
 "测试提醒已提交给系统；如未显示，请检查专注模式与通知设置。" = "Aviso de prueba enviado. Si no aparece, revisa el modo de concentración y los ajustes de notificaciones.";
+
+// Orexin 1.0.4: session controls and rule editor
+"仅在本规则接管工作模式时生效；锁屏后暂停亮屏与屏保保活。" = "Solo se aplica mientras esta regla controla el modo de trabajo. Al bloquear, se pausa la prevención del reposo de pantalla y del salvapantallas.";
+"仅预览结果，不保存或切换模式。" = "Solo una vista previa. No guarda ni cambia de modo.";
+"优先级越高越先执行；时间设为 0 表示不等待。" = "Se ejecuta primero la prioridad más alta. Una duración de 0 elimina la espera.";
+"保存后按规则启用状态生效。" = "Tras guardar, la regla sigue su estado de activación.";
+"匹配与竞争说明" = "Detalles de coincidencia y prioridad";
+"匹配方式" = "Coincidencia de condiciones";
+"尚未检查辅助功能权限" = "Aún no se ha comprobado el permiso de accesibilidad.";
+"已打开辅助功能设置，请开启 Orexin 后返回" = "Se han abierto los ajustes de accesibilidad. Activa Orexin y vuelve aquí.";
+"开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。" = "Puedes configurar estos interruptores antes de trabajar. Se aplican en los modos Escritorio y Segundo plano y se detienen en Reposo normal.";
+"开启时也会保持显示器唤醒；锁定后暂停。" = "También mantiene la pantalla activa. Se pausa al bloquear.";
+"当前屏幕策略允许熄屏，鼠标移动已暂停" = "El movimiento del puntero está en pausa porque la política de pantalla permite el reposo.";
+"执行效果" = "Efectos";
+"无法打开权限设置，请前往系统设置的隐私与安全性检查辅助功能" = "No se pudieron abrir los permisos. Revisa Accesibilidad en Privacidad y seguridad de Ajustes del Sistema.";
+"时间与优先级" = "Tiempos y prioridad";
+"更多操作" = "Más acciones";
+"条件满足时开始工作，条件解除后释放保活。" = "Inicia el trabajo al cumplirse las condiciones y libera la activación cuando dejan de cumplirse.";
+"条件组" = "Grupo de condiciones";
+"正在检查…" = "Comprobando…";
+"满足以下条件时执行规则。" = "Ejecuta esta regla cuando se cumplen las siguientes condiciones.";
+"等待进入工作模式" = "Esperando un modo de trabajo.";
+"自动触发总开关已关闭，保存后仍需开启自动触发。" = "Los activadores automáticos están en pausa. Actívalos tras guardar para ejecutar esta regla.";
+"触发条件" = "Condiciones de activación";
+"辅助功能已授权" = "Permiso de accesibilidad concedido.";
+"允许熄屏时，屏保延后会暂停。" = "Permitir el reposo de pantalla pausa la prevención del salvapantallas.";
+"当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。" = "El servicio actual no admite el control independiente del salvapantallas. Finaliza tus tareas y reinicia el servicio en segundo plano.";
+"其他工作任务要求显示器保持唤醒" = "Otras tareas necesitan que la pantalla siga activa.";
+"其他工作任务仍要求暂停屏保" = "Otras tareas aún necesitan impedir el salvapantallas.";
+"当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Solo hay otras tareas en ejecución. Inicia una sesión de trabajo para ajustar la pantalla y el salvapantallas.";
