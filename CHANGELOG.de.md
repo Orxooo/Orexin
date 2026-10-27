@@ -6,6 +6,11 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 — 2026-10-27
+
+- Behoben: Nach dem Öffnen des Deckels, Aufwecken des Displays oder Entsperren während der Hintergrundarbeit fiel die Helligkeit erneut auf null. Die ursprüngliche Helligkeit wird wiederhergestellt; Aufgaben laufen weiter.
+- Erneutes Schließen des Deckels oder die ausdrückliche Auswahl der minimalen Helligkeit aktiviert das Abdunkeln wieder. Gespeicherte Bildschirmvorgaben bleiben auch beim eigenständigen Hintergrunddienst erhalten.
+
 ## V1.0.4 — 2026-10-26
 
 - Die Display-Richtlinie überschreibt Sitzungsschalter nicht mehr unbemerkt. Der Bildschirmschonerschutz lässt sich separat deaktivieren; seine Aktivierung wählt eine kompatible Display-Richtlinie.

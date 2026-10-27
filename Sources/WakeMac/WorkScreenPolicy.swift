@@ -78,6 +78,7 @@ enum BuiltInBrightness {
     @Published var runtimeBehavior: WorkScreenBehavior? {
         didSet {
             guard runtimeBehavior != oldValue else { return }
+            dimPausedForInteraction = false
             if runtimeBehavior == .immediateSleep { behaviorBeforeSleep = oldValue }
             else { behaviorBeforeSleep = nil }
             observedImmediateSleep = false
@@ -89,6 +90,9 @@ enum BuiltInBrightness {
     }
     private var behaviorBeforeSleep: WorkScreenBehavior?
     private var observedImmediateSleep = false
+    private var dimPausedForInteraction = false
+    private var previousDisplayState: DisplayState?
+    private var wakeObservers: [(NotificationCenter, NSObjectProtocol)] = []
     private let preferences: UserDefaults
     private let runtimeEnabled: Bool
     private var verifiedBehavior: WorkScreenBehavior?
@@ -135,22 +139,50 @@ enum BuiltInBrightness {
     }
     func behavior(for mode: WorkMode) -> WorkScreenBehavior {
         if runtimeBehavior == .immediateSleep { return .immediateSleep }
-        return requestBehavior ?? ownBehavior(for: mode)
+        let selected = requestBehavior ?? ownBehavior(for: mode)
+        return dimPausedForInteraction && selected == .dim ? .normalBrightness : selected
     }
     func ownBehavior(for mode: WorkMode) -> WorkScreenBehavior {
         runtimeBehavior ?? (mode == .background ? background : desktop)
     }
     func resumeAfterDisplayWake() {
+        restoreBehaviorAfterImmediateSleep()
+        guard let mode = appliedMode, behavior(for: mode) == .dim else { return }
+        // A person returning to the Mac takes precedence over the saved dim
+        // preset and renewed task requests, without ending any work leases.
+        dimPausedForInteraction = true
+        revision += 1; appliedBehavior = nil
+    }
+    private func restoreBehaviorAfterImmediateSleep() {
         guard runtimeBehavior == .immediateSleep else { return }
         runtimeBehavior = behaviorBeforeSleep
     }
+    func reapplyDimming() {
+        guard dimPausedForInteraction else { return }
+        dimPausedForInteraction = false
+        revision += 1; appliedBehavior = nil
+    }
+    func startObservingUserReturn(workspaceCenter: NotificationCenter = NSWorkspace.shared.notificationCenter,
+                                 sessionCenter: NotificationCenter = DistributedNotificationCenter.default()) {
+        guard runtimeEnabled, wakeObservers.isEmpty else { return }
+        for (center, name) in [(workspaceCenter, NSWorkspace.screensDidWakeNotification),
+                               (sessionCenter, Notification.Name("com.apple.screenIsUnlocked"))] {
+            let observer = center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                MainActor.assumeIsolated { self?.resumeAfterDisplayWake() }
+            }
+            wakeObservers.append((center, observer))
+        }
+    }
+    deinit { for (center, observer) in wakeObservers { center.removeObserver(observer) } }
     func select(_ behavior: WorkScreenBehavior, for mode: WorkMode) {
         guard mode != .normal, WorkScreenBehavior.choices(for: mode).contains(behavior) else { return }
+        reapplyDimming()
         if mode == .background { background = behavior } else { desktop = behavior }
         preferences.set(behavior.rawValue, forKey: mode == .background ? "orexin.screen.background" : "orexin.screen.desktop")
         runtimeBehavior = nil; revision += 1; appliedBehavior = nil
     }
     func restore() throws {
+        dimPausedForInteraction = false; previousDisplayState = nil
         revision += 1; appliedBehavior = nil; appliedMode = nil; runtimeBehavior = nil; verifiedBehavior = nil
         idleTimeout = nil; timeoutSource = nil
         if runtimeEnabled, let originalBrightness {
@@ -189,10 +221,18 @@ enum BuiltInBrightness {
     }
     func tick(mode: WorkMode?, working: Bool, state: DisplayState, onBattery: Bool, now: Date) async {
         guard runtimeEnabled, working, let mode, mode != .normal else { return }
+        let returned = previousDisplayState.map {
+            ($0.lidClosed == true && state.lidClosed == false)
+                || ($0.builtInAsleep == true && state.builtInAsleep == false)
+                || ($0.sessionLocked == true && state.sessionLocked == false)
+        } ?? false
+        previousDisplayState = state
         if runtimeBehavior == .immediateSleep {
             if state.builtInAsleep == true { observedImmediateSleep = true }
             else if state.builtInAsleep == false, observedImmediateSleep { resumeAfterDisplayWake() }
         }
+        if state.lidClosed == true { reapplyDimming() }
+        else if returned { resumeAfterDisplayWake() }
         normalSleepIdlePeriod = nil
         let behavior = behavior(for: mode), version = revision
         verifiedBehavior = nil
@@ -241,7 +281,7 @@ enum BuiltInBrightness {
             verifiedBehavior = behavior
         } catch {
             guard version == revision else { return }
-            if behavior == .immediateSleep { resumeAfterDisplayWake() }
+            if behavior == .immediateSleep { restoreBehaviorAfterImmediateSleep() }
             setStatus("屏幕策略未核验：" + error.localizedDescription)
         }
     }

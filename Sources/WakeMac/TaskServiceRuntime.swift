@@ -22,6 +22,7 @@ import WakeMacCore
             model = AppModel(backend: MacBackend(preferences: defaults, allowsAuthentication: false), preferences: defaults,
                              historyURL: root.appendingPathComponent("history.json"), jobLogDirectory: root.appendingPathComponent("Task Logs"))
             model.isTaskService = true
+            model.workScreen.startObservingUserReturn()
             if Bundle.main.bundleIdentifier != nil {
                 let notifier = LocalNotifier(preferences: defaults)
                 notifier.configure(); self.notifier = notifier
@@ -170,6 +171,10 @@ extension AppModel {
             return taskControlReply()
         case "display-sleep":
             await sleepDisplayNow()
+            return taskControlReply()
+        case "display-reapply":
+            workScreen.reapplyDimming()
+            await applyWorkScreenPolicy(now: Date())
             return taskControlReply()
         case "sleep-now":
             await choose(.normal, sleep: true)

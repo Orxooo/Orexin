@@ -6,6 +6,11 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.5 — 2026-10-27
+
+- Fixed the screen returning to zero brightness after opening the lid, waking the display, or unlocking during background work. Original brightness is restored and dimming pauses while tasks continue.
+- Closing the lid again or explicitly selecting minimum brightness reapplies dimming. Saved screen presets are preserved, including when the independent background service owns the work.
+
 ## V1.0.4 — 2026-10-26
 
 - Fixed session effect switches being overridden by display policy. Screen saver prevention can be turned off independently; enabling it selects a compatible display policy.

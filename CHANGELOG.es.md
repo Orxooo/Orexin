@@ -6,6 +6,11 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 — 2026-10-27
+
+- Corregido el retorno del brillo a cero tras abrir la tapa, despertar la pantalla o desbloquear durante el trabajo en segundo plano. Se restaura el brillo anterior y las tareas continúan.
+- Cerrar de nuevo la tapa o seleccionar explícitamente el brillo mínimo reactiva la atenuación. Se conservan los ajustes de pantalla, también cuando el servicio independiente gestiona las tareas.
+
 ## V1.0.4 — 2026-10-26
 
 - Corregidos los interruptores de sesión anulados por la política de pantalla. La prevención del salvapantallas se puede desactivar por separado; al activarla se elige una política compatible.

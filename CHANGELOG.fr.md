@@ -6,6 +6,11 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 — 2026-10-27
+
+- Correction du retour à une luminosité nulle après ouverture du capot, réveil de l’écran ou déverrouillage pendant le travail en arrière-plan. La luminosité précédente est rétablie et les tâches continuent.
+- La fermeture du capot ou la sélection explicite de la luminosité minimale réactive l’assombrissement. Les préréglages sont conservés, y compris dans le service autonome en arrière-plan.
+
 ## V1.0.4 — 2026-10-26
 
 - Correction des options de session écrasées par la politique d’écran. Le blocage de l’économiseur peut être désactivé séparément ; son activation sélectionne une politique compatible.

@@ -23,6 +23,7 @@ extension AppModel {
             sessions.preventDisplaySleep = enabled
         }
         await applyWorkScreenPolicy(now: Date())
+        if enabled, mode == .background { await reapplyServiceDimming() }
         onUpdate?()
     }
     func setWorkScreenBehavior(_ behavior: WorkScreenBehavior) async {
@@ -30,7 +31,13 @@ extension AppModel {
         workScreen.select(behavior, for: legacyWorkMode ?? active)
         sessions.setDisplayPrevention(behavior.keepsDisplayActive)
         await applyWorkScreenPolicy(now: Date())
+        if behavior == .dim { await reapplyServiceDimming() }
         onUpdate?()
+    }
+    private func reapplyServiceDimming() async {
+        guard serviceSocket != nil else { workScreen.reapplyDimming(); return }
+        do { adoptServiceReply(try await serviceCall(.init("display-reapply"))) }
+        catch { message = error.localizedDescription }
     }
     func sleepDisplayNow() async {
         if serviceSocket != nil {
