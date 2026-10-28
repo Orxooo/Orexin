@@ -1420,3 +1420,22 @@
 "其他工作任务要求显示器保持唤醒" = "Andere Aufgaben erfordern ein aktives Display.";
 "其他工作任务仍要求暂停屏保" = "Andere Aufgaben erfordern weiterhin den Bildschirmschonerschutz.";
 "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Nur andere Aufgaben sind aktiv. Starte eine Arbeitssitzung, um Anzeige und Bildschirmschoner einzustellen.";
+
+"无法更改合盖运行状态。" = "Der Betrieb bei geschlossenem Deckel konnte nicht geändert werden.";
+"无法续约工作会话。" = "Die Arbeitssitzung konnte nicht verlängert werden.";
+"无法开始「工作时保持未锁定」。" = "„Während der Arbeit entsperrt bleiben“ konnte nicht gestartet werden.";
+"无法结束「保持未锁定」恢复会话。" = "Die Wiederherstellungssitzung für entsperrtes Arbeiten konnte nicht beendet werden.";
+"系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。" = "Verbindung zum Systemhilfsdienst fehlgeschlagen. Aktivieren Sie ihn in den Einstellungen und erlauben Sie ihn in den Systemeinstellungen. Ist er bereits erlaubt, versuchen Sie es erneut.";
+"系统辅助服务响应超时；已断开连接以恢复休眠。" = "Zeitüberschreitung des Systemhilfsdienstes; die Verbindung wurde getrennt, um den Ruhezustand wiederherzustellen.";
+"无法连接系统辅助服务。" = "Verbindung zum Systemhilfsdienst fehlgeschlagen.";
+"桌面保活生效：闲置熄屏锁定与屏保已暂停。" = "Desktop-Schutz aktiv: Bildschirmsperre und Bildschirmschoner bei Inaktivität sind pausiert.";
+"显示器保活生效：闲置熄屏锁定已暂停。" = "Bildschirm bleibt aktiv: Die Sperre bei Inaktivität ist pausiert.";
+"防止闲时屏保生效：闲置屏保已暂停。" = "Bildschirmschoner-Schutz aktiv: Der Bildschirmschoner bei Inaktivität ist pausiert.";
+"闲置动作遵循当前屏幕与密码策略。" = "Aktionen bei Inaktivität folgen den aktuellen Bildschirm- und Kennwortrichtlinien.";
+"显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。" = "Pausiert, solange der Bildschirm wach bleibt; wird ausgeführt, wenn Bildschirmruhe erlaubt ist und macOS sofort ein Kennwort verlangt.";
+"桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。" = "Entsperrtes Arbeiten erfordert in beiden Modi den Systemhilfsdienst und eine Kennwortfreigabe für diese Sitzung. Um den Desktop sichtbar zu halten, verhindern Sie Bildschirmruhe und Bildschirmschoner; der Kennwortschutz kann aktiv bleiben.";
+"屏幕与屏保由会话效果控制" = "Bildschirm und Bildschirmschoner folgen den Sitzungseffekten";
+"保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。" = "Um den Desktop sichtbar zu halten, verhindern Sie Bildschirmruhe und Bildschirmschoner. „Während der Arbeit entsperrt bleiben“ ist dafür nicht erforderlich.";
+"合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "Der Betrieb bei geschlossenem Deckel und entsperrtes Arbeiten erfordern dieselbe Apple-Entwicklersignatur für App und Hilfsdienst. Normales Wachhalten des Desktops und regulärer Ruhezustand benötigen diese Freigabe nicht.";
+"系统已批准辅助服务" = "Systemhilfsdienst genehmigt";
+"系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "Der Systemhilfsdienst ist genehmigt. Die Verbindung wird beim Start einer zugehörigen Funktion geprüft.";

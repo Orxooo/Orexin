@@ -193,7 +193,7 @@ struct ControlPanel: View {
             rule
             HStack(spacing: 8) {
                 TerminalIcon(name: "checkmark.shield", size: 14).foregroundStyle(TerminalStyle.signal)
-                Text(L(model.helperStatus == .enabled ? "特权守护进程已就绪" : "合盖服务需要授权")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+                Text(L(model.helperStatus == .enabled ? "系统已批准辅助服务" : "合盖服务需要授权")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
                 Spacer()
                 if model.helperStatus == .enabled {
                     Button(L("重新核验")) { Task { await model.refresh() } }.buttonStyle(TerminalPlainButtonStyle()).foregroundStyle(TerminalStyle.accent).disabled(model.busy)

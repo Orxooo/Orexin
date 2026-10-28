@@ -6,6 +6,12 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 1 — 2026-10-28
+
+- Corregidos los avisos que indicaban por error que el servicio auxiliar no estaba autorizado. Ahora se comprueba la conexión firmada real y los fallos de conexión se pueden recuperar al reintentar.
+- El bloqueo por inactividad se pausa mientras se impide el reposo de la pantalla. Mantener el escritorio visible y evitar el salvapantallas tienen prioridad, sin cambiar las reglas guardadas.
+- Aclarados los mensajes del modo de escritorio y de autorización. Añadida la etiqueta HotFix 1 y su ordenación como actualización estable.
+
 ## V1.0.5 — 2026-10-27
 
 - Corregido el retorno del brillo a cero tras abrir la tapa, despertar la pantalla o desbloquear durante el trabajo en segundo plano. Se restaura el brillo anterior y las tareas continúan.

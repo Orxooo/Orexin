@@ -14,7 +14,7 @@ extension WorkMode {
     var detail: String {
         switch self {
         case .background: L("合盖继续运行，允许屏幕自动关闭")
-        case .desk: L("保持运行，允许闲时熄屏")
+        case .desk: L("屏幕与屏保由会话效果控制")
         case .normal: L("恢复闲置与合盖休眠")
         }
     }
@@ -109,6 +109,7 @@ extension WorkMode {
     lazy var idlePolicy: IdlePolicyController = {
         let controller = IdlePolicyController(preferences: preferences)
         controller.workingProvider = { [weak self] in self?.verifiedWork == true }
+        controller.allowsIdleLock = { [weak self] in self?.sessions.effectivePreventDisplaySleep != true }
         controller.immediateAuthentication = { [weak self] in self?.snapshot?.lockPolicy == .immediate }
         controller.allowsScreenSaver = { [weak self] in self?.sessions.effectivePreventScreenSaver != true && self?.sessions.screenSaverExceptionActive != true }
         controller.preflight = { [weak self] in

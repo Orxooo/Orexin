@@ -1420,3 +1420,22 @@
 "其他工作任务要求显示器保持唤醒" = "Other work tasks require the display to stay awake.";
 "其他工作任务仍要求暂停屏保" = "Other work tasks still require screen saver prevention.";
 "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Only other tasks are running. Start a work session to adjust display and screen saver settings.";
+
+"无法更改合盖运行状态。" = "Could not change lid-closed operation.";
+"无法续约工作会话。" = "Could not renew the work session.";
+"无法开始「工作时保持未锁定」。" = "Could not start Keep Unlocked While Working.";
+"无法结束「保持未锁定」恢复会话。" = "Could not end the unlocked-work recovery session.";
+"系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。" = "Could not connect to the system helper. Enable it in Preferences and approve it in System Settings. If already approved, try again.";
+"系统辅助服务响应超时；已断开连接以恢复休眠。" = "The system helper timed out; disconnected to restore sleep.";
+"无法连接系统辅助服务。" = "Could not connect to the system helper.";
+"桌面保活生效：闲置熄屏锁定与屏保已暂停。" = "Desktop protection active: idle display locking and the screen saver are paused.";
+"显示器保活生效：闲置熄屏锁定已暂停。" = "Display protection active: idle display locking is paused.";
+"防止闲时屏保生效：闲置屏保已暂停。" = "Screen saver prevention active: the idle screen saver is paused.";
+"闲置动作遵循当前屏幕与密码策略。" = "Idle actions follow the current display and password policies.";
+"显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。" = "Paused while the display is kept awake; runs when display sleep is allowed and macOS requires a password immediately.";
+"桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。" = "For both desktop and background work, keeping the Mac unlocked requires the system helper and password authorization for this session. To keep the desktop visible, enable display and screen saver prevention; password protection can stay on.";
+"屏幕与屏保由会话效果控制" = "Display and screen saver follow session effects";
+"保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。" = "To keep the desktop visible, enable both display sleep and screen saver prevention. Keep Unlocked While Working is not required.";
+"合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "Lid-closed operation and Keep Unlocked While Working require the app and helper to be signed with the same Apple developer certificate. Ordinary desktop keep-awake and normal sleep do not require this authorization.";
+"系统已批准辅助服务" = "System helper approved";
+"系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "The system helper is approved. Its connection is verified when you start a feature that uses it.";

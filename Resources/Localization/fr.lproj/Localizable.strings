@@ -1420,3 +1420,22 @@
 "其他工作任务要求显示器保持唤醒" = "D’autres tâches nécessitent que l’écran reste éveillé.";
 "其他工作任务仍要求暂停屏保" = "D’autres tâches nécessitent encore le blocage de l’économiseur.";
 "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Seules d’autres tâches sont actives. Démarrez une session de travail pour régler l’écran et l’économiseur d’écran.";
+
+"无法更改合盖运行状态。" = "Impossible de modifier le fonctionnement avec le couvercle fermé.";
+"无法续约工作会话。" = "Impossible de renouveler la session de travail.";
+"无法开始「工作时保持未锁定」。" = "Impossible de démarrer le maintien du déverrouillage pendant le travail.";
+"无法结束「保持未锁定」恢复会话。" = "Impossible de terminer la session de restauration du verrouillage.";
+"系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。" = "Connexion au service auxiliaire impossible. Activez-le dans les préférences et autorisez-le dans Réglages Système. S’il est déjà autorisé, réessayez.";
+"系统辅助服务响应超时；已断开连接以恢复休眠。" = "Le service auxiliaire ne répond pas ; connexion fermée pour rétablir la veille.";
+"无法连接系统辅助服务。" = "Impossible de se connecter au service auxiliaire système.";
+"桌面保活生效：闲置熄屏锁定与屏保已暂停。" = "Maintien du bureau actif : verrouillage et économiseur d’écran en veille suspendus.";
+"显示器保活生效：闲置熄屏锁定已暂停。" = "Maintien de l’écran actif : verrouillage en veille suspendu.";
+"防止闲时屏保生效：闲置屏保已暂停。" = "Prévention de l’économiseur active : économiseur en veille suspendu.";
+"闲置动作遵循当前屏幕与密码策略。" = "Les actions en veille suivent les règles actuelles d’écran et de mot de passe.";
+"显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。" = "Suspendu lorsque l’écran est maintenu éveillé ; actif si la veille est autorisée et si macOS exige immédiatement un mot de passe.";
+"桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。" = "Pour travailler sans verrouillage, les deux modes nécessitent le service auxiliaire et une autorisation par mot de passe pour cette session. Pour garder le bureau visible, empêchez la veille et l’économiseur sans désactiver la protection par mot de passe.";
+"屏幕与屏保由会话效果控制" = "Écran et économiseur selon les effets de session";
+"保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。" = "Pour garder le bureau visible, empêchez la veille de l’écran et l’économiseur. Le maintien du déverrouillage n’est pas nécessaire.";
+"合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "Le fonctionnement couvercle fermé et le maintien du déverrouillage exigent la même signature de développeur Apple pour l’application et le service auxiliaire. Le maintien éveillé ordinaire du bureau et la veille normale n’exigent pas cette autorisation.";
+"系统已批准辅助服务" = "Service auxiliaire autorisé par le système";
+"系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "Le service auxiliaire est autorisé. La connexion est vérifiée au démarrage d’une fonction qui l’utilise.";

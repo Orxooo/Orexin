@@ -1420,3 +1420,22 @@
 "其他工作任务要求显示器保持唤醒" = "Otras tareas necesitan que la pantalla siga activa.";
 "其他工作任务仍要求暂停屏保" = "Otras tareas aún necesitan impedir el salvapantallas.";
 "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。" = "Solo hay otras tareas en ejecución. Inicia una sesión de trabajo para ajustar la pantalla y el salvapantallas.";
+
+"无法更改合盖运行状态。" = "No se pudo cambiar el funcionamiento con la tapa cerrada.";
+"无法续约工作会话。" = "No se pudo renovar la sesión de trabajo.";
+"无法开始「工作时保持未锁定」。" = "No se pudo iniciar Mantener desbloqueado durante el trabajo.";
+"无法结束「保持未锁定」恢复会话。" = "No se pudo finalizar la sesión de restauración del bloqueo.";
+"系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。" = "No se pudo conectar con el servicio auxiliar. Actívelo en Preferencias y autorícelo en Ajustes del Sistema. Si ya está autorizado, vuelva a intentarlo.";
+"系统辅助服务响应超时；已断开连接以恢复休眠。" = "El servicio auxiliar agotó el tiempo de espera; se desconectó para restaurar el reposo.";
+"无法连接系统辅助服务。" = "No se pudo conectar con el servicio auxiliar del sistema.";
+"桌面保活生效：闲置熄屏锁定与屏保已暂停。" = "Protección del escritorio activa: bloqueo por inactividad y salvapantallas en pausa.";
+"显示器保活生效：闲置熄屏锁定已暂停。" = "Protección de pantalla activa: bloqueo por inactividad en pausa.";
+"防止闲时屏保生效：闲置屏保已暂停。" = "Prevención del salvapantallas activa: salvapantallas por inactividad en pausa.";
+"闲置动作遵循当前屏幕与密码策略。" = "Las acciones por inactividad siguen las políticas actuales de pantalla y contraseña.";
+"显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。" = "Se pausa mientras la pantalla se mantiene activa; se ejecuta si se permite el reposo y macOS exige la contraseña inmediatamente.";
+"桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。" = "Mantener el Mac desbloqueado requiere el servicio auxiliar y autorización con contraseña para esta sesión en ambos modos. Para mantener visible el escritorio, impida el reposo y el salvapantallas sin desactivar la protección con contraseña.";
+"屏幕与屏保由会话效果控制" = "Pantalla y salvapantallas según los efectos de sesión";
+"保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。" = "Para mantener visible el escritorio, impida el reposo de pantalla y el salvapantallas. No es necesario mantener el Mac desbloqueado.";
+"合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "El funcionamiento con la tapa cerrada y mantener el Mac desbloqueado requieren que la app y el servicio auxiliar tengan el mismo certificado de desarrollador de Apple. Mantener activo el escritorio y el reposo normal no requieren esta autorización.";
+"系统已批准辅助服务" = "Servicio auxiliar autorizado por el sistema";
+"系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "El servicio auxiliar está autorizado. La conexión se comprueba al iniciar una función que lo utiliza.";

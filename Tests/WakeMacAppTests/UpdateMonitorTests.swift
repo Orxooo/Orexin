@@ -48,4 +48,18 @@ import XCTest
         XCTAssertTrue(notices.entries.isEmpty)
         XCTAssertTrue(monitor.message.contains("最新公开版本"))
     }
+
+    func testStableInstallationOffersHotfixAndHotfixInstallationStaysCurrent() async {
+        let hotfix = release("v1.0.5-hotfix.1")
+        for current in ["v1.0.5", "v1.0.5-hotfix.1"] {
+            let defaults = UserDefaults(suiteName: UUID().uuidString)!
+            let notices = ClientNoticeCenter(preferences: defaults)
+            let monitor = UpdateMonitor(notices: notices, preferences: defaults, current: current, previews: false,
+                                        loader: { [hotfix] })
+            await monitor.check(manual: true)
+            XCTAssertEqual(monitor.releaseURL, hotfix.url)
+            XCTAssertEqual(notices.entries.filter { $0.kind == .update }.count, current == hotfix.tagName ? 0 : 1)
+            if current == hotfix.tagName { XCTAssertTrue(monitor.message.contains("最新公开版本")) }
+        }
+    }
 }

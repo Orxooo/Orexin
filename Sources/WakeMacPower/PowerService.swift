@@ -32,6 +32,6 @@ public enum PowerService {
         return requirement
     }
     private static var signingError: NSError {
-        NSError(domain: "OrexinSigning", code: 1, userInfo: [NSLocalizedDescriptionKey: "合盖服务需要使用同一 Apple 开发者证书签名。当前构建仍可使用桌面工作与正常休眠。"])
+        NSError(domain: "OrexinSigning", code: 1, userInfo: [NSLocalizedDescriptionKey: "合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。"])
     }
 }

@@ -6,6 +6,12 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 1 — 2026-10-28
+
+- Correction des erreurs indiquant à tort que le service auxiliaire n’est pas autorisé. La disponibilité dépend désormais de la connexion signée réelle ; une nouvelle tentative permet de rétablir une connexion défaillante.
+- Le verrouillage de l’écran à l’inactivité est suspendu lorsque la mise en veille de l’écran est empêchée. Le maintien du bureau visible et la prévention de l’économiseur d’écran sont prioritaires, sans modifier les règles enregistrées.
+- Clarification des messages du mode bureau et d’autorisation. Ajout du libellé HotFix 1 et du classement des correctifs stables pour la recherche de mises à jour.
+
 ## V1.0.5 — 2026-10-27
 
 - Correction du retour à une luminosité nulle après ouverture du capot, réveil de l’écran ou déverrouillage pendant le travail en arrière-plan. La luminosité précédente est rétablie et les tâches continuent.

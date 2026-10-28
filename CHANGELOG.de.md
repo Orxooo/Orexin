@@ -6,6 +6,12 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 1 — 2026-10-28
+
+- Falsche Meldungen über eine fehlende Freigabe des Hilfsdienstes behoben. Maßgeblich ist jetzt die tatsächlich signaturgeprüfte Verbindung; fehlgeschlagene Verbindungen können durch erneutes Versuchen wiederhergestellt werden.
+- Die Bildschirmsperre bei Inaktivität pausiert, solange der Bildschirm wach gehalten wird. Die Desktop-Anzeige und das Verhindern des Bildschirmschoners haben Vorrang; gespeicherte Regeln bleiben erhalten.
+- Beschreibungen für Desktop-Modus und Autorisierung präzisiert. Versionszusatz HotFix 1 ergänzt; die Update-Prüfung behandelt Hotfixes als stabile Korrekturversionen.
+
 ## V1.0.5 — 2026-10-27
 
 - Behoben: Nach dem Öffnen des Deckels, Aufwecken des Displays oder Entsperren während der Hintergrundarbeit fiel die Helligkeit erneut auf null. Die ursprüngliche Helligkeit wird wiederhergestellt; Aufgaben laufen weiter.

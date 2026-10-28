@@ -42,4 +42,17 @@ final class ReleaseCatalogTests: XCTestCase {
         let releases = try JSONDecoder().decode([GitHubRelease].self, from: data)
         XCTAssertEqual(ReleaseCatalog.latest(in: releases, includePreviews: true)?.tagName, "v0.1.0-preview")
     }
+
+    func testHotfixVersionsFollowTheirStableReleaseAndRemainStable() throws {
+        let tags = ["v1.0.5-preview", "v1.0.5", "v1.0.5-hotfix.1", "v1.0.5-hotfix.2", "v1.0.6"]
+        let versions = try tags.map { try XCTUnwrap(ReleaseVersion($0)) }
+        for (older, newer) in zip(versions, versions.dropFirst()) { XCTAssertLessThan(older, newer) }
+        XCTAssertFalse(versions[2].isPrerelease)
+        XCTAssertFalse(versions[3].isPrerelease)
+    }
+
+    func testStableCatalogOffersHotfixWithoutOfferingPreview() {
+        let releases = [release("v1.0.5"), release("v1.0.5-hotfix.1"), release("v1.0.6-preview", preview: true)]
+        XCTAssertEqual(ReleaseCatalog.latest(in: releases, includePreviews: false)?.tagName, "v1.0.5-hotfix.1")
+    }
 }

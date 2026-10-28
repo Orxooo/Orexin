@@ -9,7 +9,7 @@ enum OrexinRelease {
     static var version: String { Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "1.0.5" }
     static var channel: String { Bundle.main.object(forInfoDictionaryKey: "OrexinReleaseChannel") as? String ?? "" }
     static var displayVersion: String { "V\(version)" + (channel.isEmpty ? "" : " \(channel)") }
-    static var versionTag: String { "v\(version)" + (channel.isEmpty ? "" : "-\(channel.lowercased())") }
+    static var versionTag: String { "v\(version)" + (channel.isEmpty ? "" : "-\(channel.lowercased().replacingOccurrences(of: " ", with: "."))") }
 }
 
 struct GitHubRelease: Decodable {
@@ -37,10 +37,11 @@ enum ReleaseCatalog {
     }
 }
 
-/// Version ordering includes prerelease identifiers so 0.1.0 succeeds 0.1.0-preview.
+/// Numbered hotfixes follow their stable release; preview identifiers precede it.
 struct ReleaseVersion: Comparable {
     private let numbers: [Int]
     private let prerelease: [String]
+    private let hotfix: Int
     var isPrerelease: Bool { !prerelease.isEmpty }
 
     init?(_ tag: String) {
@@ -52,12 +53,16 @@ struct ReleaseVersion: Comparable {
         guard numbers.count == 3, numbers.allSatisfy({ !$0.isEmpty && $0.allSatisfy(\.isNumber) }),
               numbers.compactMap({ Int($0) }).count == 3 else { return nil }
         self.numbers = numbers.compactMap { Int($0) }
-        prerelease = parts.count == 2 ? parts[1].split(separator: ".", omittingEmptySubsequences: false).map(String.init) : []
-        guard prerelease.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") } }) else { return nil }
+        let identifiers = parts.count == 2 ? parts[1].split(separator: ".", omittingEmptySubsequences: false).map(String.init) : []
+        guard identifiers.allSatisfy({ !$0.isEmpty && $0.allSatisfy { $0.isASCII && ($0.isLetter || $0.isNumber || $0 == "-") } }) else { return nil }
+        if identifiers.count == 2, identifiers[0] == "hotfix", let revision = Int(identifiers[1]), revision > 0 {
+            hotfix = revision; prerelease = []
+        } else { hotfix = 0; prerelease = identifiers }
     }
 
     static func < (lhs: Self, rhs: Self) -> Bool {
         if lhs.numbers != rhs.numbers { return lhs.numbers.lexicographicallyPrecedes(rhs.numbers) }
+        if lhs.prerelease.isEmpty && rhs.prerelease.isEmpty { return lhs.hotfix < rhs.hotfix }
         if lhs.prerelease.isEmpty || rhs.prerelease.isEmpty { return !lhs.prerelease.isEmpty && rhs.prerelease.isEmpty }
         for (a, b) in zip(lhs.prerelease, rhs.prerelease) where a != b {
             switch (Int(a), Int(b)) {

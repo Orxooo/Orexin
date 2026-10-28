@@ -307,7 +307,7 @@ struct PreferencesView: View {
                 VStack(alignment: .leading, spacing: 10) {
                     HStack(alignment: .top, spacing: 8) {
                         Rectangle().fill(model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber).frame(width: 7, height: 7).padding(.top, 4)
-                        Text(L(model.helperStatus == .enabled ? "合盖服务已授权，可以选择后台工作。" : model.helperMessage.isEmpty ? "合盖服务尚未授权。" : model.helperMessage))
+                        Text(L(model.helperStatus == .enabled ? "系统已批准辅助服务；实际连接会在启动相关功能时核验。" : model.helperMessage.isEmpty ? "合盖服务尚未授权。" : model.helperMessage))
                             .font(.system(size: 11, weight: .semibold)).foregroundStyle(model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber)
                             .fixedSize(horizontal: false, vertical: true)
                     }
@@ -316,7 +316,7 @@ struct PreferencesView: View {
                     .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
             }
             PreferencesConsoleRack(number: "02", title: "锁屏与密码策略", code: "SECURITY & PRIVACY GUARDS", accent: TerminalStyle.secondary, metadata: "AUTHENTICATION POLICY") {
-                WorkToggle(title: "工作时保持未锁定", detail: "开始工作时输入一次 Mac 密码。熄屏或合盖时保持未锁定；工作结束后自动恢复即时密码保护。需要已授权的系统服务。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
+                WorkToggle(title: "工作时保持未锁定", detail: "桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
                     .disabled(model.busy || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))
                     .padding(12).background(TerminalStyle.recess)
                 WorkToggle(title: "要求即时密码保护", detail: "默认开启。关闭后跟随 macOS 的密码要求，可使用系统设置的延迟或不要求密码。", isOn: Binding(get: { model.requiresImmediateLock }, set: { enabled in Task { await model.setRequireImmediateLock(enabled) } }))

@@ -13,6 +13,7 @@ import WakeMacCore
     @Published var screenSaverMinutes: Double { didSet { save() } }
     @Published private(set) var status = "仅在已核验的工作状态中生效。"
     var workingProvider: (() -> Bool)?
+    var allowsIdleLock: (() -> Bool)?
     var allowsScreenSaver: (() -> Bool)?
     var immediateAuthentication: () -> Bool = { true }
     var preflight: () async -> Bool = { true }
@@ -42,15 +43,24 @@ import WakeMacCore
     }
     func tick() async {
         guard !running else { return }
-        guard workingProvider?() == true, unlockedProvider() else { lockFired = false; saverFired = false; return }
+        guard workingProvider?() == true, unlockedProvider() else {
+            lockFired = false; saverFired = false; status = "仅在已核验的工作状态中生效。"; return
+        }
         let idle = idleProvider()
         guard idle.isFinite, idle >= 0, (1...240).contains(lockMinutes), (1...240).contains(screenSaverMinutes) else { status = "无法读取空闲时间或时长无效。"; return }
         if idle < lockMinutes * 60 { lockFired = false }
         if idle < screenSaverMinutes * 60 { saverFired = false }
+        if lockEnabled && allowsIdleLock?() == false && screenSaverEnabled && allowsScreenSaver?() == false {
+            status = "桌面保活生效：闲置熄屏锁定与屏保已暂停。"
+        } else if lockEnabled && allowsIdleLock?() == false {
+            status = "显示器保活生效：闲置熄屏锁定已暂停。"
+        } else if screenSaverEnabled && allowsScreenSaver?() == false {
+            status = "防止闲时屏保生效：闲置屏保已暂停。"
+        } else { status = "闲置动作遵循当前屏幕与密码策略。" }
         running = true; defer { running = false }
         do {
-            if lockEnabled, immediateAuthentication(), idle >= lockMinutes * 60, !lockFired {
-                guard await preflight(), immediateAuthentication(), workingProvider?() == true, unlockedProvider(), lockEnabled, idleProvider() >= lockMinutes * 60 else { return }
+            if lockEnabled, allowsIdleLock?() != false, immediateAuthentication(), idle >= lockMinutes * 60, !lockFired {
+                guard await preflight(), allowsIdleLock?() != false, immediateAuthentication(), workingProvider?() == true, unlockedProvider(), lockEnabled, idleProvider() >= lockMinutes * 60 else { return }
                 // The caller requires verified immediate authentication. Sleep the display
                 // instead of ever modifying the password requirement or unlocking.
                 try await lockAction(); lockFired = true; status = "已请求熄屏锁定；系统保活会话仍继续。"

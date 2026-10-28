@@ -16,7 +16,7 @@ import WakeMacCore
     private let previews: Bool
     private let loader: () async throws -> [GitHubRelease]
     init(notices: ClientNoticeCenter, preferences: UserDefaults = .standard,
-         current: String = OrexinRelease.versionTag, previews: Bool = !OrexinRelease.channel.isEmpty,
+         current: String = OrexinRelease.versionTag, previews: Bool = ReleaseVersion(OrexinRelease.versionTag)?.isPrerelease == true,
          loader: @escaping () async throws -> [GitHubRelease] = UpdateMonitor.fetch) {
         self.notices = notices; self.preferences = preferences; self.current = current
         self.previews = previews; self.loader = loader

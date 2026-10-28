@@ -95,11 +95,41 @@ private actor LockPreferenceBackend: ModeBackend {
 
     func testLockRechecksSystemAuthenticationDuringPreflight() async {
         let b = LockPreferenceBackend(.immediate), m = model(b, followSystem: true)
+        m.workScreen.select(.systemIdle, for: .desk)
         await m.choose(.desk)
         let c = m.idlePolicy; var locks = 0
         c.lockEnabled = true; c.lockMinutes = 1; c.idleProvider = { 120 }; c.unlockedProvider = { true }
         c.lockAction = { locks += 1 }
         await b.setLock(.off)
+        await c.tick()
+        XCTAssertEqual(locks, 0)
+    }
+
+    func testKeepingDesktopVisibleSuspendsIdleLockAndSaverWithoutChangingSavedChoices() async {
+        let b = LockPreferenceBackend(.immediate), m = model(b, followSystem: true)
+        m.sessions.preventScreenSaver = true
+        await m.choose(.desk)
+        let c = m.idlePolicy; var locks = 0, savers = 0
+        c.lockEnabled = true; c.screenSaverEnabled = true; c.lockMinutes = 1; c.screenSaverMinutes = 1
+        c.idleProvider = { 120 }; c.unlockedProvider = { true }
+        c.lockAction = { locks += 1 }; c.screenSaverAction = { savers += 1 }
+        await c.tick()
+        XCTAssertEqual(locks, 0); XCTAssertEqual(savers, 0)
+        XCTAssertTrue(c.lockEnabled); XCTAssertTrue(c.screenSaverEnabled)
+        m.workScreen.select(.systemIdle, for: .desk)
+        await m.applyWorkScreenPolicy(now: Date())
+        await c.tick()
+        XCTAssertEqual(locks, 1)
+    }
+
+    func testEnablingDisplayPreventionDuringIdlePreflightCancelsPendingLock() async {
+        let b = LockPreferenceBackend(.immediate), m = model(b, followSystem: true)
+        m.workScreen.select(.systemIdle, for: .desk)
+        await m.choose(.desk)
+        let c = m.idlePolicy; var locks = 0
+        c.lockEnabled = true; c.lockMinutes = 1; c.idleProvider = { 120 }; c.unlockedProvider = { true }
+        c.lockAction = { locks += 1 }
+        c.preflight = { await m.changeDisplayPrevention(true); return true }
         await c.tick()
         XCTAssertEqual(locks, 0)
     }

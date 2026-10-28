@@ -52,12 +52,12 @@ struct PreferencesTelemetryLabel: View {
 /// An authorized service is a status readout, not a disabled action.
 struct PreferencesServiceReadyBadge: View {
     var body: some View {
-        PreferencesTelemetryLabel(title: "合盖服务已安装", code: "DAEMON_READY", icon: "checkmark.shield")
+        PreferencesTelemetryLabel(title: "系统已批准辅助服务", code: "DAEMON_READY", icon: "checkmark.shield")
             .padding(.horizontal, 15).frame(height: 36)
             .foregroundStyle(TerminalStyle.accent).background(TerminalStyle.selection.opacity(0.45))
             .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.75)))
             .accessibilityElement(children: .ignore)
-            .accessibilityLabel("合盖服务已安装并已授权")
+            .accessibilityLabel("系统已批准辅助服务")
             .accessibilityValue("DAEMON_READY")
             .accessibilityAddTraits(.isStaticText)
     }
@@ -123,7 +123,7 @@ struct IdleScreenConsoleView: View {
         PreferencesConsoleRack(number: "03", title: "闲置后的屏幕", code: "IDLE DISPLAY & SESSION GUARD", accent: TerminalStyle.secondary) {
             Text(L("工作继续运行；熄屏锁定需要即时密码保护，屏保的密码要求跟随系统设置。"))
                 .font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
-            policyRow(number: "01", title: "闲置后熄屏锁定", code: "DISPLAY LOCK", detail: "仅在 macOS 立即要求密码时执行；其他策略下暂停。") {
+            policyRow(number: "01", title: "闲置后熄屏锁定", code: "DISPLAY LOCK", detail: "显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。") {
                 Toggle(L("闲置后熄屏锁定"), isOn: $controller.lockEnabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
                     .disabled(!immediateAuthentication)
                     .accessibilityLabel("闲置后熄屏锁定")

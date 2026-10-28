@@ -6,6 +6,12 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.5 HotFix 1 — 2026-10-28
+
+- Fixed false helper-approval errors caused by task-service registration metadata. Signed helper connections now determine availability, and failed connections can recover on retry.
+- Idle display locking now pauses while display sleep prevention is active; desktop visibility and screen saver prevention take priority without changing saved idle rules.
+- Clarified desktop mode and authorization messages. Added the HotFix 1 version label and stable hotfix ordering for update checks.
+
 ## V1.0.5 — 2026-10-27
 
 - Fixed the screen returning to zero brightness after opening the lid, waking the display, or unlocking during background work. Original brightness is restored and dimming pauses while tasks continue.

@@ -46,7 +46,7 @@ struct SessionsView: View {
                 VStack(alignment: .leading, spacing: 8) {
                     fieldHeading("开始时使用", subtitle: "INITIAL WORK MODE")
                     HStack(spacing: 6) {
-                        modeCard(.desk, title: "桌面工作", detail: "保持工作 · 允许屏幕关闭", icon: "display")
+                        modeCard(.desk, title: "桌面工作", detail: "屏幕与屏保由会话效果控制", icon: "display")
                         modeCard(.background, title: "后台工作", detail: "合盖保活", icon: "laptopcomputer")
                     }.padding(5).background(TerminalStyle.recess)
                 }.disabled(configurationLocked)
@@ -186,6 +186,7 @@ struct SessionsView: View {
 
     private var effectsPanel: some View {
         sessionPanel(number: "02", title: "会话效果", subtitle: "HARDWARE ASSERTION MATRIX", signal: TerminalStyle.signal) {
+            effectText("保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。")
             VStack(alignment: .leading, spacing: 12) {
                 effectText("开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。")
                 if model.screenEffectsControlledByOtherTasks {
