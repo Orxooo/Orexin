@@ -6,6 +6,13 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 2 — 2026-10-28
+
+- L’interface redémarre automatiquement le service déconnecté, se reconnecte avec temporisation et rétablit ses demandes de travail toujours valides avec l’approbation système existante. Les commandes et plans ne sont pas rejoués ; les arrêts explicites sont respectés.
+- Le maintien du bureau, de l’écran et la prévention de l’économiseur ne demandent aucun mot de passe. Le travail déverrouillé temporaire réutilise une autorisation valide et la vérifie séparément après un changement de processus.
+- Une coupure temporaire du service capot fermé permet de rétablir le bail d’alimentation existant. Les refus de stratégie et autorisations expirées restent des échecs ; le démarrage à froid rétablit la protection par mot de passe.
+- Les erreurs d’autorisation et de démarrage suivent la langue choisie, y compris les anciennes notifications anglaises conservées, sans modifier l’historique enregistré.
+
 ## V1.0.5 HotFix 1 — 2026-10-28
 
 - Correction des erreurs indiquant à tort que le service auxiliaire n’est pas autorisé. La disponibilité dépend désormais de la connexion signée réelle ; une nouvelle tentative permet de rétablir une connexion défaillante.

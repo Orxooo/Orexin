@@ -316,7 +316,7 @@ struct PreferencesView: View {
                     .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
             }
             PreferencesConsoleRack(number: "02", title: "锁屏与密码策略", code: "SECURITY & PRIVACY GUARDS", accent: TerminalStyle.secondary, metadata: "AUTHENTICATION POLICY") {
-                WorkToggle(title: "工作时保持未锁定", detail: "桌面与后台工作均需系统辅助服务及本次密码授权。仅保持桌面可见时，开启防熄屏与防屏保即可，无需取消密码保护。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
+                WorkToggle(title: "工作时保持未锁定", detail: "额外选项：熄屏或合盖返回时免输密码，每次新工作需账户密码。仅保持桌面可见无需开启，防熄屏与防屏保无需密码授权。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
                     .disabled(model.busy || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))
                     .padding(12).background(TerminalStyle.recess)
                 WorkToggle(title: "要求即时密码保护", detail: "默认开启。关闭后跟随 macOS 的密码要求，可使用系统设置的延迟或不要求密码。", isOn: Binding(get: { model.requiresImmediateLock }, set: { enabled in Task { await model.setRequireImmediateLock(enabled) } }))

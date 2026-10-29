@@ -150,23 +150,27 @@ extension AppModel {
             if let enabled = request.enabled { await setRequireImmediateLock(enabled) }
             return taskControlReply()
         case "unlocked-setting":
-            guard let enabled = request.enabled else { throw ModeError("Unlocked-work setting required") }
+            guard let enabled = request.enabled else { throw ModeError("缺少保持未锁定设置。") }
             await setUnlockedWork(enabled); return taskControlReply()
         case "unlocked-ready":
             guard let deadline = pendingUnlockedDeadline, Date() < deadline, pendingUnlockedOwner?.isAlive == true,
-                  let backend = backend as? MacBackend else { throw ModeError("Authorization lease expired; start again") }
+                  let backend = backend as? MacBackend else { throw ModeError("本次授权已过期，请重新开始工作。") }
             try await backend.renewPendingUnlockedWork()
             pendingUnlockedDeadline = Date().addingTimeInterval(30)
             return taskControlReply()
         case "unlocked-prepare":
-            guard let backend = backend as? MacBackend else { throw ModeError("Native backend required") }
-            guard let owner = request.owner, owner.isAlive == true, workRequests.active.isEmpty else { throw ModeError("An active interface owner and no active work are required for authorization") }
+            guard let backend = backend as? MacBackend else { throw ModeError("当前后端不支持保持未锁定授权。") }
+            guard let owner = request.owner, owner.isAlive == true else { throw ModeError("请在正在运行的 Orexin 界面发起授权。") }
+            if try await backend.unlockedWorkAuthorizationIsActive() {
+                var reply = taskControlReply(); reply.unlockedWorkAuthorized = true; return reply
+            }
+            guard workRequests.active.isEmpty else { throw ModeError("请先结束现有工作，再授权保持未锁定。") }
             await setUnlockedWork(true)
             try await backend.prepareUnlockedWorkFromInterface()
             pendingUnlockedOwner = owner; pendingUnlockedDeadline = Date().addingTimeInterval(120)
-            return taskControlReply()
+            var reply = taskControlReply(); reply.unlockedWorkAuthorized = false; return reply
         case "unlocked-finish":
-            guard let backend = backend as? MacBackend else { throw ModeError("Native backend required") }
+            guard let backend = backend as? MacBackend else { throw ModeError("当前后端不支持保持未锁定授权。") }
             try await backend.verifyUnlockedWorkFromInterface()
             return taskControlReply()
         case "display-sleep":

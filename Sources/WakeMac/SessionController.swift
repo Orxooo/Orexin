@@ -104,6 +104,7 @@ struct SessionBehaviorOverride: Equatable {
     var onConditionEnd: (() async -> Void)?
     var onExtended: ((Double) -> Void)?
     var workingProvider: (() -> Bool)?
+    var workVerificationPending: (() -> Bool)?
     var applicationProbe: (URL) -> SessionApplicationReading = SessionController.readApplication
     var screenSaverExceptionProbe: (String) -> SessionApplicationReading = SessionController.readRunningBundleIdentifier
     var processProbe: (NativeProcessIdentity) -> NativeProcessReading = ProcessDiscovery.presence
@@ -285,7 +286,7 @@ struct SessionBehaviorOverride: Equatable {
 
     func tick(now: Date) async {
         guard !stopped else { effects.release(); return }
-        guard workingProvider?() == true else {
+        guard workingProvider?() == true || workVerificationPending?() == true else {
             if isActive {
                 // Disarm before awaiting: subsequent ticks must not request another
                 // teardown. The coordinator releases its owned inhibitors before

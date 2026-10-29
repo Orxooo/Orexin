@@ -46,6 +46,10 @@ private final class ReplyGate {
 }
 
 private struct HelperRejection: Error { let message: String }
+struct PowerHelperConnectionFailure: LocalizedError {
+    let reason: String
+    var errorDescription: String? { reason }
+}
 
 /// Used only from MacBackend's actor. A connection owns one helper lease;
 /// invalidating it causes the helper to restore sleep.
@@ -112,7 +116,7 @@ final class PowerHelperClient: ScreenLockLeaseClient {
         } catch {
             connection?.invalidate(); connection = nil
             if let rejection = error as? HelperRejection { throw ModeError(rejection.message) }
-            throw ModeError(context + "\n系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。\n" + error.localizedDescription)
+            throw PowerHelperConnectionFailure(reason: context + "\n系统辅助服务连接失败。请在偏好设置中启用并在系统设置中批准；若已批准，请重试。\n" + error.localizedDescription)
         }
     }
     deinit { connection?.invalidate() }

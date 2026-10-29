@@ -98,6 +98,20 @@ import WakeMacCore
         await c.tick(now: now.addingTimeInterval(620)); XCTAssertTrue(c.isActive)
         await c.tick(now: now.addingTimeInterval(621)); XCTAssertFalse(c.isActive)
     }
+    func testReconnectKeepsSessionIntentButStillHonorsItsDeadline() async {
+        let e = TestSessionEffects(), c = controller(e), now = Date()
+        var working = true, reconnecting = false, endings = 0
+        c.workingProvider = { working }; c.workVerificationPending = { reconnecting }
+        c.onBegin = { _ in true }; c.onEnd = { endings += 1 }
+        c.endCondition = .duration; c.durationMinutes = 1
+        await c.start(now: now)
+        working = false; reconnecting = true
+        await c.tick(now: now.addingTimeInterval(10))
+        XCTAssertTrue(c.isActive); XCTAssertFalse(e.active)
+        await c.tick(now: now.addingTimeInterval(60))
+        XCTAssertFalse(c.isActive); XCTAssertEqual(endings, 1)
+    }
+
     func testDurationEndsOnceAndReleasesEffectsBeforeEndCallback() async {
         let e = TestSessionEffects(), c = controller(e), now = Date()
         var working = false, endings = 0

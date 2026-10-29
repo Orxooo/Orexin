@@ -37,6 +37,8 @@ actor MacBackend: ModeBackend {
     private let helper: any BackgroundLeaseClient
     private var backgroundRequested = false
     private var unlockedRequested = false
+    private var unlockedAuthorized = false
+    private var unlockedPreparing = false
     private var heartbeat: Task<Void, Never>?
     private var leaseGeneration: UInt64 = 0
     private var leaseFailure: String?
@@ -61,8 +63,24 @@ actor MacBackend: ModeBackend {
             return true
         } catch {
             guard leaseGeneration == revision, backgroundRequested || unlockedRequested else { return false }
+            var failure = error
+            if error is PowerHelperConnectionFailure, backgroundRequested, !unlockedRequested {
+                // Reacquire only an existing ordinary background intent after a
+                // transport loss. Helper policy rejections and lock-off leases
+                // are never converted into permission to retry or authorize.
+                do {
+                    try await helper.setBackground(true)
+                    guard leaseGeneration == revision, backgroundRequested else { return false }
+                    guard try await sleepDisabled() else { throw ModeError("合盖防休眠未通过系统回读核验。") }
+                    return leaseGeneration == revision && backgroundRequested
+                } catch {
+                    failure = error
+                    try? await helper.setBackground(false)
+                }
+                guard leaseGeneration == revision, backgroundRequested else { return false }
+            }
             backgroundRequested = false
-            let reason = error.localizedDescription
+            let reason = failure.localizedDescription
             var recoveryFailures: [String] = []
             if unlockedRequested {
                 do { try await restoreUnlockedWork() } catch { recoveryFailures.append(error.localizedDescription) }
@@ -115,8 +133,8 @@ actor MacBackend: ModeBackend {
             backgroundRequested = true
             try await helper.setBackground(true)
         }
-        if preferences.bool(forKey: "orexin.work.keepUnlocked"), !unlockedRequested {
-            guard allowsAuthentication else { throw ModeError("Authorize unlocked work from the Orexin interface first") }
+        if preferences.bool(forKey: "orexin.work.keepUnlocked"), !unlockedAuthorized {
+            guard allowsAuthentication else { throw ModeError("请在 Orexin 界面完成本次保持未锁定授权。") }
             guard let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("当前服务不支持临时锁屏策略。") }
             try await lockHelper.prepareUnlockedWork()
             unlockedRequested = true
@@ -131,6 +149,7 @@ actor MacBackend: ModeBackend {
                 try await helper.renew()
                 let lockState = try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"])
                 guard SystemParsing.lockPolicy(lockState) == .off, leaseFailure == nil else { throw ModeError("未确认临时关闭锁定；已恢复密码保护。") }
+                unlockedAuthorized = true
             } catch {
                 let reason = error
                 try await restoreUnlockedWork()
@@ -146,24 +165,53 @@ actor MacBackend: ModeBackend {
         if mode != .normal { try assertion.acquire() }
     }
     func prepareUnlockedWorkFromInterface() async throws {
-        guard !unlockedRequested, let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("Unlocked work is already active or unsupported") }
+        guard !unlockedRequested, !unlockedPreparing, let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("保持未锁定授权正在准备中，请稍候重试。") }
+        unlockedPreparing = true; defer { unlockedPreparing = false }
+        let revision = leaseGeneration
+        // Lock-off can survive logout while this process's recovery lease cannot.
+        // Establish the protected baseline before arming a new recovery lease.
+        let policy = SystemParsing.lockPolicy(try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"]))
+        guard revision == leaseGeneration else { throw ModeError("本次授权已过期，请重新开始工作。") }
+        if policy != .immediate {
+            _ = try await command("/usr/sbin/sysadminctl", ["-screenLock", "immediate", "-password", ""])
+            let restored = SystemParsing.lockPolicy(try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"]))
+            guard restored == .immediate else { throw ModeError("即时密码保护尚未恢复；服务会继续重试。") }
+        }
+        guard revision == leaseGeneration else { throw ModeError("本次授权已过期，请重新开始工作。") }
         try await lockHelper.prepareUnlockedWork()
+        guard revision == leaseGeneration else {
+            try? await lockHelper.endUnlockedWork()
+            throw ModeError("本次授权已过期，请重新开始工作。")
+        }
         unlockedRequested = true
         preferences.set(true, forKey: "orexin.UnlockedLeaseArmed")
         startHeartbeat()
     }
-    func renewPendingUnlockedWork() async throws {
-        guard unlockedRequested else { throw ModeError("Unlocked-work recovery lease ended") }
+    func unlockedWorkAuthorizationIsActive() async throws -> Bool {
+        guard unlockedRequested, unlockedAuthorized else { return false }
+        let revision = leaseGeneration
         try await helper.renew()
+        guard revision == leaseGeneration, unlockedRequested, unlockedAuthorized, leaseFailure == nil else { return false }
+        let policy = SystemParsing.lockPolicy(try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"]))
+        return revision == leaseGeneration && unlockedRequested && unlockedAuthorized && leaseFailure == nil && policy == .off
+    }
+    func renewPendingUnlockedWork() async throws {
+        guard unlockedRequested else { throw ModeError("保持未锁定恢复会话已结束，请重新授权。") }
+        let revision = leaseGeneration
+        try await helper.renew()
+        guard revision == leaseGeneration, unlockedRequested, leaseFailure == nil else { throw ModeError("保持未锁定恢复会话已结束，请重新授权。") }
     }
     func verifyUnlockedWorkFromInterface() async throws {
-        guard unlockedRequested else { throw ModeError("No pending unlocked-work recovery lease") }
+        guard unlockedRequested else { throw ModeError("没有待核验的保持未锁定授权，请重新开始。") }
+        let revision = leaseGeneration
         let policy = SystemParsing.lockPolicy(try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"]))
-        guard policy == .off else { try await restoreUnlockedWork(); throw ModeError("Unlocked-work authorization did not finish") }
+        guard revision == leaseGeneration, unlockedRequested, leaseFailure == nil else { throw ModeError("保持未锁定恢复会话已结束，请重新授权。") }
+        guard policy == .off else { try await restoreUnlockedWork(); throw ModeError("保持未锁定授权尚未完成，请重试。") }
+        unlockedAuthorized = true
     }
     private func releaseNormalPower() async throws {
         var failures: [String] = []
-        if unlockedRequested || preferences.bool(forKey: "orexin.UnlockedLeaseArmed") {
+        if unlockedRequested || preferences.bool(forKey: "orexin.UnlockedLeaseArmed") || preferences.bool(forKey: "orexin.work.keepUnlocked") {
             do { try await restoreUnlockedWork() } catch { failures.append(error.localizedDescription) }
         }
         // Password recovery must not prevent either power inhibitor from being
@@ -187,13 +235,15 @@ actor MacBackend: ModeBackend {
         if !failures.isEmpty { throw ModeError(failures.joined(separator: "\n")) }
     }
     private func restoreUnlockedWork() async throws {
-        if let lockHelper = helper as? any ScreenLockLeaseClient {
+        unlockedAuthorized = false
+        if unlockedRequested, let lockHelper = helper as? any ScreenLockLeaseClient {
             do { try await lockHelper.endUnlockedWork() } catch { /* Local tightening is also available during a service restart. */ }
         }
         _ = try await command("/usr/sbin/sysadminctl", ["-screenLock", "immediate", "-password", ""])
         let status = try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"])
         guard SystemParsing.lockPolicy(status) == .immediate else { throw ModeError("即时密码保护尚未恢复；服务会继续重试。") }
         unlockedRequested = false
+        unlockedAuthorized = false
         preferences.set(false, forKey: "orexin.UnlockedLeaseArmed")
     }
     func requestLockPolicy(_ policy: LockPolicy) async {

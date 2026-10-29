@@ -6,6 +6,13 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.5 HotFix 2 — 2026-10-28
+
+- The interface automatically restarts a disconnected background service, reconnects with backoff, and restores its still-valid desktop or closed-lid work intent using existing system approval. Commands and plans are not replayed; explicit stops remain authoritative.
+- Ordinary desktop, display, and screensaver prevention require no password authorization. Temporary unlocked work reuses a verified live authorization and checks it separately after a process change, rather than inferring authorization from lock status.
+- A transient closed-lid service connection loss can reacquire its existing power lease. Policy rejections and expired lock-off authorization remain failures; a cold start restores password protection.
+- Authorization and session-start errors follow the selected language, including retained older English authorization notices, without changing their stored history.
+
 ## V1.0.5 HotFix 1 — 2026-10-28
 
 - Fixed false helper-approval errors caused by task-service registration metadata. Signed helper connections now determine availability, and failed connections can recover on retry.

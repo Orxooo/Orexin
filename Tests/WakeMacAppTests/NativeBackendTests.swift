@@ -50,7 +50,7 @@ final class NativeBackendTests: XCTestCase {
         XCTAssertTrue(preferences.bool(forKey: "orexin.UnlockedLeaseArmed"))
     }
     func testDesktopAndNormalUseNativeAssertionsWithoutHelperApproval() async throws {
-        let backend = MacBackend()
+        let backend = MacBackend(preferences: UserDefaults(suiteName: "NativeAssertions." + UUID().uuidString)!)
         let initial = try await backend.snapshot()
         guard initial.sleepDisabled == false else { throw XCTSkip("Another app is changing the global sleep switch.") }
         guard initial.lockPolicy == .immediate else { throw XCTSkip("Runtime check requires existing immediate lock protection.") }
@@ -70,7 +70,7 @@ final class NativeBackendTests: XCTestCase {
         guard SMAppService.daemon(plistName: PowerService.plistName).status != .enabled else {
             throw XCTSkip("This check must not alter an approved helper's global power setting.")
         }
-        let backend = MacBackend()
+        let backend = MacBackend(preferences: UserDefaults(suiteName: "NativeUnapproved." + UUID().uuidString)!)
         let initial = try await backend.snapshot()
         guard initial.sleepDisabled == false, initial.lockPolicy == .immediate else {
             throw XCTSkip("Existing power state is unsuitable for a nonprivileged runtime check.")

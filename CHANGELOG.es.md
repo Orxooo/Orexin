@@ -6,6 +6,13 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 2 — 2026-10-28
+
+- La interfaz reinicia automáticamente el servicio desconectado, se reconecta con espera progresiva y restaura sus solicitudes de trabajo aún válidas usando la aprobación existente. No se repiten comandos ni planes y se respetan las paradas explícitas.
+- Mantener el escritorio, la pantalla y evitar el salvapantallas no requiere contraseña. El trabajo temporal sin bloqueo reutiliza una autorización válida y la comprueba por separado tras cambiar el proceso.
+- Una interrupción temporal del servicio con la tapa cerrada permite recuperar su permiso de energía existente. Los rechazos de políticas y las autorizaciones caducadas siguen siendo errores; el inicio en frío restaura la protección por contraseña.
+- Los errores de autorización e inicio usan el idioma elegido, incluidos los avisos antiguos en inglés conservados, sin cambiar el historial guardado.
+
 ## V1.0.5 HotFix 1 — 2026-10-28
 
 - Corregidos los avisos que indicaban por error que el servicio auxiliar no estaba autorizado. Ahora se comprueba la conexión firmada real y los fallos de conexión se pueden recuperar al reintentar.

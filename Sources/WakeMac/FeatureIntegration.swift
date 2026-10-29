@@ -27,6 +27,7 @@ extension AppModel {
     func makeSessionController() -> SessionController {
         let controller = SessionController(preferences: preferences, effects: sessionEffects)
         controller.workingProvider = { [weak self] in self?.verifiedWork == true }
+        controller.workVerificationPending = { [weak self] in self?.serviceWorkRecoveryPending == true }
         controller.configuredScreenPolicyProvider = { [weak self, weak controller] in
             guard let self, let controller else { return false }
             return (controller.defaultMode == .background ? self.workScreen.background : self.workScreen.desktop).keepsDisplayActive

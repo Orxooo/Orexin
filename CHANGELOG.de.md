@@ -6,6 +6,13 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 2 — 2026-10-28
+
+- Die Oberfläche startet einen getrennten Hintergrunddienst automatisch neu, verbindet sich mit zunehmenden Abständen und stellt weiterhin gültige Arbeitsanforderungen mit vorhandener Systemfreigabe wieder her. Befehle und Pläne werden nicht erneut ausgeführt; ausdrückliche Stopps bleiben wirksam.
+- Schreibtisch-, Display- und Bildschirmschonerschutz benötigen kein Passwort. Temporäres entsperrtes Arbeiten verwendet eine gültige Autorisierung erneut und prüft sie nach einem Prozesswechsel getrennt vom Sperrstatus.
+- Nach einer kurzen Verbindungsunterbrechung des Zuklappdienstes wird die bestehende Stromfreigabe wiederhergestellt. Richtlinienablehnungen und abgelaufene Entsperrautorisierungen bleiben Fehler; ein Kaltstart stellt den Passwortschutz wieder her.
+- Autorisierungs- und Sitzungsstartfehler erscheinen in der gewählten Sprache, einschließlich gespeicherter älterer englischer Meldungen. Der ursprüngliche Verlauf bleibt erhalten.
+
 ## V1.0.5 HotFix 1 — 2026-10-28
 
 - Falsche Meldungen über eine fehlende Freigabe des Hilfsdienstes behoben. Maßgeblich ist jetzt die tatsächlich signaturgeprüfte Verbindung; fehlgeschlagene Verbindungen können durch erneutes Versuchen wiederhergestellt werden.

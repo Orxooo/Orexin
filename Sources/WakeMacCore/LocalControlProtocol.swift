@@ -51,6 +51,7 @@ public struct ControlReply: Codable, Sendable {
     public var plans: [PlanRunSummary]?
     public var snapshot: Snapshot?
     public var commandLogs: [UUID: String]?
+    public var unlockedWorkAuthorized: Bool?
     public init(ok: Bool = true, error: String? = nil, handle: WorkRequestHandle? = nil, tasks: [ControlTaskStatus] = [], mode: WorkMode? = nil, verified: Bool = false, sleepAt: Date? = nil) {
         self.ok = ok; self.error = error; self.handle = handle; self.tasks = tasks; self.mode = mode; self.verified = verified; self.sleepAt = sleepAt
     }

@@ -1439,3 +1439,20 @@
 "合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "Le fonctionnement couvercle fermé et le maintien du déverrouillage exigent la même signature de développeur Apple pour l’application et le service auxiliaire. Le maintien éveillé ordinaire du bureau et la veille normale n’exigent pas cette autorisation.";
 "系统已批准辅助服务" = "Service auxiliaire autorisé par le système";
 "系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "Le service auxiliaire est autorisé. La connexion est vérifiée au démarrage d’une fonction qui l’utilise.";
+
+"工作请求未启动：" = "La demande de travail n’a pas démarré : ";
+"请在 Orexin 界面完成本次保持未锁定授权。" = "Terminez l’autorisation de cette session sans verrouillage dans l’interface Orexin.";
+"保持未锁定授权正在准备中，请稍候重试。" = "L’autorisation de maintien sans verrouillage est en préparation. Réessayez dans un instant.";
+"保持未锁定恢复会话已结束，请重新授权。" = "La session de récupération du verrouillage est terminée. Autorisez à nouveau.";
+"没有待核验的保持未锁定授权，请重新开始。" = "Aucune autorisation de maintien sans verrouillage n’attend de vérification. Recommencez.";
+"保持未锁定授权尚未完成，请重试。" = "L’autorisation de maintien sans verrouillage n’est pas terminée. Réessayez.";
+"本次授权已过期，请重新开始工作。" = "Cette autorisation a expiré. Relancez le travail.";
+"当前后端不支持保持未锁定授权。" = "Ce service ne prend pas en charge l’autorisation sans verrouillage.";
+"请在正在运行的 Orexin 界面发起授权。" = "Lancez l’autorisation depuis une interface Orexin en cours d’exécution.";
+"请先结束现有工作，再授权保持未锁定。" = "Terminez le travail en cours avant d’autoriser le maintien sans verrouillage.";
+"缺少保持未锁定设置。" = "Le réglage de maintien sans verrouillage est manquant.";
+"额外选项：熄屏或合盖返回时免输密码，每次新工作需账户密码。仅保持桌面可见无需开启，防熄屏与防屏保无需密码授权。" = "Option facultative : revenir sans mot de passe après extinction de l’écran ou fermeture du capot. Chaque nouvelle session exige le mot de passe du compte. Garder le bureau visible ne nécessite pas cette option ; empêcher la veille de l’écran et l’économiseur ne demande aucun mot de passe.";
+"后台服务暂时不可用，正在自动重连。" = "Le service en arrière-plan est temporairement indisponible. Reconnexion automatique en cours.";
+"后台服务正在启动。" = "Le service en arrière-plan démarre.";
+"后台服务正在停止。" = "Le service en arrière-plan s’arrête.";
+"后台服务连接不可用，请重新检查。" = "Le service en arrière-plan est indisponible. Vérifiez à nouveau la connexion.";

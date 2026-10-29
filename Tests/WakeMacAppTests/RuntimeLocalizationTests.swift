@@ -39,6 +39,35 @@ final class RuntimeLocalizationTests: XCTestCase {
         XCTAssertEqual(localizedMessage(commandOutput, bundle: try bundle(.english), language: .english), commandOutput)
     }
 
+    func testPersistedEnglishAuthorizationFailureIsLocalizedIncludingChinese() throws {
+        let stored = "Request was not activated: Authorize unlocked work from the Orexin interface first"
+        for language in AppLanguage.allCases {
+            let output = localizedMessage(stored, bundle: try bundle(language), language: language)
+            XCTAssertNotEqual(output, stored, language.rawValue)
+            XCTAssertFalse(output.contains("Request was not activated"), language.rawValue)
+            if language == .simplifiedChinese {
+                XCTAssertEqual(output, "工作请求未启动：请在 Orexin 界面完成本次保持未锁定授权。")
+            }
+        }
+    }
+
+    func testRetainedEnglishServiceLifecycleErrorsRenderInChinese() throws {
+        let resources = try bundle(.simplifiedChinese)
+        let samples = [
+            ("Task service is starting", "后台服务正在启动。"),
+            ("Task service is stopping", "后台服务正在停止。"),
+            ("Orexin is unavailable at /tmp/example/control.sock. Start the background service with orexin service-start. (No such file or directory)", "后台服务连接不可用，请重新检查。"),
+        ]
+        for (stored, expected) in samples {
+            XCTAssertEqual(localizedMessage(stored, bundle: resources, language: .simplifiedChinese), expected)
+            for language in AppLanguage.allCases where language != .english {
+                let output = localizedMessage(stored, bundle: try bundle(language), language: language)
+                XCTAssertFalse(output.contains("Task service is"), language.rawValue)
+                XCTAssertFalse(output.contains("Start the background service"), language.rawValue)
+            }
+        }
+    }
+
     func testCriticalClientAlertsAndDynamicBodiesResolveAcrossShippedLanguages() throws {
         let messages = [
             "Orexin 有新版本", "后台提醒尚未完整启用", "工作状态无法确认", "温度压力已回落",

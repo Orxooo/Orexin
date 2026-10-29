@@ -3,6 +3,25 @@ import Combine
 @testable import WakeMac
 import WakeMacCore
 
+private actor ReplacingTaskService {
+    let first: AppModel, second: AppModel
+    var replaced = false
+    init(first: AppModel, second: AppModel) { self.first = first; self.second = second }
+    func reply(_ request: ControlMessage) async -> ControlReply {
+        if request.operation == "interface-register" { replaced = true }
+        return await (replaced ? second : first).handleTaskControl(request)
+    }
+}
+
+private actor InterceptServiceReply {
+    var operation: String?
+    func arm(_ operation: String) { self.operation = operation }
+    func take(_ operation: String) -> Bool {
+        guard self.operation == operation else { return false }
+        self.operation = nil; return true
+    }
+}
+
 @MainActor final class TaskServiceTests: XCTestCase {
     private final class Effects: SessionEffectManaging {
         func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
@@ -150,6 +169,208 @@ import WakeMacCore
         defer { server.stop() }
         await client.refresh()
         XCTAssertFalse(client.error)
+        XCTAssertEqual(client.active, .normal)
+    }
+
+    func testFreshServiceInstanceInvalidatesStaleInterfaceHandle() async throws {
+        let first = await model(), second = await model()
+        let path = "/tmp/orxi-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await first.handleTaskControl($0) }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); await client.choose(.desk)
+        let old = try XCTUnwrap(client.interfaceHandle)
+        server.stop()
+        for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { try await Task.sleep(for: .milliseconds(10)) }
+        let replacement = try LocalControlServer(path: path) { await second.handleTaskControl($0) }
+        defer { replacement.stop() }
+        await client.choose(.desk)
+        XCTAssertTrue(client.verifiedWork, client.message)
+        XCTAssertFalse(client.error, client.message)
+        XCTAssertNotEqual(client.interfaceHandle, old)
+        XCTAssertEqual(second.workRequests.active.count, 1)
+        await client.choose(.normal); await first.choose(.normal)
+    }
+
+    func testRegistrationReplyBindsHandleToServiceThatAcceptedIt() async throws {
+        let first = await model(), second = await model()
+        let router = ReplacingTaskService(first: first, second: second)
+        let path = "/tmp/orxj-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await router.reply($0) }
+        defer { server.stop() }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); await client.choose(.desk)
+        XCTAssertTrue(client.verifiedWork, client.message)
+        let handle = try XCTUnwrap(client.interfaceHandle, "A new registration must survive the final status read")
+        let deadline = try XCTUnwrap(second.workRequests.active.first?.leaseExpiresAt)
+        await client.refreshTaskService(renew: true)
+        XCTAssertEqual(client.interfaceHandle, handle)
+        XCTAssertGreaterThan(try XCTUnwrap(second.workRequests.active.first?.leaseExpiresAt), deadline)
+        await client.choose(.normal)
+    }
+
+    func testAutomaticRefreshRestartsMissingServiceAndRestoresOnlyLiveInterfaceWork() async throws {
+        let first = await model(), second = await model()
+        let path = "/tmp/orxk-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await first.handleTaskControl($0) }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.normalBrightness, for: .desk)
+        var prompts = 0
+        client.requestUnlockedWorkPassword = { prompts += 1; throw ModeError("unexpected password prompt") }
+        await client.refresh(); await client.choose(.desk)
+        _ = try await first.registerWork(.init(title: "external command", source: "external"))
+        server.stop()
+        for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { try await Task.sleep(for: .milliseconds(10)) }
+        // A new live service instance must recover the GUI request on its ordinary
+        // timer refresh, without the user clicking Start or rerunning commands.
+        let replacement = try LocalControlServer(path: path) { await second.handleTaskControl($0) }
+        defer { replacement.stop() }
+        await client.refreshTaskService(renew: true)
+        XCTAssertTrue(client.verifiedWork, client.message)
+        XCTAssertFalse(client.error, client.message)
+        XCTAssertEqual(second.workRequests.active.count, 1)
+        XCTAssertEqual(second.workRequests.active.first?.spec.source, "interface")
+        XCTAssertEqual(second.workRequests.active.first?.spec.screen, .awake)
+        XCTAssertEqual(prompts, 0)
+        await client.choose(.normal); await first.choose(.normal)
+    }
+
+    func testMissingCoreIsRelaunchedWithoutAnotherPasswordPrompt() async throws {
+        let first = await model(), second = await model()
+        let path = "/tmp/orxn-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await first.handleTaskControl($0) }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); await client.choose(.desk)
+        server.stop()
+        for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { try await Task.sleep(for: .milliseconds(10)) }
+        var replacement: LocalControlServer?, launches = 0
+        client.serviceRecoveryEnabled = true
+        client.launchTaskService = { _, _ in
+            launches += 1
+            replacement = try LocalControlServer(path: path) { await second.handleTaskControl($0) }
+            return second.taskControlReply()
+        }
+        defer { replacement?.stop() }
+        await client.refreshTaskService(renew: true)
+        XCTAssertEqual(launches, 1)
+        XCTAssertTrue(client.verifiedWork, client.message)
+        XCTAssertEqual(second.workRequests.active.count, 1)
+        await client.choose(.normal); await first.choose(.normal)
+    }
+
+    func testFailedCoreRestartBacksOffAndUserStopCancelsPendingRecovery() async throws {
+        let client = await model(); client.isTaskService = false
+        client.serviceSocket = "/tmp/orxo-" + UUID().uuidString.prefix(8) + "/control.sock"
+        client.serviceRecoveryEnabled = true
+        var launches = 0
+        client.launchTaskService = { _, _ in launches += 1; throw ModeError("injected launch failure") }
+        await client.refreshTaskService(); await client.refreshTaskService()
+        XCTAssertEqual(launches, 1, "A failing service must not be launched every timer tick")
+        XCTAssertTrue(client.error)
+        client.manualWorkMode = .desk
+        let replacement = await model()
+        var server: LocalControlServer?
+        client.serviceRetryAt = .distantPast
+        client.launchTaskService = { _, _ in
+            client.overrideWorkRequests(reason: "User stop during restart")
+            server = try LocalControlServer(path: client.serviceSocket!) { await replacement.handleTaskControl($0) }
+            return replacement.taskControlReply()
+        }
+        defer { server?.stop() }
+        await client.refreshTaskService(renew: true)
+        XCTAssertNil(client.legacyWorkMode)
+        XCTAssertTrue(replacement.workRequests.active.isEmpty)
+    }
+
+    func testStaleRefreshCannotClearANewerAcceptedInterfaceBinding() async throws {
+        let service = await model(), client = await model(), intercept = InterceptServiceReply()
+        client.isTaskService = false
+        let path = "/tmp/orxq-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let handle = WorkRequestHandle(), spec = WorkRequestSpec(title: "new interface", source: "interface", screen: .idle)
+        let server = try LocalControlServer(path: path) { request in
+            let reply = await service.handleTaskControl(request)
+            if await intercept.take(request.operation) {
+                _ = try? await service.registerWork(spec, handle: handle)
+                await MainActor.run {
+                    client.generation += 1
+                    client.connectedServiceInstanceID = service.serviceInfo?.instanceID
+                    client.interfaceHandle = handle; client.interfaceSpec = spec; client.manualWorkMode = .desk
+                }
+            }
+            return reply
+        }
+        defer { server.stop() }
+        client.serviceSocket = path; await client.refresh()
+        await intercept.arm("status")
+        await client.refreshTaskService(renew: true)
+        XCTAssertEqual(client.interfaceHandle, handle)
+        XCTAssertEqual(client.manualWorkMode, .desk)
+        await service.choose(.normal)
+    }
+
+    func testSettingsGenerationChangeDoesNotStrandInterfaceBusyState() async throws {
+        let service = await model(), client = await model(), intercept = InterceptServiceReply()
+        client.isTaskService = false
+        let path = "/tmp/orxw-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { request in
+            let reply = await service.handleTaskControl(request)
+            if await intercept.take(request.operation) {
+                // A completed settings RPC advances generation but does not own
+                // the work transition's busy state.
+                await MainActor.run { client.generation += 1 }
+            }
+            return reply
+        }
+        defer { server.stop() }
+        client.serviceSocket = path; client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); await intercept.arm("status")
+        await client.choose(.desk)
+        XCTAssertFalse(client.busy)
+        await client.choose(.desk)
+        XCTAssertTrue(client.verifiedWork, client.message)
+        await client.choose(.normal)
+    }
+
+    private func stopWhileInterfaceReplyAwaits(_ operation: String) async throws {
+        let service = await model(), client = await model(), intercept = InterceptServiceReply()
+        client.isTaskService = false
+        let path = "/tmp/orxp-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { request in
+            let reply = await service.handleTaskControl(request)
+            if await intercept.take(request.operation) {
+                await MainActor.run { client.overrideWorkRequests(reason: "User stopped during reply") }
+                _ = await service.handleTaskControl(.init("stop-all"))
+            }
+            return reply
+        }
+        defer { server.stop() }
+        client.serviceSocket = path; client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); client.manualWorkMode = .desk
+        await intercept.arm(operation)
+        await client.chooseThroughService(.desk, sleep: false, automatic: true, reconcilingRequests: true)
+        XCTAssertTrue(service.workRequests.active.isEmpty, "A stop during recovery must remain stopped")
+        XCTAssertNil(client.interfaceHandle)
+        XCTAssertNil(client.legacyWorkMode)
+    }
+    func testStopDuringRecoveryPreflightDoesNotRegisterWorkAfterward() async throws { try await stopWhileInterfaceReplyAwaits("status") }
+    func testStopDuringAcceptedRegistrationDoesNotAdoptItsHandle() async throws { try await stopWhileInterfaceReplyAwaits("interface-register") }
+
+    func testRemoteStopIsNotUndoneByAutomaticRefresh() async throws {
+        let value = await model()
+        let path = "/tmp/orxm-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await value.handleTaskControl($0) }
+        defer { server.stop() }
+        let client = await model(); client.isTaskService = false; client.serviceSocket = path
+        client.workScreen.select(.systemIdle, for: .desk)
+        await client.refresh(); await client.choose(.desk)
+        _ = await value.handleTaskControl(.init("stop-all"))
+        await client.refreshTaskService(renew: true)
+        await client.reconcileWorkRequests()
+        XCTAssertNil(client.legacyWorkMode)
+        XCTAssertNil(client.interfaceHandle)
+        XCTAssertTrue(value.workRequests.active.isEmpty)
         XCTAssertEqual(client.active, .normal)
     }
 

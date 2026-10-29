@@ -68,7 +68,7 @@ extension WorkMode {
     var lockSummary: String { unlockedWorkEnabled ? "工作时保持未锁定" : requiresImmediateLock ? "要求即时密码保护" : "跟随系统锁屏设置" }
     func setUnlockedWork(_ enabled: Bool) async {
         guard !busy else { return }
-        if active != .normal { await choose(.normal) }
+        if active != .normal || (unlockedWorkEnabled && !enabled) { await choose(.normal) }
         guard !error else { return }
         if serviceSocket != nil {
             var request = ControlMessage("unlocked-setting"); request.enabled = enabled
@@ -140,12 +140,29 @@ extension WorkMode {
     var isTaskService = false
     var serviceStopping = false
     var serviceInfo: TaskServiceInfo?
+    var connectedServiceInstanceID: UUID?
+    var requestUnlockedWorkPassword: () throws -> Data = UnlockedWorkAuthorization.requestPassword
+    var disableUnlockedWorkScreenLock: @Sendable (Data) async throws -> Void = { password in
+        try await Task.detached { try UnlockedWorkAuthorization.disableScreenLock(password: password) }.value
+    }
     var pendingUnlockedOwner: LocalProcessIdentity?
     var pendingUnlockedDeadline: Date?
     var stopTaskService: (() -> Void)?
     var serviceSocket: String?
     var interfaceHandle: WorkRequestHandle?
     var interfaceSpec: WorkRequestSpec?
+    var serviceTransitionOwner: UUID?
+    var serviceRecoveryEnabled = false
+    var serviceRetryAt = Date.distantPast
+    var serviceRetryDelay: TimeInterval = 1
+    var serviceRecoveryBeganAt: Date?
+    var launchTaskService: (URL, String) async throws -> ControlReply = { executable, socket in
+        try await Task.detached { try TaskServiceLauncher.start(executable: executable, socket: socket) }.value
+    }
+    var serviceWorkRecoveryPending: Bool {
+        serviceSocket != nil && !unlockedWorkEnabled && legacyWorkMode != nil &&
+        (serviceRefreshRunning || (serviceConnectionFailed && serviceRecoveryBeganAt.map { Date().timeIntervalSince($0) < 30 } == true))
+    }
     var serviceRefreshRunning = false
     var serviceConnectionFailed = false
     @Published var serviceSleepAt: Date?

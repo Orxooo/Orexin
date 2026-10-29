@@ -37,7 +37,8 @@ func L(_ key: String) -> String {
     return localizedMessage(key, bundle: bundle, language: language)
 }
 
-func localizedMessage(_ key: String, bundle: Bundle, language: AppLanguage) -> String {
+func localizedMessage(_ message: String, bundle: Bundle, language: AppLanguage) -> String {
+    let key = canonicalServiceMessage(message)
     let translated = bundle.localizedString(forKey: key, value: key, table: nil)
     if translated != key || language == .simplifiedChinese { return translated }
     guard key.unicodeScalars.contains(where: { (0x3400...0x9fff).contains($0.value) }) else { return key }
@@ -62,6 +63,36 @@ func localizedMessage(_ key: String, bundle: Bundle, language: AppLanguage) -> S
     return key
 }
 
+// Older task services and retained notices used English error text. Normalize
+// only known application messages at presentation; preserve stored history.
+private func canonicalServiceMessage(_ message: String) -> String {
+    if let translated = legacyServiceMessages[message] { return translated }
+    if message.hasPrefix("Orexin is unavailable at "), message.contains(". Start the background service with orexin service-start. (") {
+        return "后台服务连接不可用，请重新检查。"
+    }
+    let prefix = "Request was not activated: "
+    if message.hasPrefix(prefix) { return "工作请求未启动：" + canonicalServiceMessage(String(message.dropFirst(prefix.count))) }
+    for prefix in eventPrefixes where message.hasPrefix(prefix) {
+        return prefix + canonicalServiceMessage(String(message.dropFirst(prefix.count)))
+    }
+    if message.contains("\n") { return message.components(separatedBy: "\n").map(canonicalServiceMessage).joined(separator: "\n") }
+    return message
+}
+
+private let legacyServiceMessages = [
+    "Task service is starting": "后台服务正在启动。",
+    "Task service is stopping": "后台服务正在停止。",
+    "Authorize unlocked work from the Orexin interface first": "请在 Orexin 界面完成本次保持未锁定授权。",
+    "Unlocked work is already active or unsupported": "保持未锁定授权正在准备中，请稍候重试。",
+    "Unlocked-work recovery lease ended": "保持未锁定恢复会话已结束，请重新授权。",
+    "No pending unlocked-work recovery lease": "没有待核验的保持未锁定授权，请重新开始。",
+    "Unlocked-work authorization did not finish": "保持未锁定授权尚未完成，请重试。",
+    "Authorization lease expired; start again": "本次授权已过期，请重新开始工作。",
+    "Native backend required": "当前后端不支持保持未锁定授权。",
+    "An active interface owner and no active work are required for authorization": "请先结束现有工作，再授权保持未锁定。",
+    "Unlocked-work setting required": "缺少保持未锁定设置。",
+]
+
 func LF(_ key: String, _ arguments: CVarArg...) -> String {
     String(format: L(key), locale: AppLanguage.selected.locale, arguments: arguments)
 }
@@ -72,6 +103,7 @@ private let languageBundles: [String: Bundle] = Dictionary(uniqueKeysWithValues:
 })
 
 private let eventPrefixes = [
+    "工作请求未启动：",
     "工作状态无法确认：", "消息记录保存失败：", "系统通知发送失败：",
     "模式已核验：", "切换模式：", "自动切换：", "自动触发：", "会话已开始：", "会话已结束：", "会话结束：", "会话启动失败：", "定时休眠：",
     "切换失败：", "状态读取失败：", "温度保护释放失败：", "登录启动设置失败：", "命令启动或日志处理失败：", "操作超时：",

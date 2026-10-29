@@ -10,9 +10,11 @@ private actor HeartbeatLease: BackgroundLeaseClient {
     var renewals = 0
     var lastRenewal = ProcessInfo.processInfo.systemUptime
     var failNext = false
+    var connectionFailure = false
+    var starts = 0
     var pending = false
     var replyDelay: Double = 0
-    func setBackground(_ enabled: Bool) async throws { disabled = enabled; lastRenewal = ProcessInfo.processInfo.systemUptime }
+    func setBackground(_ enabled: Bool) async throws { disabled = enabled; if enabled { starts += 1 }; lastRenewal = ProcessInfo.processInfo.systemUptime }
     func renew() async throws {
         pending = true
         if replyDelay > 0 {
@@ -20,10 +22,12 @@ private actor HeartbeatLease: BackgroundLeaseClient {
             await withCheckedContinuation { continuation in DispatchQueue.global().asyncAfter(deadline: .now() + delay) { continuation.resume() } }
         }
         pending = false
+        if connectionFailure { connectionFailure = false; disabled = false; throw PowerHelperConnectionFailure(reason: "injected transport interruption") }
         if failNext { disabled = false; throw ModeError("injected connection loss") }
         guard disabled else { throw ModeError("lease ended") }
         renewals += 1; lastRenewal = ProcessInfo.processInfo.systemUptime
     }
+    func interruptConnection() { connectionFailure = true }
     func configureFailure() { failNext = true }
     func configureDelay(_ seconds: Double) { replyDelay = seconds }
     func power() -> String { "SleepDisabled \(disabled ? 1 : 0)" }
@@ -62,6 +66,16 @@ final class HeartbeatTests: XCTestCase {
         let after = await lease.renewals, disabled = await lease.disabled
         XCTAssertEqual(after, stopped); XCTAssertFalse(disabled)
     }
+    func testTransportInterruptionReacquiresApprovedBackgroundLeaseWithoutAuthorization() async throws {
+        let lease = HeartbeatLease(), backend = backend(lease)
+        try await backend.configurePower(.background)
+        await lease.interruptConnection()
+        for _ in 0..<100 where await lease.starts < 2 { try await Task.sleep(nanoseconds: 5_000_000) }
+        let snapshot = try await backend.snapshot(), starts = await lease.starts
+        XCTAssertEqual(starts, 2); XCTAssertTrue(snapshot.matches(.background))
+        try await backend.configurePower(.normal)
+    }
+
     func testRenewalFailureReleasesNativeAssertionAndKeepsNestedErrorUntilExplicitRecovery() async throws {
         let lease = HeartbeatLease(), backend = backend(lease)
         try await backend.configurePower(.background); await lease.configureFailure()

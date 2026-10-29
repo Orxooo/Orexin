@@ -1439,3 +1439,20 @@
 "合盖运行和「工作时保持未锁定」需要主应用与辅助服务使用同一 Apple 开发者证书签名。普通桌面保活与正常休眠无需这项授权。" = "El funcionamiento con la tapa cerrada y mantener el Mac desbloqueado requieren que la app y el servicio auxiliar tengan el mismo certificado de desarrollador de Apple. Mantener activo el escritorio y el reposo normal no requieren esta autorización.";
 "系统已批准辅助服务" = "Servicio auxiliar autorizado por el sistema";
 "系统已批准辅助服务；实际连接会在启动相关功能时核验。" = "El servicio auxiliar está autorizado. La conexión se comprueba al iniciar una función que lo utiliza.";
+
+"工作请求未启动：" = "La solicitud de trabajo no se inició: ";
+"请在 Orexin 界面完成本次保持未锁定授权。" = "Completa la autorización de esta sesión sin bloqueo en la interfaz de Orexin.";
+"保持未锁定授权正在准备中，请稍候重试。" = "Se está preparando la autorización para mantener desbloqueado. Reinténtalo en unos instantes.";
+"保持未锁定恢复会话已结束，请重新授权。" = "La sesión de recuperación del bloqueo ha terminado. Autoriza de nuevo.";
+"没有待核验的保持未锁定授权，请重新开始。" = "No hay ninguna autorización sin bloqueo pendiente de verificar. Vuelve a empezar.";
+"保持未锁定授权尚未完成，请重试。" = "La autorización para mantener desbloqueado no se completó. Reinténtalo.";
+"本次授权已过期，请重新开始工作。" = "Esta autorización ha caducado. Inicia el trabajo de nuevo.";
+"当前后端不支持保持未锁定授权。" = "Este servicio no admite la autorización para mantener desbloqueado.";
+"请在正在运行的 Orexin 界面发起授权。" = "Inicia la autorización desde una interfaz de Orexin en ejecución.";
+"请先结束现有工作，再授权保持未锁定。" = "Finaliza el trabajo actual antes de autorizar el modo sin bloqueo.";
+"缺少保持未锁定设置。" = "Falta el ajuste para mantener desbloqueado.";
+"额外选项：熄屏或合盖返回时免输密码，每次新工作需账户密码。仅保持桌面可见无需开启，防熄屏与防屏保无需密码授权。" = "Opcional: volver sin contraseña tras apagar la pantalla o cerrar la tapa. Cada nueva sesión requiere la contraseña de la cuenta. Mantener visible el escritorio no necesita esta opción; impedir el reposo de la pantalla y el salvapantallas no requiere contraseña.";
+"后台服务暂时不可用，正在自动重连。" = "El servicio en segundo plano no está disponible temporalmente. Reconectando automáticamente.";
+"后台服务正在启动。" = "El servicio en segundo plano se está iniciando.";
+"后台服务正在停止。" = "El servicio en segundo plano se está deteniendo.";
+"后台服务连接不可用，请重新检查。" = "El servicio en segundo plano no está disponible. Vuelva a comprobar la conexión.";

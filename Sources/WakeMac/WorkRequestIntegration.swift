@@ -108,7 +108,7 @@ extension AppModel {
             guard stopEpoch == workStopEpoch, !requestStopInProgress,
                   workRequests.active.contains(where: { $0.id == registered.id }), requestSatisfied(spec) else {
                 _ = try? workRequests.release(id: registered.id, state: .rejected, reason: requestUnsatisfiedReason(spec), now: Date())
-                throw ModeError("Request was not activated: " + (workRequests.records.first { $0.id == registered.id }?.reason ?? requestUnsatisfiedReason(spec)))
+                throw ModeError("工作请求未启动：" + (workRequests.records.first { $0.id == registered.id }?.reason ?? requestUnsatisfiedReason(spec)))
             }
         } catch {
             if inserted { _ = try? workRequests.release(id: registered.id, reason: "Registration cancelled before acknowledgement", now: Date()) }
