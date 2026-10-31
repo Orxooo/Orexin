@@ -6,6 +6,11 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 3 — 2026-10-31
+
+- Añadida la restauración con Esc o teclas de brillo, activada de forma predeterminada: en modo escritorio con brillo mínimo, se restaura el brillo anterior sin finalizar el trabajo. Seleccionar el brillo mínimo de nuevo para volver a atenuar.
+- Sincronización del estado y los avisos de permiso de monitorización de entrada entre el servicio y la interfaz, conservando la restauración al despertar.
+
 ## V1.0.5 HotFix 2 — 2026-10-28
 
 - La interfaz reinicia automáticamente el servicio desconectado, se reconecta con espera progresiva y restaura sus solicitudes de trabajo aún válidas usando la aprobación existente. No se repiten comandos ni planes y se respetan las paradas explícitas.

@@ -179,6 +179,15 @@ struct PowerAssertionRows: View {
                 .foregroundStyle(screen.status.hasPrefix("屏幕策略未核验：") ? TerminalStyle.warning : TerminalStyle.muted)
                 .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading).frame(height: 26, alignment: .topLeading)
                 .padding(.top, 7).padding(.leading, 9).help(L(screen.status))
+            if model.active == .desk {
+                WorkToggle(title: "Esc / 亮度键恢复", detail: "屏幕最暗时恢复原亮度，保留桌面工作会话。",
+                           isOn: $screen.restoreDesktopBrightnessOnKey)
+                if screen.dimExitNeedsInputAccess {
+                    Button(L("跨应用恢复需要输入监控权限")) {
+                        NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
+                    }.font(.system(size: 10)).padding(.vertical, 4)
+                }
+            }
             HStack {
                 Text(L("只关闭显示器，唤醒后继续原屏幕策略"))
                     .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)

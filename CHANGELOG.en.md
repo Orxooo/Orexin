@@ -6,6 +6,11 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.5 HotFix 3 — 2026-10-31
+
+- Add the default-on “Restore with Esc / brightness keys” option. During desktop work at minimum brightness, Esc or either display brightness key restores the previous brightness without ending work. Select minimum brightness again to reapply dimming.
+- Synchronize recovery state and Input Monitoring permission hints between the background service and interface, preserving existing wake recovery.
+
 ## V1.0.5 HotFix 2 — 2026-10-28
 
 - The interface automatically restarts a disconnected background service, reconnects with backoff, and restores its still-valid desktop or closed-lid work intent using existing system approval. Commands and plans are not replayed; explicit stops remain authoritative.

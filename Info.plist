@@ -26,9 +26,9 @@
 	<key>CFBundleShortVersionString</key>
 	<string>1.0.5</string>
 	<key>CFBundleVersion</key>
-	<string>46</string>
+	<string>47</string>
 	<key>OrexinReleaseChannel</key>
-	<string>HotFix 2</string>
+	<string>HotFix 3</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>15.0</string>
 	<key>LSArchitecturePriority</key>

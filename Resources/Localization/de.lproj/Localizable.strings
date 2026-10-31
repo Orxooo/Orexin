@@ -1456,3 +1456,8 @@
 "后台服务正在启动。" = "Der Hintergrunddienst wird gestartet.";
 "后台服务正在停止。" = "Der Hintergrunddienst wird beendet.";
 "后台服务连接不可用，请重新检查。" = "Der Hintergrunddienst ist nicht erreichbar. Prüfen Sie die Verbindung erneut.";
+
+/* Desktop minimum brightness keyboard recovery */
+"Esc / 亮度键恢复" = "Mit Esc / Helligkeitstasten wiederherstellen";
+"屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Vorherige Helligkeit wiederherstellen und die Desktop-Arbeitssitzung fortsetzen.";
+"跨应用恢复需要输入监控权限" = "Für die Wiederherstellung aus anderen Apps ist die Berechtigung zur Eingabeüberwachung erforderlich";

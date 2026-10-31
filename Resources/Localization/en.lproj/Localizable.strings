@@ -1456,3 +1456,8 @@
 "后台服务正在启动。" = "The task service is starting.";
 "后台服务正在停止。" = "The task service is stopping.";
 "后台服务连接不可用，请重新检查。" = "The background service is unavailable. Check the connection again.";
+
+/* Desktop minimum brightness keyboard recovery */
+"Esc / 亮度键恢复" = "Restore with Esc / brightness keys";
+"屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Restore the previous brightness while keeping the desktop work session active.";
+"跨应用恢复需要输入监控权限" = "Input Monitoring permission is required to restore from other apps";

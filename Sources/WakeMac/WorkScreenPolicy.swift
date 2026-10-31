@@ -74,6 +74,16 @@ enum BuiltInBrightness {
 @MainActor final class WorkScreenPolicy: ObservableObject {
     @Published private(set) var background: WorkScreenBehavior
     @Published private(set) var desktop: WorkScreenBehavior
+    @Published var restoreDesktopBrightnessOnKey: Bool {
+        didSet {
+            preferences.set(restoreDesktopBrightnessOnKey, forKey: "orexin.screen.desktop.restoreOnKey")
+            if !restoreDesktopBrightnessOnKey { dimExitKeys.stop(); dimExitNeedsInputAccess = false }
+        }
+    }
+    @Published private(set) var dimExitNeedsInputAccess = false
+    private let dimExitKeys = DimExitKeyMonitor()
+    private var dimExitArmed = false
+    var allowsDimExit: () -> Bool = { true }
     @Published private(set) var status = "跟随系统屏幕设置"
     @Published var runtimeBehavior: WorkScreenBehavior? {
         didSet {
@@ -90,11 +100,12 @@ enum BuiltInBrightness {
     }
     private var behaviorBeforeSleep: WorkScreenBehavior?
     private var observedImmediateSleep = false
-    private var dimPausedForInteraction = false
+    @Published private var dimPausedForInteraction = false
     private var previousDisplayState: DisplayState?
     private var wakeObservers: [(NotificationCenter, NSObjectProtocol)] = []
     private let preferences: UserDefaults
     private let runtimeEnabled: Bool
+    private let monitorKeyboard: Bool
     private var verifiedBehavior: WorkScreenBehavior?
     func isVerified(_ behavior: WorkScreenBehavior) -> Bool { !runtimeEnabled || verifiedBehavior == behavior }
     private var appliedBehavior: WorkScreenBehavior?
@@ -128,9 +139,11 @@ enum BuiltInBrightness {
             try CommandRunner.run("/usr/bin/pmset", ["displaysleepnow"], timeout: 2)
         }.value
     }
-    init(preferences: UserDefaults, runtimeEnabled: Bool = true) {
+    init(preferences: UserDefaults, runtimeEnabled: Bool = true, monitorKeyboard: Bool = true) {
         self.preferences = preferences
         self.runtimeEnabled = runtimeEnabled
+        self.monitorKeyboard = monitorKeyboard
+        restoreDesktopBrightnessOnKey = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
         background = WorkScreenBehavior(rawValue: preferences.string(forKey: "orexin.screen.background") ?? "") ?? .dim
         desktop = WorkScreenBehavior(rawValue: preferences.string(forKey: "orexin.screen.desktop") ?? "") ?? .normalBrightness
         if !WorkScreenBehavior.choices(for: .background).contains(background) { background = .systemIdle }
@@ -181,7 +194,28 @@ enum BuiltInBrightness {
         preferences.set(behavior.rawValue, forKey: mode == .background ? "orexin.screen.background" : "orexin.screen.desktop")
         runtimeBehavior = nil; revision += 1; appliedBehavior = nil
     }
+    func handleDimExitInput() {
+        guard restoreDesktopBrightnessOnKey, dimExitArmed, allowsDimExit(), behavior(for: .desk) == .dim,
+              let originalBrightness else { return }
+        do {
+            try writeBrightness(originalBrightness)
+            self.originalBrightness = nil
+            preferences.removeObject(forKey: "orexin.screen.restoreBrightness")
+            dimPausedForInteraction = true; revision += 1
+            appliedBehavior = .normalBrightness; verifiedBehavior = .normalBrightness
+            dimExitArmed = false; dimExitKeys.stop(); dimExitNeedsInputAccess = false
+            setStatus("正常亮度 · 显示器会话保留")
+        } catch { setStatus("屏幕策略未核验：" + error.localizedDescription) }
+    }
+    func observeServiceDimState(paused: Bool?, needsAccess: Bool?) {
+        guard !runtimeEnabled else { return }
+        if let paused { dimPausedForInteraction = paused }
+        if let needsAccess { dimExitNeedsInputAccess = needsAccess }
+        if dimPausedForInteraction { setStatus("正常亮度 · 显示器会话保留") }
+    }
+    var dimmingPaused: Bool { dimPausedForInteraction }
     func restore() throws {
+        dimExitArmed = false; dimExitKeys.stop(); dimExitNeedsInputAccess = false
         dimPausedForInteraction = false; previousDisplayState = nil
         revision += 1; appliedBehavior = nil; appliedMode = nil; runtimeBehavior = nil; verifiedBehavior = nil
         idleTimeout = nil; timeoutSource = nil
@@ -220,6 +254,16 @@ enum BuiltInBrightness {
         } catch { setStatus("屏幕策略未核验：" + error.localizedDescription); return false }
     }
     func tick(mode: WorkMode?, working: Bool, state: DisplayState, onBattery: Bool, now: Date) async {
+        if runtimeEnabled {
+            let saved = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
+            if saved != restoreDesktopBrightnessOnKey { restoreDesktopBrightnessOnKey = saved }
+        }
+        dimExitArmed = runtimeEnabled && working && mode == .desk && behavior(for: .desk) == .dim
+            && state.sessionLocked == false && state.builtInAsleep == false && state.lidClosed == false
+        if monitorKeyboard && dimExitArmed && restoreDesktopBrightnessOnKey {
+            dimExitKeys.onKey = { [weak self] in self?.handleDimExitInput() }
+            dimExitNeedsInputAccess = !dimExitKeys.start()
+        } else { dimExitKeys.stop(); dimExitNeedsInputAccess = false }
         guard runtimeEnabled, working, let mode, mode != .normal else { return }
         let returned = previousDisplayState.map {
             ($0.lidClosed == true && state.lidClosed == false)

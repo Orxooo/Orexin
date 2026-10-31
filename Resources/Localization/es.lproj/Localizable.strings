@@ -1456,3 +1456,8 @@
 "后台服务正在启动。" = "El servicio en segundo plano se está iniciando.";
 "后台服务正在停止。" = "El servicio en segundo plano se está deteniendo.";
 "后台服务连接不可用，请重新检查。" = "El servicio en segundo plano no está disponible. Vuelva a comprobar la conexión.";
+
+/* Desktop minimum brightness keyboard recovery */
+"Esc / 亮度键恢复" = "Restaurar con Esc / teclas de brillo";
+"屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Restaurar el brillo anterior y mantener activa la sesión de escritorio.";
+"跨应用恢复需要输入监控权限" = "Se necesita permiso de monitorización de entrada para restaurar desde otras apps";

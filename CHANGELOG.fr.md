@@ -6,6 +6,11 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 3 — 2026-10-31
+
+- Ajout du rétablissement par Échap ou touches de luminosité, activé par défaut : en mode bureau à luminosité minimale, la luminosité précédente est rétablie sans arrêter le travail. Sélectionner de nouveau la luminosité minimale pour assombrir.
+- Synchronisation de l’état de rétablissement et des indications de permission de surveillance de l’entrée entre le service et l’interface, en conservant le rétablissement au réveil.
+
 ## V1.0.5 HotFix 2 — 2026-10-28
 
 - L’interface redémarre automatiquement le service déconnecté, se reconnecte avec temporisation et rétablit ses demandes de travail toujours valides avec l’approbation système existante. Les commandes et plans ne sont pas rejoués ; les arrêts explicites sont respectés.

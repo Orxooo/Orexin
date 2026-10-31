@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-only
 // Copyright (c) 2026 Orxooo
+import AppKit
 import XCTest
 @testable import WakeMac
 import WakeMacCore
 
 @MainActor final class WorkScreenPolicyTests: XCTestCase {
     private func fixture() -> WorkScreenPolicy {
-        WorkScreenPolicy(preferences: UserDefaults(suiteName: "ScreenPolicy." + UUID().uuidString)!)
+        WorkScreenPolicy(preferences: UserDefaults(suiteName: "ScreenPolicy." + UUID().uuidString)!, monitorKeyboard: false)
     }
     private let awake = DisplayState(lidClosed: false, builtInAsleep: false, sessionLocked: false)
     func testMinimumBrightnessKeepsDisplayActiveAndRestoresOriginalBrightness() async throws {
@@ -21,6 +22,127 @@ import WakeMacCore
         XCTAssertEqual(sleeps, 0)
         try policy.restore()
         XCTAssertEqual(brightness, 0.72, accuracy: 0.001)
+    }
+    func testDesktopDimExitRestoresBrightnessAndSurvivesLaterTicks() async {
+        let policy = fixture(), now = Date()
+        var brightness: Float = 0.72
+        policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
+        policy.select(.dim, for: .desk)
+        await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
+        policy.handleDimExitInput()
+        XCTAssertEqual(brightness, 0.72, accuracy: 0.001)
+        XCTAssertEqual(policy.behavior(for: .desk), .normalBrightness)
+        XCTAssertEqual(policy.desktop, .dim, "Keep the saved preset")
+        policy.requestBehavior = .dim
+        await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now.addingTimeInterval(6))
+        XCTAssertEqual(brightness, 0.72, accuracy: 0.001)
+        policy.select(.dim, for: .desk)
+        await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now.addingTimeInterval(7))
+        XCTAssertEqual(brightness, 0, accuracy: 0.001)
+    }
+    func testDimExitDoesNotAffectBackgroundOrDisabledPreference() async {
+        let policy = fixture(), now = Date()
+        var brightness: Float = 0.6
+        policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
+        await policy.tick(mode: .background, working: true, state: awake, onBattery: false, now: now)
+        policy.handleDimExitInput()
+        XCTAssertEqual(brightness, 0)
+        policy.restoreDesktopBrightnessOnKey = false
+        policy.select(.dim, for: .desk)
+        await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
+        policy.handleDimExitInput()
+        XCTAssertEqual(brightness, 0)
+    }
+    func testDimExitPreferencePersists() {
+        let preferences = UserDefaults(suiteName: "DimExit." + UUID().uuidString)!
+        let policy = WorkScreenPolicy(preferences: preferences)
+        XCTAssertTrue(policy.restoreDesktopBrightnessOnKey)
+        policy.restoreDesktopBrightnessOnKey = false
+        XCTAssertFalse(WorkScreenPolicy(preferences: preferences).restoreDesktopBrightnessOnKey)
+    }
+    func testFailedRestoreCanRetryAndDoesNotDiscardRecoveryValue() async {
+        let policy = fixture(), now = Date()
+        var brightness: Float = 0.65
+        policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
+        policy.select(.dim, for: .desk)
+        await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
+        policy.writeBrightness = { _ in throw ModeError("rejected") }
+        policy.handleDimExitInput()
+        XCTAssertEqual(policy.behavior(for: .desk), .dim)
+        XCTAssertTrue(policy.status.contains("rejected"))
+        policy.writeBrightness = { brightness = $0 }
+        policy.handleDimExitInput()
+        XCTAssertEqual(brightness, 0.65, accuracy: 0.001)
+    }
+    func testStoppedOrLockedDesktopDoesNotRespondToKeys() async {
+        for working in [true, false] {
+            let policy = fixture(), now = Date()
+            var brightness: Float = 0.65
+            policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
+            policy.select(.dim, for: .desk)
+            await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
+            let state = DisplayState(lidClosed: false, builtInAsleep: false, sessionLocked: true)
+            await policy.tick(mode: .desk, working: working, state: state, onBattery: false, now: now)
+            policy.handleDimExitInput()
+            XCTAssertEqual(brightness, 0)
+        }
+    }
+    func testKeyRecognitionIgnoresUnrelatedKeysAndKeyRelease() throws {
+        func media(_ key: Int, down: Bool = true, subtype: Int16 = 8) throws -> NSEvent {
+            try XCTUnwrap(NSEvent.otherEvent(with: .systemDefined, location: .zero, modifierFlags: [], timestamp: 0,
+                windowNumber: 0, context: nil, subtype: subtype,
+                data1: (key << 16) | ((down ? 0x0a : 0x0b) << 8), data2: 0))
+        }
+        for key in [2, 3] { XCTAssertTrue(DimExitKeyMonitor.matches(try media(key))) }
+        XCTAssertFalse(DimExitKeyMonitor.matches(try media(0))) // volume up
+        XCTAssertFalse(DimExitKeyMonitor.matches(try media(2, down: false)))
+        XCTAssertFalse(DimExitKeyMonitor.matches(try media(2, subtype: 7)))
+        let escape = try XCTUnwrap(NSEvent.keyEvent(with: .keyDown, location: .zero, modifierFlags: [], timestamp: 0,
+            windowNumber: 0, context: nil, characters: "\u{1b}", charactersIgnoringModifiers: "\u{1b}", isARepeat: false, keyCode: 53))
+        XCTAssertTrue(DimExitKeyMonitor.matches(escape))
+    }
+    func testDesktopDimExitPropagatesThroughServiceWithoutEndingWork() async throws {
+        let service = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "DimService." + UUID().uuidString)!)
+        service.isTaskService = true
+        service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
+        service.thermalStateProvider = { .nominal }
+        let handle = try await service.registerWork(.init(title: "desktop", mode: .desk, screen: .dim))
+        let screen = fixture(), now = Date()
+        var brightness: Float = 0.7
+        screen.readBrightness = { brightness }; screen.writeBrightness = { brightness = $0 }
+        service.workScreen = screen
+        screen.requestBehavior = .dim
+        await screen.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
+        screen.handleDimExitInput()
+        let reply = try ControlCoding.decode(ControlReply.self, from: ControlCoding.encode(service.taskControlReply()))
+        let client = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "DimClient." + UUID().uuidString)!)
+        client.workScreen.select(.dim, for: .desk)
+        client.adoptServiceReply(reply)
+        XCTAssertEqual(client.workScreen.behavior(for: .desk), .normalBrightness)
+        XCTAssertEqual(client.workScreen.desktop, .dim)
+        XCTAssertEqual(service.workRequests.active.map(\.id), [handle.id])
+        await service.applyWorkScreenPolicy(now: now.addingTimeInterval(6))
+        XCTAssertEqual(brightness, 0.7, accuracy: 0.001)
+        screen.reapplyDimming()
+        client.adoptServiceReply(service.taskControlReply())
+        XCTAssertEqual(client.workScreen.behavior(for: .desk), .dim)
+    }
+    func testServiceReloadsKeyboardPreferenceFromSharedDefaults() async {
+        let preferences = UserDefaults(suiteName: "DimShared." + UUID().uuidString)!
+        let interface = WorkScreenPolicy(preferences: preferences, runtimeEnabled: false)
+        let service = WorkScreenPolicy(preferences: preferences, monitorKeyboard: false)
+        var brightness: Float = 0.5
+        service.readBrightness = { brightness }; service.writeBrightness = { brightness = $0 }
+        service.select(.dim, for: .desk)
+        interface.restoreDesktopBrightnessOnKey = false
+        await service.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
+        service.handleDimExitInput()
+        XCTAssertEqual(brightness, 0)
+        XCTAssertFalse(service.restoreDesktopBrightnessOnKey)
+        interface.restoreDesktopBrightnessOnKey = true
+        await service.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
+        service.handleDimExitInput()
+        XCTAssertEqual(brightness, 0.5, accuracy: 0.001)
     }
     func testImmediateSleepIsOneShotAndWakeRestoresSavedPolicy() async {
         let policy = fixture(), now = Date()

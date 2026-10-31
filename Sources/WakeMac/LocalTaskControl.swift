@@ -12,6 +12,8 @@ extension AppModel {
                 commandRunning: runningCommandIDs.contains(item.id))
         }
         var reply = ControlReply(handle: handle, tasks: tasks, mode: active, verified: verifiedWork, sleepAt: automation.jobSleepAt)
+        reply.displayDimmingPaused = workScreen.dimmingPaused
+        reply.dimExitNeedsInputAccess = workScreen.dimExitNeedsInputAccess
         reply.batterySleepAt = automation.batterySleepAt
         reply.timeline = try? ControlCoding.encode(Array(history.prefix(100)))
         reply.notices = notices.controlPayload()

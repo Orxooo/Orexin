@@ -6,6 +6,11 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 3 — 2026-10-31
+
+- Standardmäßig aktivierte Wiederherstellung mit Esc oder Helligkeitstasten: Bei minimaler Helligkeit im Desktopbetrieb wird die vorherige Helligkeit wiederhergestellt, ohne die Arbeit zu beenden. Minimale Helligkeit erneut auswählen, um wieder abzudunkeln.
+- Wiederherstellungsstatus und Hinweise zur Eingabeüberwachung werden zwischen Hintergrunddienst und Oberfläche synchronisiert; die Wiederherstellung nach dem Aufwachen bleibt erhalten.
+
 ## V1.0.5 HotFix 2 — 2026-10-28
 
 - Die Oberfläche startet einen getrennten Hintergrunddienst automatisch neu, verbindet sich mit zunehmenden Abständen und stellt weiterhin gültige Arbeitsanforderungen mit vorhandener Systemfreigabe wieder her. Befehle und Pläne werden nicht erneut ausgeführt; ausdrückliche Stopps bleiben wirksam.

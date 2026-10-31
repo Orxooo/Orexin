@@ -1456,3 +1456,8 @@
 "后台服务正在启动。" = "Le service en arrière-plan démarre.";
 "后台服务正在停止。" = "Le service en arrière-plan s’arrête.";
 "后台服务连接不可用，请重新检查。" = "Le service en arrière-plan est indisponible. Vérifiez à nouveau la connexion.";
+
+/* Desktop minimum brightness keyboard recovery */
+"Esc / 亮度键恢复" = "Rétablir avec Échap / touches de luminosité";
+"屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Rétablir la luminosité précédente en maintenant la session de bureau active.";
+"跨应用恢复需要输入监控权限" = "L’autorisation de surveillance de l’entrée est nécessaire depuis les autres apps";

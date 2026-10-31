@@ -55,6 +55,7 @@ extension AppModel {
         } else { await choose(mode) }
     }
     func applyWorkScreenPolicy(now: Date) async {
+        workScreen.allowsDimExit = { [weak self] in self?.verifiedWork == true && self?.active == .desk }
         // A mode transition temporarily clears active/snapshot. Do not treat
         // that transient state as a failed session when a display wakes.
         guard !busy else { return }

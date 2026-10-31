@@ -39,6 +39,7 @@ extension AppModel {
         return reply
     }
     func adoptServiceReply(_ reply: ControlReply) {
+        workScreen.observeServiceDimState(paused: reply.displayDimmingPaused, needsAccess: reply.dimExitNeedsInputAccess)
         if let service = reply.service {
             if let previous = connectedServiceInstanceID, previous != service.instanceID {
                 interfaceHandle = nil; interfaceSpec = nil
