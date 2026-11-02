@@ -2,6 +2,7 @@
 // Copyright (c) 2026 Orxooo
 
 import XCTest
+import CoreGraphics
 import ServiceManagement
 import WakeMacCore
 import WakeMacPower
@@ -17,6 +18,22 @@ private actor LockRecoveryFailureLease: ScreenLockLeaseClient {
 }
 
 final class NativeBackendTests: XCTestCase {
+    func testMissingLockFlagOnlyMeansUnlockedForAnActiveLoggedInConsole() {
+        let console: [String: Any] = [kCGSessionOnConsoleKey as String: true,
+                                      kCGSessionLoginDoneKey as String: true]
+        XCTAssertEqual(DisplayState.sessionLockState(console), false)
+        var locked = console
+        locked["CGSSessionScreenIsLocked"] = true
+        XCTAssertEqual(DisplayState.sessionLockState(locked), true)
+        locked["CGSSessionScreenIsLocked"] = false
+        XCTAssertEqual(DisplayState.sessionLockState(locked), false)
+        XCTAssertNil(DisplayState.sessionLockState(nil))
+        XCTAssertNil(DisplayState.sessionLockState([:]))
+        XCTAssertNil(DisplayState.sessionLockState([kCGSessionOnConsoleKey as String: false,
+                                                   kCGSessionLoginDoneKey as String: true]))
+        XCTAssertNil(DisplayState.sessionLockState([kCGSessionOnConsoleKey as String: true,
+                                                   kCGSessionLoginDoneKey as String: false]))
+    }
     func testLiveKernelPowerReadbackMatchesPmset() throws {
         let text = try CommandRunner.run("/usr/bin/pmset", ["-g"], timeout: 5)
         guard text.contains("SleepDisabled") else {

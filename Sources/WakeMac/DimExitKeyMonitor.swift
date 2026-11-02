@@ -18,13 +18,21 @@ import CoreGraphics
         return (key == 2 || key == 3) && state == 0x0a // NX brightness up/down, key down
     }
 
-    /// No permission prompt: a local fallback works while Orexin is foreground.
-    @discardableResult func start() -> Bool {
-        if tap != nil { return true }
-        if localMonitor != nil {
-            guard CGPreflightListenEventAccess() else { return false }
-            stop()
+    /// Install in the GUI process: the headless service has no AppKit event queue.
+    func startLocal() {
+        guard localMonitor == nil else { return }
+        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { [weak self] event in
+            if DimExitKeyMonitor.matches(event) { self?.onKey?() }
+            return event
         }
+    }
+
+    /// Passive cross-app observation; requesting permission is a separate UI action.
+    @discardableResult func start() -> Bool {
+        // A non-nil tap may have had its keyDown mask stripped by macOS.
+        // Check access first instead of treating a partial tap as keyboard access.
+        guard CGPreflightListenEventAccess() else { stop(); return false }
+        if tap != nil { return true }
         let mask = (CGEventMask(1) << CGEventType.keyDown.rawValue) | (CGEventMask(1) << 14)
         tap = CGEvent.tapCreate(tap: .cgSessionEventTap, place: .headInsertEventTap,
                                options: .listenOnly, eventsOfInterest: mask, callback: { _, type, event, context in
@@ -42,10 +50,6 @@ import CoreGraphics
             CFRunLoopAddSource(CFRunLoopGetMain(), source, .commonModes)
             CGEvent.tapEnable(tap: tap, enable: true)
             return true
-        }
-        localMonitor = NSEvent.addLocalMonitorForEvents(matching: [.keyDown, .systemDefined]) { [weak self] event in
-            if DimExitKeyMonitor.matches(event) { self?.onKey?() }
-            return event
         }
         return false
     }

@@ -184,6 +184,7 @@ struct PowerAssertionRows: View {
                            isOn: $screen.restoreDesktopBrightnessOnKey)
                 if screen.dimExitNeedsInputAccess {
                     Button(L("跨应用恢复需要输入监控权限")) {
+                        _ = CGRequestListenEventAccess()
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
                     }.font(.system(size: 10)).padding(.vertical, 4)
                 }

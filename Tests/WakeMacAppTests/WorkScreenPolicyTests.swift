@@ -10,6 +10,26 @@ import WakeMacCore
         WorkScreenPolicy(preferences: UserDefaults(suiteName: "ScreenPolicy." + UUID().uuidString)!, monitorKeyboard: false)
     }
     private let awake = DisplayState(lidClosed: false, builtInAsleep: false, sessionLocked: false)
+    func testUnlockedConsoleWithoutLockFlagCanRestoreDesktopBrightness() async throws {
+        let session = try XCTUnwrap(CGSessionCopyCurrentDictionary() as? [String: Any])
+        guard session[kCGSessionOnConsoleKey as String] as? Bool == true,
+              session[kCGSessionLoginDoneKey as String] as? Bool == true,
+              session["CGSSessionScreenIsLocked"] == nil else {
+            throw XCTSkip("Requires an unlocked console session that omits the lock flag.")
+        }
+        let state = DisplayState.read()
+        guard state.lidClosed == false, state.builtInAsleep == false else {
+            throw XCTSkip("Requires an awake, open built-in display.")
+        }
+        let policy = fixture()
+        var brightness: Float = 0.72
+        policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
+        policy.select(.dim, for: .desk)
+        await policy.tick(mode: .desk, working: true, state: state, onBattery: false, now: Date())
+        policy.handleDimExitInput()
+        XCTAssertEqual(brightness, 0.72, accuracy: 0.001)
+        XCTAssertEqual(policy.behavior(for: .desk), .normalBrightness)
+    }
     func testMinimumBrightnessKeepsDisplayActiveAndRestoresOriginalBrightness() async throws {
         let policy = fixture(), now = Date()
         var brightness: Float = 0.72, sleeps = 0
@@ -113,7 +133,8 @@ import WakeMacCore
         service.workScreen = screen
         screen.requestBehavior = .dim
         await screen.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
-        screen.handleDimExitInput()
+        let restored = await service.handleTaskControl(.init("display-restore-on-key"))
+        XCTAssertTrue(restored.ok)
         let reply = try ControlCoding.decode(ControlReply.self, from: ControlCoding.encode(service.taskControlReply()))
         let client = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "DimClient." + UUID().uuidString)!)
         client.workScreen.select(.dim, for: .desk)
@@ -143,6 +164,19 @@ import WakeMacCore
         await service.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
         service.handleDimExitInput()
         XCTAssertEqual(brightness, 0.5, accuracy: 0.001)
+    }
+    func testInterfaceTickKeepsServiceInputAccessState() async {
+        let preferences = UserDefaults(suiteName: "DimAccess." + UUID().uuidString)!
+        let interface = WorkScreenPolicy(preferences: preferences, runtimeEnabled: false)
+        interface.select(.dim, for: .desk)
+        interface.observeServiceDimState(paused: false, needsAccess: true)
+        await interface.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
+        XCTAssertTrue(interface.dimExitNeedsInputAccess)
+        XCTAssertEqual(interface.behavior(for: .desk), .dim)
+        interface.observeServiceDimState(paused: true, needsAccess: false)
+        await interface.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
+        XCTAssertFalse(interface.dimExitNeedsInputAccess)
+        XCTAssertEqual(interface.behavior(for: .desk), .normalBrightness)
     }
     func testImmediateSleepIsOneShotAndWakeRestoresSavedPolicy() async {
         let policy = fixture(), now = Date()

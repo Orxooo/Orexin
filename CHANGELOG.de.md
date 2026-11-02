@@ -6,6 +6,11 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 4 — 2026-11-02
+
+- Die Wiederherstellung per Tastatur funktioniert auch, wenn macOS bei einer aktiven, angemeldeten Konsolensitzung das Sperrkennzeichen weglässt.
+- Esc und Helligkeitstasten werden im Oberflächenprozess erfasst und die Wiederherstellung an den Hintergrunddienst weitergeleitet. Berechtigungsprüfung und Hinweise zur Eingabeüberwachung werden korrigiert; die Arbeit läuft nach der Wiederherstellung weiter.
+
 ## V1.0.5 HotFix 3 — 2026-10-31
 
 - Standardmäßig aktivierte Wiederherstellung mit Esc oder Helligkeitstasten: Bei minimaler Helligkeit im Desktopbetrieb wird die vorherige Helligkeit wiederhergestellt, ohne die Arbeit zu beenden. Minimale Helligkeit erneut auswählen, um wieder abzudunkeln.

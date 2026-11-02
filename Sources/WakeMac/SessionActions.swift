@@ -39,6 +39,17 @@ extension AppModel {
         do { adoptServiceReply(try await serviceCall(.init("display-reapply"))) }
         catch { message = error.localizedDescription }
     }
+    func restoreDesktopBrightnessFromKey() async {
+        guard verifiedWork, active == .desk, workScreen.restoreDesktopBrightnessOnKey,
+              workScreen.behavior(for: .desk) == .dim else { return }
+        if serviceSocket != nil {
+            do { adoptServiceReply(try await serviceCall(.init("display-restore-on-key"))) }
+            catch { message = error.localizedDescription }
+        } else {
+            workScreen.handleDimExitInput()
+        }
+        onUpdate?()
+    }
     func sleepDisplayNow() async {
         if serviceSocket != nil {
             do { adoptServiceReply(try await serviceCall(.init("display-sleep"))) } catch { message = error.localizedDescription }

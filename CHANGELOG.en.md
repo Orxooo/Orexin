@@ -6,6 +6,11 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.0.5 HotFix 4 — 2026-11-02
+
+- Fix keyboard recovery when macOS omits the lock flag for an active, logged-in console session.
+- Handle Esc and brightness keys in the interface process and forward restoration to the background service. Correct Input Monitoring access checks and permission-hint synchronization; brightness recovery preserves ongoing work.
+
 ## V1.0.5 HotFix 3 — 2026-10-31
 
 - Add the default-on “Restore with Esc / brightness keys” option. During desktop work at minimum brightness, Esc or either display brightness key restores the previous brightness without ending work. Select minimum brightness again to reapply dimming.

@@ -180,6 +180,9 @@ extension AppModel {
             workScreen.reapplyDimming()
             await applyWorkScreenPolicy(now: Date())
             return taskControlReply()
+        case "display-restore-on-key":
+            await restoreDesktopBrightnessFromKey()
+            return taskControlReply()
         case "sleep-now":
             await choose(.normal, sleep: true)
             var reply = taskControlReply(); if error || pending != nil { reply.ok = false; reply.error = message }; return reply

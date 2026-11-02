@@ -274,7 +274,16 @@ struct DisplayState: Equatable {
             if let id = ids.prefix(Int(count)).first(where: { CGDisplayIsBuiltin($0) != 0 }) { asleep = CGDisplayIsAsleep(id) != 0 }
         }
         let session = CGSessionCopyCurrentDictionary() as? [String: Any]
-        let locked = session?["CGSSessionScreenIsLocked"] as? Bool
+        let locked = sessionLockState(session)
         return DisplayState(lidClosed: lid, builtInAsleep: asleep, sessionLocked: locked)
+    }
+    static func sessionLockState(_ session: [String: Any]?) -> Bool? {
+        guard let session else { return nil }
+        if let locked = session["CGSSessionScreenIsLocked"] as? Bool { return locked }
+        // WindowServer omits the lock flag for an unlocked console session.
+        // A missing or inactive session must still remain unknown.
+        guard session[kCGSessionOnConsoleKey as String] as? Bool == true,
+              session[kCGSessionLoginDoneKey as String] as? Bool == true else { return nil }
+        return false
     }
 }

@@ -6,6 +6,11 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 4 — 2026-11-02
+
+- Correction de la restauration par clavier lorsque macOS omet le drapeau de verrouillage pour une session console active et connectée.
+- Détection d’Échap et des touches de luminosité dans le processus de l’interface, puis transmission au service en arrière-plan. Correction du contrôle des autorisations de surveillance de l’entrée et de la synchronisation des indications ; le travail continue après la restauration.
+
 ## V1.0.5 HotFix 3 — 2026-10-31
 
 - Ajout du rétablissement par Échap ou touches de luminosité, activé par défaut : en mode bureau à luminosité minimale, la luminosité précédente est rétablie sans arrêter le travail. Sélectionner de nouveau la luminosité minimale pour assombrir.

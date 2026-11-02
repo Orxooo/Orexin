@@ -6,6 +6,11 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.0.5 HotFix 4 — 2026-11-02
+
+- Corregida la restauración por teclado cuando macOS omite el indicador de bloqueo de una sesión de consola activa con sesión iniciada.
+- La interfaz detecta Esc y las teclas de brillo y envía la solicitud de restauración al servicio en segundo plano. Corregidas la comprobación de permisos de monitorización de entrada y la sincronización de avisos; el trabajo continúa tras restaurar el brillo.
+
 ## V1.0.5 HotFix 3 — 2026-10-31
 
 - Añadida la restauración con Esc o teclas de brillo, activada de forma predeterminada: en modo escritorio con brillo mínimo, se restaura el brillo anterior sin finalizar el trabajo. Seleccionar el brillo mínimo de nuevo para volver a atenuar.

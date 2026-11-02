@@ -479,6 +479,7 @@ extension WorkMode {
     var automationTimer: Timer?
     var observers: [NSObjectProtocol] = []
     let hotkeys = GlobalHotKeys()
+    private let dimExitKeys = DimExitKeyMonitor()
     let notifier = LocalNotifier()
     private var thermalAlertSound: NSSound?
     private var noticeQueue: [ClientNotice] = []
@@ -548,6 +549,10 @@ extension WorkMode {
             Task { await self.model.performShortcut(id) }
         }
         hotkeys.start()
+        dimExitKeys.onKey = { [weak self] in
+            Task { await self?.model.restoreDesktopBrightnessFromKey() }
+        }
+        dimExitKeys.startLocal()
         if !hotkeys.message.isEmpty { model.record(hotkeys.message) }
         let center = NSWorkspace.shared.notificationCenter
         for (name, text) in [(NSWorkspace.willSleepNotification, "系统即将休眠。"), (NSWorkspace.didWakeNotification, "系统已唤醒。"), (NSWorkspace.screensDidSleepNotification, "系统显示器已休眠。"), (NSWorkspace.screensDidWakeNotification, "系统显示器已唤醒。")] {
@@ -590,7 +595,9 @@ extension WorkMode {
         // loop renews its lease even when a readback command or UI is delayed.
         if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
-    func applicationWillTerminate(_ notification: Notification) { automationTimer?.invalidate(); timer?.invalidate() }
+    func applicationWillTerminate(_ notification: Notification) {
+        dimExitKeys.stop(); automationTimer?.invalidate(); timer?.invalidate()
+    }
     private func presentNextNotice() {
         guard !showingNotice, !noticeQueue.isEmpty else { return }
         showingNotice = true

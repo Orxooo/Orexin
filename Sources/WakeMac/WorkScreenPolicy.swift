@@ -254,17 +254,17 @@ enum BuiltInBrightness {
         } catch { setStatus("屏幕策略未核验：" + error.localizedDescription); return false }
     }
     func tick(mode: WorkMode?, working: Bool, state: DisplayState, onBattery: Bool, now: Date) async {
-        if runtimeEnabled {
-            let saved = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
-            if saved != restoreDesktopBrightnessOnKey { restoreDesktopBrightnessOnKey = saved }
-        }
-        dimExitArmed = runtimeEnabled && working && mode == .desk && behavior(for: .desk) == .dim
+        // The GUI mirrors the service's state; only the service owns global input.
+        guard runtimeEnabled else { return }
+        let saved = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
+        if saved != restoreDesktopBrightnessOnKey { restoreDesktopBrightnessOnKey = saved }
+        dimExitArmed = working && mode == .desk && behavior(for: .desk) == .dim
             && state.sessionLocked == false && state.builtInAsleep == false && state.lidClosed == false
         if monitorKeyboard && dimExitArmed && restoreDesktopBrightnessOnKey {
             dimExitKeys.onKey = { [weak self] in self?.handleDimExitInput() }
             dimExitNeedsInputAccess = !dimExitKeys.start()
         } else { dimExitKeys.stop(); dimExitNeedsInputAccess = false }
-        guard runtimeEnabled, working, let mode, mode != .normal else { return }
+        guard working, let mode, mode != .normal else { return }
         let returned = previousDisplayState.map {
             ($0.lidClosed == true && state.lidClosed == false)
                 || ($0.builtInAsleep == true && state.builtInAsleep == false)
