@@ -1461,3 +1461,83 @@
 "Esc / 亮度键恢复" = "Restore with Esc / brightness keys";
 "屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Restore the previous brightness while keeping the desktop work session active.";
 "跨应用恢复需要输入监控权限" = "Input Monitoring permission is required to restore from other apps";
+
+"唤醒模式" = "Awake Mode";
+"正常模式" = "Normal Mode";
+"唤醒模式运行中" = "Awake mode is running";
+"开启唤醒模式" = "Start awake mode";
+"开启唤醒模式（备用）" = "Start awake mode (alternate)";
+"保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。" = "Keep the system running; configure display, screen saver, unlocked access and clamshell options as needed.";
+"屏幕最暗时恢复原亮度，保留唤醒会话。" = "Restore brightness without ending the awake session.";
+"每次新工作需账户授权；结束后恢复即时密码保护。" = "Authorize each new work session; immediate password protection returns when work ends.";
+"屏幕：%@ · 屏保：%@ · 锁屏：%@ · 合盖：%@" = "Display: %@ · Screen saver: %@ · Lock: %@ · Lid: %@";
+"开关可预先设置；进入唤醒模式后生效，恢复正常模式后停止。" = "Configure options before starting. They apply in awake mode and stop in normal mode.";
+"启动唤醒模式并设置合盖行为" = "Start awake mode and configure clamshell behavior";
+"通过 CLI 或 AppleScript 启动唤醒会话，分别设置屏幕与合盖行为。" = "Start an awake session with CLI or AppleScript, and configure display and clamshell behavior separately.";
+"保持未锁定" = "Keep unlocked";
+"允许休眠" = "Allow sleep";
+"继续运行" = "Keep running";
+"mode 必须为 awake。" = "mode must be awake.";
+"唤醒选项已生效" = "Awake options are active";
+"正在核验唤醒选项" = "Verifying awake options";
+"屏保控制尚未通过系统核验。" = "Screen saver control has not passed system verification.";
+
+"唤醒选项" = "Awake options";
+
+"控制唤醒模式下的合盖行为。" = "Choose lid behavior while awake mode is active.";
+
+"合盖服务已移除，唤醒模式仍可使用。" = "Clamshell service removed. Awake mode is still available.";
+"自动触发只支持启动唤醒模式。" = "Automatic rules can only start awake mode.";
+"请先开启唤醒模式。" = "Start awake mode first.";
+"脱离外接电源时，防止唤醒状态耗尽电池。" = "Protect the battery from prolonged awake operation after external power disconnects.";
+
+"其他任务需要屏幕，暂不能立即熄屏。" = "Other tasks require the display. Display sleep is unavailable until they finish.";
+"当前密码策略不执行闲置锁定。" = "The current password policy suspends idle locking.";
+
+"其他任务仍要求屏幕保持工作。" = "Other tasks still require an active display.";
+"其他任务仍要求暂停屏保。" = "Other tasks still require screen saver prevention.";
+
+"唤醒配置" = "Wake Configuration";
+"延长 1 小时" = "Extend 1 hour";
+
+"定位权限已授权，可读取 Wi-Fi 网络名称。" = "Location access granted. Wi-Fi network names are available.";
+"蓝牙权限已授权，可读取已连接设备。" = "Bluetooth access granted. Connected devices are available.";
+
+"设置定时" = "Set timer";
+"合盖服务尚未授权" = "The lid service is not yet authorized";
+
+"菜单栏主题" = "Menu bar theme";
+
+"仪表舱" = "Instrument deck";
+
+"横向悬浮条" = "Horizontal HUD";
+
+"屏幕策略" = "Screen policy";
+
+"切换模式" = "Switch mode";
+
+"未锁定" = "Unlocked";
+
+
+
+"即时保护" = "Immediate protection";
+
+
+
+"工作会话内生效" = "Applies during work sessions";
+
+"锁屏后立即要求密码" = "Password required after locking";
+
+"使用系统锁屏策略" = "Uses system lock policy";
+
+"系统后台辅助服务" = "System background helper";
+
+"生效中" = "Active";
+
+"待启用" = "Ready";
+
+"唤醒" = "Awake";
+
+"向左滚动" = "Scroll left";
+
+"向右滚动" = "Scroll right";

@@ -21,8 +21,8 @@ Use it for builds, downloads, presentations or long-running tasks, at your desk 
 
 ## Features
 
-- **Work modes:** Background Work prevents sleep with the lid closed. Desktop Work prevents idle sleep but allows sleep when the lid closes.
-- **Screen controls:** Set brightness to 0%, keep normal brightness, follow the system display timer or turn the display off immediately. Each work mode remembers its setting.
+- **Awake and Normal modes:** Awake keeps the system running. Configure display brightness or sleep, screen saver prevention, temporary unlocked work, clamshell operation and disk access independently. Normal releases Orexin’s keep-awake settings.
+- **Screen controls:** Set brightness to 0%, keep normal brightness, follow the system display timer or turn the display off immediately. Starting a new awake session restores normal brightness after a previous minimum-brightness session.
 - **Sessions:** End after a duration, at a set time, when an app or process exits, or when a download finishes.
 - **Commands and plans:** Run commands concurrently with exit codes and logs. Define dependencies, concurrency limits and failure branches in JSON.
 - **Rules and profiles:** Trigger work from power, display, device, app, network or time conditions. Supports nested conditions, trial runs and configuration import/export.

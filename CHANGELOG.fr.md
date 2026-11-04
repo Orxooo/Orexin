@@ -6,52 +6,106 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.1.0 — 2026-11-04
+
+### Nouveautés
+
+- Deux panneaux de barre des menus sont disponibles : cockpit et bande horizontale. Choisissez-les dans Apparence et parcourez les raccourcis avec les flèches.
+- Les thèmes Tron, Zima Blue et Blade Runner 2049 proposent de nouvelles images qui changent aléatoirement, avec une animation propre à chaque scène.
+
+### Améliorations
+
+- Les modes de travail deviennent « Mode éveillé » et « Mode normal ». Réglez l’écran, le capot, l’économiseur et le maintien déverrouillé selon vos besoins. « Session de travail » devient « Configuration de veille active ».
+- Les pages des modes, de la configuration, des déclencheurs, de la fin automatique et des préférences ont été réorganisées ; les boutons, interrupteurs et états sont harmonisés.
+
+### Corrections
+
+- Après une session à luminosité minimale, une nouvelle session d’éveil rétablit la luminosité normale.
+- Après la restauration de l’écran, la demande de travail utilise la luminosité normale afin que l’ancien réglage ne l’assombrisse pas à nouveau.
+- Correction des boutons d’autorisation Wi-Fi et Bluetooth lorsque l’accès a déjà été accordé ou refusé.
+
 ## V1.0.5 HotFix 4 — 2026-11-02
+
+### Corrections
 
 - Correction de la restauration par clavier lorsque macOS omet le drapeau de verrouillage pour une session console active et connectée.
 - Détection d’Échap et des touches de luminosité dans le processus de l’interface, puis transmission au service en arrière-plan. Correction du contrôle des autorisations de surveillance de l’entrée et de la synchronisation des indications ; le travail continue après la restauration.
 
 ## V1.0.5 HotFix 3 — 2026-10-31
 
+### Nouveautés
+
 - Ajout du rétablissement par Échap ou touches de luminosité, activé par défaut : en mode bureau à luminosité minimale, la luminosité précédente est rétablie sans arrêter le travail. Sélectionner de nouveau la luminosité minimale pour assombrir.
+
+### Améliorations
+
 - Synchronisation de l’état de rétablissement et des indications de permission de surveillance de l’entrée entre le service et l’interface, en conservant le rétablissement au réveil.
 
 ## V1.0.5 HotFix 2 — 2026-10-28
 
-- L’interface redémarre automatiquement le service déconnecté, se reconnecte avec temporisation et rétablit ses demandes de travail toujours valides avec l’approbation système existante. Les commandes et plans ne sont pas rejoués ; les arrêts explicites sont respectés.
+### Améliorations
+
 - Le maintien du bureau, de l’écran et la prévention de l’économiseur ne demandent aucun mot de passe. Le travail déverrouillé temporaire réutilise une autorisation valide et la vérifie séparément après un changement de processus.
-- Une coupure temporaire du service capot fermé permet de rétablir le bail d’alimentation existant. Les refus de stratégie et autorisations expirées restent des échecs ; le démarrage à froid rétablit la protection par mot de passe.
 - Les erreurs d’autorisation et de démarrage suivent la langue choisie, y compris les anciennes notifications anglaises conservées, sans modifier l’historique enregistré.
+
+### Corrections
+
+- L’interface redémarre automatiquement le service déconnecté, se reconnecte avec temporisation et rétablit ses demandes de travail toujours valides avec l’approbation système existante. Les commandes et plans ne sont pas rejoués ; les arrêts explicites sont respectés.
+- Une coupure temporaire du service capot fermé permet de rétablir le bail d’alimentation existant. Les refus de stratégie et autorisations expirées restent des échecs ; le démarrage à froid rétablit la protection par mot de passe.
 
 ## V1.0.5 HotFix 1 — 2026-10-28
 
+### Améliorations
+
+- Clarification des messages du mode bureau et d’autorisation. Ajout du libellé HotFix 1 et du classement des correctifs stables pour la recherche de mises à jour.
+
+### Corrections
+
 - Correction des erreurs indiquant à tort que le service auxiliaire n’est pas autorisé. La disponibilité dépend désormais de la connexion signée réelle ; une nouvelle tentative permet de rétablir une connexion défaillante.
 - Le verrouillage de l’écran à l’inactivité est suspendu lorsque la mise en veille de l’écran est empêchée. Le maintien du bureau visible et la prévention de l’économiseur d’écran sont prioritaires, sans modifier les règles enregistrées.
-- Clarification des messages du mode bureau et d’autorisation. Ajout du libellé HotFix 1 et du classement des correctifs stables pour la recherche de mises à jour.
 
 ## V1.0.5 — 2026-10-27
 
-- Correction du retour à une luminosité nulle après ouverture du capot, réveil de l’écran ou déverrouillage pendant le travail en arrière-plan. La luminosité précédente est rétablie et les tâches continuent.
+### Améliorations
+
 - La fermeture du capot ou la sélection explicite de la luminosité minimale réactive l’assombrissement. Les préréglages sont conservés, y compris dans le service autonome en arrière-plan.
+
+### Corrections
+
+- Correction du retour à une luminosité nulle après ouverture du capot, réveil de l’écran ou déverrouillage pendant le travail en arrière-plan. La luminosité précédente est rétablie et les tâches continuent.
 
 ## V1.0.4 — 2026-10-26
 
-- Correction des options de session écrasées par la politique d’écran. Le blocage de l’économiseur peut être désactivé séparément ; son activation sélectionne une politique compatible.
+### Améliorations
+
 - L’autorisation d’accessibilité affiche son état et ouvre les Réglages Système. Le pointeur indique pourquoi son déplacement est en attente ou suspendu.
 - Éditeur de règles réorganisé : champs étiquetés, options avancées repliables, actions Enregistrer et Annuler fixes, et moins de bordures et de zones de défilement imbriquées.
 
+### Corrections
+
+- Correction des options de session écrasées par la politique d’écran. Le blocage de l’économiseur peut être désactivé séparément ; son activation sélectionne une politique compatible.
+
 ## V1.0.3 — 2026-10-25
+
+### Nouveautés
 
 - Ajout de « Messages et alertes », qui conserve les messages de mise à jour, d’anomalie du service, d’expiration des demandes, d’avertissement de fin de session et de protection thermique.
 - Prise en charge des fenêtres d’alerte et des notifications macOS pour les événements importants, sans répéter les rappels ni afficher tardivement des alertes dont la cause a disparu.
+
+### Améliorations
+
 - Recherche de mises à jour après le lancement, puis toutes les 6 heures. Chaque version n’est signalée qu’une fois ; le téléchargement et l’installation restent manuels.
 - Mise à jour des instructions d’utilisation et des captures d’écran en chinois et en anglais.
 
 ## V1.0.2 — 2026-10-22
 
+### Corrections
+
 - Correction de l’impossibilité de fermer la fenêtre principale et le panneau d’accès rapide, ainsi que de l’indisponibilité du menu « Fermer » et de `⌘W`. La barre des menus et les tâches en arrière-plan restent actives après la fermeture des fenêtres.
 
 ## V1.0.1 — 2026-10-18
+
+### Corrections
 
 - Correction du clignotement chaque seconde du panneau de la barre des menus pendant le travail, des images rémanentes du texte et des sauts de mise en page.
 
@@ -59,37 +113,60 @@ Les paquets d’installation et les instructions de mise à niveau sont disponib
 
 Première version stable.
 
+### Nouveautés
+
 - Ajout d’un service de tâches indépendant en arrière-plan : les commandes et les plans d’exécution continuent de fonctionner après la fermeture de l’interface.
 - Ajout des plans d’exécution JSON, avec dépendances, exécution séquentielle ou parallèle, limite de concurrence, branches en cas d’échec et journaux pour chaque élément.
 - Possibilité d’annuler les commandes d’un plan qui n’ont pas encore démarré. Les commandes déjà lancées continuent de s’exécuter, et le redémarrage du service ne relance pas les tâches.
+
+### Améliorations
+
 - Harmonisation des boutons, des sélecteurs et des interrupteurs ; correction de la mise en page des cartes, des filtres et des journaux ; amélioration de l’affichage dans les fenêtres étroites et de l’utilisation au clavier.
+
+### Corrections
+
 - Correction du problème empêchant la CLI intégrée au paquet d’installation de démarrer le service en arrière-plan.
 
 ## V0.3.0 Preview.1 — 2026-10-18
 
 La page de publication porte le nom V0.3.1 Preview ; le tag d’origine est `v0.3.0-preview.1` et la version de l’application est `0.3.0`.
 
+### Nouveautés
+
 - Ajout de règles avancées avec conditions imbriquées, priorités, maintien des conditions pendant une durée donnée, délai de réactivation et simulations.
 - Ajout de l’analyse de l’alimentation pour consulter les assertions d’alimentation du système, les processus sources identifiables et la chronologie des événements.
 - Ajout des profils de travail et de l’importation/exportation JSON, avec aperçu des différences, fusion ou remplacement. Les règles et scripts importés doivent être activés localement.
 - La CLI prend en charge les profils de travail, la simulation des règles, les requêtes sur l’alimentation et l’importation/exportation de configurations.
+
+### Améliorations
+
 - Correction de l’alignement et de la mise en page dans les fenêtres étroites sur la page de gestion des tâches, ainsi que des erreurs de compilation avec Xcode 26.3.
 
 ## V0.2.0 Preview — 2026-10-14
+
+### Nouveautés
 
 - Ajout de la gestion de tâches en parallèle, avec un code de sortie, des journaux et un état de maintien en éveil propres à chaque tâche.
 - Ajout de la CLI intégrée `orexin`, qui permet d’exécuter des commandes, d’enregistrer des tâches externes, d’envoyer des signaux de présence et d’interroger l’état.
 - La fin d’une tâche n’affecte pas les autres. Lorsque toutes les tâches ont réussi et qu’aucune autre source ne maintient le Mac éveillé, un compte à rebours de 60 secondes avant la mise en veille peut démarrer.
 - Possibilité de libérer le maintien en éveil tâche par tâche ou pour toutes les tâches, sans interrompre les commandes en cours d’exécution.
+
+### Améliorations
+
 - Ajustement de la mise en page des tâches et ajout des textes manquants dans les sept langues.
 
 ## V0.1.0 Preview — 2026-10-12
 
 Première version de prévisualisation publique.
 
+### Nouveautés
+
 - Modes de travail en arrière-plan et sur le bureau, sessions programmées ou conditionnelles, réglage de la luminosité et extinction de l’écran.
 - Déclenchement automatique, tâches de commande, protection thermique et contre la batterie faible, et historique local d’exécution.
 - Panneau dans la barre des menus, trois thèmes, sept langues et sons de clic facultatifs.
 - Recherche de mises à jour des versions de prévisualisation.
-- Correction des demandes répétées de mise en veille après la fin d’une session programmée et du décalage horizontal lors du passage entre certaines pages.
 - Publication sous licence GPL-3.0-only.
+
+### Corrections
+
+- Correction des demandes répétées de mise en veille après la fin d’une session programmée et du décalage horizontal lors du passage entre certaines pages.

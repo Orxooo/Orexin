@@ -36,7 +36,7 @@ private actor RestartLockSystem: ScreenLockLeaseClient {
 
 @MainActor final class RestartAuthorizationTests: XCTestCase {
     private final class Effects: SessionEffectManaging {
-        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
+        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver) }
         func release() {}
     }
     private func exercise(cancel: Bool) async throws {
@@ -47,6 +47,7 @@ private actor RestartLockSystem: ScreenLockLeaseClient {
         let system = RestartLockSystem()
         let backend = MacBackend(command: { path, args, _ in await system.command(path, args) }, helper: system, preferences: prefs, allowsAuthentication: false)
         let service = AppModel(backend: backend, preferences: prefs, sessionEffects: Effects())
+        service.workScreen = WorkScreenPolicy(preferences: prefs, runtimeEnabled: false)
         service.isTaskService = true; service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
         service.active = .normal; service.snapshot = try await backend.snapshot()
         let path = "/tmp/orxa-" + UUID().uuidString.prefix(8) + "/control.sock"
@@ -104,6 +105,7 @@ private actor RestartLockSystem: ScreenLockLeaseClient {
         let system = RestartLockSystem()
         let backend = MacBackend(command: { path, args, _ in await system.command(path, args) }, helper: system, preferences: prefs, allowsAuthentication: false)
         let model = AppModel(backend: backend, preferences: prefs, sessionEffects: Effects())
+        model.workScreen = WorkScreenPolicy(preferences: prefs, runtimeEnabled: false)
         model.active = .normal; model.snapshot = try await backend.snapshot()
         await model.setUnlockedWork(false)
         XCTAssertFalse(model.error, model.message)

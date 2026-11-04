@@ -122,6 +122,7 @@ extension AppModel {
         if busy { return "Verifying power state" }
         if !verifiedWork { return message }
         if spec.mode == .background && active != .background { return "Background mode is not verified" }
+        if spec.requiredScreen != .idle, spec.preventScreenSaver != false, !sessions.effectReport.screenSaverAssertionActive { return "屏保控制尚未通过系统核验。" }
         return "Display requirement is not verified: " + sessions.effectReport.display + " · " + workScreen.status
     }
     func requestSatisfied(_ spec: WorkRequestSpec) -> Bool {
@@ -129,8 +130,9 @@ extension AppModel {
         guard verifiedWork, spec.mode != .background || active == .background else { return false }
         guard let active else { return false }
         let screen = workScreen.behavior(for: active)
-        return spec.screen == .idle || (sessions.effectReport.displayAssertionActive && workScreen.isVerified(screen)
-            && (spec.screen == .dim ? screen.keepsDisplayActive : screen == .normalBrightness))
+        return spec.requiredScreen == .idle || (sessions.effectReport.displayAssertionActive && workScreen.isVerified(screen)
+            && (spec.preventScreenSaver == false || sessions.effectReport.screenSaverAssertionActive)
+            && (spec.requiredScreen == .dim ? screen.keepsDisplayActive : screen == .normalBrightness))
     }
     func completeWork(_ handle: WorkRequestHandle, exitCode: Int32, now: Date = Date()) async throws {
         if serviceSocket != nil { adoptServiceReply(try await serviceCall(.init("complete", handle: handle, exitCode: exitCode))); return }

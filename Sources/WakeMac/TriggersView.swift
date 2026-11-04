@@ -12,8 +12,15 @@ struct TriggersView: View {
     @State private var diagnostics = TriggerSnapshot()
     @State private var refreshing = false
     @State private var showingMore = false
+    @State private var expandedRules: Set<UUID> = []
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private let ruleColumns = [GridItem(.flexible(), spacing: 14), GridItem(.flexible(), spacing: 14)]
     private let primaryKinds: Set<TriggerKind> = [.acConnected, .batteryCharging, .batteryAbove, .cpuAbove, .ciscoVPN, .audioOutput, .headphones]
+
+    init(controller: TriggerController, showingMore: Bool = false) {
+        self.controller = controller
+        _showingMore = State(initialValue: showingMore)
+    }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -28,19 +35,12 @@ struct TriggersView: View {
                 Text(controller.rules.isEmpty ? "DRAFT TEMPLATES · " + L("尚未配置规则") : "\(controller.rules.count) CONFIGURED PROFILES")
                     .font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
             }
-            LazyVGrid(columns: ruleColumns, alignment: .leading, spacing: 14) {
-                if controller.rules.isEmpty {
-                    ForEach(Array(RuleTemplate.allCases.enumerated()), id: \.element) { index, template in
-                        templateCard(template, number: index + 1)
-                    }
-                } else {
-                    ForEach(Array(controller.rules.enumerated()), id: \.element.id) { index, rule in
-                        ruleCard(rule, number: index + 1)
-                    }
-                }
+            ViewThatFits(in: .horizontal) {
+                LazyVGrid(columns: ruleColumns, alignment: .leading, spacing: 14) { ruleCards }.frame(minWidth: 760)
+                VStack(alignment: .leading, spacing: 14) { ruleCards }
             }
             telemetry
-        }
+        }.buttonStyle(TerminalButtonStyle()).focusEffectDisabled()
             .task { await refreshTelemetry() }
             .onReceive(NotificationCenter.default.publisher(for: NativeTriggerObservations.permissionChanged)) { _ in
                 Task { await refreshTelemetry() }
@@ -50,7 +50,28 @@ struct TriggersView: View {
             }
     }
 
+    @ViewBuilder private var ruleCards: some View {
+        if controller.rules.isEmpty {
+            ForEach(Array(RuleTemplate.allCases.enumerated()), id: \.element) { index, template in
+                templateCard(template, number: index + 1)
+            }
+        } else {
+            ForEach(Array(controller.rules.enumerated()), id: \.element.id) { index, rule in
+                ruleCard(rule, number: index + 1)
+            }
+        }
+    }
+
     private var masterBus: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(alignment: .center, spacing: 18) { masterSummary; masterActions }.frame(minWidth: 760)
+            VStack(alignment: .leading, spacing: 16) {
+                masterSummary
+                masterActions.frame(maxWidth: .infinity, alignment: .trailing)
+            }
+        }.padding(16).modifier(TriggerRackSurface(active: controller.enabled))
+    }
+    private var masterSummary: some View {
         HStack(alignment: .center, spacing: 14) {
             TerminalIcon(name: "bolt.fill", size: 25).foregroundStyle(TerminalStyle.accent)
                 .frame(width: 42, height: 48).background(TerminalStyle.recess)
@@ -58,21 +79,28 @@ struct TriggersView: View {
             VStack(alignment: .leading, spacing: 7) {
                 HStack(spacing: 8) {
                     Text(L("启用自动触发")).font(.system(size: 17, weight: .semibold)).accessibilityAddTraits(.isHeader)
-                    Text(controller.enabled ? "BUS::ARMED" : "BUS::PAUSED").font(TerminalStyle.mono(9)).foregroundStyle(controller.enabled ? TerminalStyle.signal : TerminalStyle.muted)
+                    Text(controller.enabled ? "BUS::ARMED" : "BUS::PAUSED").font(TerminalStyle.mono(9))
+                        .foregroundStyle(controller.enabled ? TerminalStyle.signal : TerminalStyle.muted)
+                        .padding(.horizontal, 5).padding(.vertical, 3).background(TerminalStyle.recess)
                 }
                 Text(L("暂停时保留规则配置，停止自动匹配；手动操作优先。"))
                     .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
                 Text(LF("%d 条启用 · %d 条暂停", controller.rules.filter(\.enabled).count, controller.rules.filter { !$0.enabled }.count))
                     .font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.signal)
             }
-            Spacer(minLength: 0)
-            VStack(spacing: 3) {
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var masterActions: some View {
+        HStack(alignment: .center, spacing: 14) {
+            HStack(spacing: 12) {
                 Text("MASTER_BUS").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
                 Toggle(L("启用自动触发"), isOn: $controller.enabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
-            }
-            Button { editing = TriggerRule() } label: { TerminalLabel("新建规则", systemImage: "plus") }
-                .workKeyboardFocus(radius: 0)
-        }.padding(16).modifier(TriggerRackSurface(active: controller.enabled))
+            }.padding(.horizontal, 12).frame(height: 36).background(TerminalStyle.recess)
+                .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.7)))
+            Button { editing = TriggerRule() } label: {
+                TerminalLabel("新建规则", systemImage: "plus")
+            }.workKeyboardFocus(radius: 0)
+        }.fixedSize(horizontal: true, vertical: false)
     }
 
     private func ruleCard(_ rule: TriggerRule, number: Int) -> some View {
@@ -89,7 +117,7 @@ struct TriggersView: View {
     private func ruleDefinition(_ rule: TriggerRule) -> some View {
         VStack(alignment: .leading, spacing: 8) {
             rackRow("COND // 条件", rule.effectiveExpression.summary)
-            rackRow("ACTION // 执行", L(rule.mode == .background ? "后台工作" : "桌面工作") + " · " + L("保持唤醒"), color: TerminalStyle.accent)
+            rackRow("ACTION // 执行", L("唤醒模式") + " · " + L(rule.mode == .background ? "合盖继续运行" : "合盖后允许休眠"), color: TerminalStyle.accent)
             rackRow("LID // 合盖策略", rule.mode == .background ? "允许合盖继续运行" : "合盖后允许休眠", color: TerminalStyle.signal)
             rackRow("PRIORITY // 优先级", "\(rule.priority) · 持续 \(rule.sustainedMatchSeconds.formatted()) 秒 · 冷却 \(rule.cooldownSeconds.formatted()) 秒")
             rackRow("FALLBACK // 收尾", "条件解除后恢复正常模式")
@@ -101,28 +129,35 @@ struct TriggersView: View {
             Text(displayBehavior(rule)).font(.system(size: 9)).foregroundStyle(TerminalStyle.muted)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)
-            Button { editing = rule } label: { TerminalIcon(name: "slider.horizontal.3", size: 16).frame(width: 26, height: 30) }
-                .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).accessibilityLabel(LF("编辑 %@", rule.name))
-            Button(role: .destructive) { controller.remove(rule.id) } label: { TerminalIcon(name: "trash", size: 14).frame(width: 24, height: 30) }
-                .buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0).foregroundStyle(TerminalStyle.warning).accessibilityLabel(LF("删除 %@", rule.name))
+            Button { editing = rule } label: { TerminalIcon(name: "slider.horizontal.3", size: 16).frame(minHeight: 36) }
+                .buttonStyle(TerminalButtonStyle(width: 36)).workKeyboardFocus(radius: 0).accessibilityLabel(LF("编辑 %@", rule.name))
+            Button(role: .destructive) { controller.remove(rule.id) } label: { TerminalIcon(name: "trash", size: 14).frame(minHeight: 36) }
+                .buttonStyle(TerminalButtonStyle(width: 36)).workKeyboardFocus(radius: 0).accessibilityLabel(LF("删除 %@", rule.name))
             Toggle(rule.name, isOn: Binding(get: { rule.enabled }, set: { controller.setEnabled(rule.id, $0) }))
                 .labelsHidden().toggleStyle(TerminalSwitchStyle())
         }.padding(.top, 8).overlay(alignment: .top) { Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1) }
     }
 
     private func ruleObservations(_ rule: TriggerRule) -> some View {
-        DisclosureGroup(L("条件观测与判定")) {
-            if let evaluation = controller.evaluationReport?.rules.first(where: { $0.id == rule.id }) {
-                Text(L(evaluation.state.title) + " · " + L(evaluation.detail)).font(.system(size: 11)).foregroundStyle(TerminalStyle.accent)
+        let expanded = expandedRules.contains(rule.id)
+        return VStack(alignment: .leading, spacing: 10) {
+            disclosureEntry("条件观测与判定", expanded: expanded) {
+                if expanded { expandedRules.remove(rule.id) } else { expandedRules.insert(rule.id) }
             }
-            ForEach(rule.allConditions) { condition in
-                Text(observationText(condition))
-                    .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).textSelection(.enabled)
-                    .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+            if expanded {
+                if let evaluation = controller.evaluationReport?.rules.first(where: { $0.id == rule.id }) {
+                    Text(L(evaluation.state.title) + " · " + L(evaluation.detail)).font(.system(size: 11)).foregroundStyle(TerminalStyle.accent)
+                }
+                ForEach(rule.allConditions) { condition in
+                    Text(observationText(condition))
+                        .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).textSelection(.enabled)
+                        .fixedSize(horizontal: false, vertical: true).padding(.top, 4)
+                }
+                Text(L("收尾策略在规则接管工作模式时生效；手动操作和当前会话优先。"))
+                    .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).padding(.top, 4)
             }
-            Text(L("收尾策略在规则接管工作模式时生效；手动操作和当前会话优先。"))
-                .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).padding(.top, 4)
         }.font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: expanded)
     }
 
     private func observationText(_ condition: TriggerCondition) -> String {
@@ -141,7 +176,7 @@ struct TriggersView: View {
                         identifier: "DRAFT TEMPLATE // 未保存", status: "OFF · 未配置", color: TerminalStyle.muted)
             VStack(alignment: .leading, spacing: 8) {
                 rackRow("COND // 条件", template.condition)
-                rackRow("ACTION // 执行", "选择桌面工作或后台工作")
+                rackRow("ACTION // 执行", "启动唤醒模式并设置合盖行为")
                 rackRow("LID // 合盖策略", "跟随所选工作模式")
                 rackRow("FALLBACK // 收尾", "条件解除后恢复正常模式")
             }.padding(10).background(TerminalStyle.recess)
@@ -160,23 +195,25 @@ struct TriggersView: View {
                 .background(TerminalStyle.recess).overlay(Rectangle().strokeBorder(TerminalStyle.line))
             VStack(alignment: .leading, spacing: 5) {
                 Text(L(name)).font(.system(size: 13, weight: .semibold))
-                    .lineLimit(2).minimumScaleFactor(0.85).frame(height: 32, alignment: .topLeading)
+                    .lineLimit(2).fixedSize(horizontal: false, vertical: true)
                 Text(L(identifier)).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
             }
             Spacer(minLength: 0)
             VStack(alignment: .trailing, spacing: 6) {
                 Text(String(format: "RACK_%02d", number)).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.accent)
                 Text(L(status)).font(.system(size: 9)).foregroundStyle(color).fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 6).padding(.vertical, 4).background(TerminalStyle.recess)
+                    .overlay(Rectangle().strokeBorder(color.opacity(0.45)))
             }
-        }
+        }.frame(minHeight: 42, alignment: .top)
     }
 
     private func rackRow(_ label: String, _ value: String, color: Color = TerminalStyle.ink) -> some View {
-        HStack(alignment: .top, spacing: 7) {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(L(label)).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted).frame(width: 96, alignment: .leading)
             Text(L(value)).font(.system(size: 10)).foregroundStyle(color).frame(maxWidth: .infinity, alignment: .trailing)
-                .lineLimit(2).minimumScaleFactor(0.85)
-        }.frame(minHeight: 26, alignment: .top)
+                .lineLimit(3).help(L(value))
+        }.frame(minHeight: 20, alignment: .top)
     }
 
     private var telemetry: some View {
@@ -203,10 +240,12 @@ struct TriggersView: View {
             }
             WorkNote(text: "VPN 条件只检测 macOS 网络设置中名称含 Cisco、AnyConnect 或 Secure Client 的服务。客户端没有向系统公开连接状态时显示未知，规则不会匹配。耳机条件读取内置输出标识；USB 或蓝牙耳机请使用指定音频输出规则。")
                 .padding(10).background(TerminalStyle.recess)
-            DisclosureGroup("更多观测与权限", isExpanded: $showingMore) {
-                additionalObservations.padding(.top, 10)
-            }.font(.system(size: 11)).foregroundStyle(TerminalStyle.muted)
+            disclosureEntry("更多观测与权限", expanded: showingMore) { showingMore.toggle() }
+            if showingMore {
+                additionalObservations.transition(reduceMotion ? .identity : .opacity.combined(with: .offset(y: -6)))
+            }
         }.padding(16).modifier(TriggerRackSurface(active: false))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.22), value: showingMore)
     }
 
     @ViewBuilder private var telemetryCards: some View {
@@ -241,8 +280,8 @@ struct TriggersView: View {
                         .overlay(alignment: .leading) { Rectangle().fill(TerminalStyle.signal).frame(width: geometry.size.width * min(1, max(0, indicator))) }
                 }.frame(height: 3).accessibilityHidden(true)
             }
-        }.frame(maxWidth: .infinity, alignment: .leading).frame(height: 116).padding(12)
-            .background(TerminalStyle.surface).overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.7)))
+        }.frame(maxWidth: .infinity, alignment: .leading).frame(height: 124).padding(12)
+            .background(TerminalStyle.recess).overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.7)))
     }
 
     private var additionalObservations: some View {
@@ -259,10 +298,30 @@ struct TriggersView: View {
             rackRow("PROCESSES", describe(diagnostics.processes))
             rackRow("VOLUMES", describe(diagnostics.mountedVolumes))
             rackRow("IDLE", diagnostics.idleSeconds.map { LF("%.0f 秒", $0) } ?? "未知")
-            permissionRow(kind: .wifiSSID, title: "Wi-Fi 网络名称", explanation: diagnostics.unavailable[.wifiSSID] ?? "macOS 需要定位权限才会提供网络名称。拒绝或未授权时不会匹配。")
-            WorkNote(text: "Wi-Fi 名称受 macOS 定位权限保护。开源自行构建版本若缺少定位授权声明或有效签名，系统可能不显示授权弹窗；此时 Wi-Fi 规则不会匹配。请在系统设置 → 隐私与安全性 → 定位服务检查 Orexin 的权限。")
-            permissionRow(kind: .bluetoothDevice, title: "蓝牙设备", explanation: diagnostics.unavailable[.bluetoothDevice] ?? "仅读取已配对且当前连接的设备。需要蓝牙权限。")
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 14) { permissionPanels }.frame(minWidth: 680)
+                VStack(alignment: .leading, spacing: 14) { permissionPanels }
+            }.padding(.top, 4)
         }
+    }
+    @ViewBuilder private var permissionPanels: some View {
+        permissionRow(kind: .wifiSSID, title: "Wi-Fi 网络名称", explanation: diagnostics.unavailable[.wifiSSID] ?? (controller.permissionState(for: .wifiSSID) == .authorized ? "定位权限已授权，可读取 Wi-Fi 网络名称。" : "macOS 需要定位权限才会提供网络名称。拒绝或未授权时不会匹配。"))
+        permissionRow(kind: .bluetoothDevice, title: "蓝牙设备", explanation: diagnostics.unavailable[.bluetoothDevice] ?? (controller.permissionState(for: .bluetoothDevice) == .authorized ? "蓝牙权限已授权，可读取已连接设备。" : "仅读取已配对且当前连接的设备。需要蓝牙权限。"))
+    }
+    private func disclosureEntry(_ title: String, expanded: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 10) {
+                TerminalIcon(name: "chevron.down", size: 13).foregroundStyle(TerminalStyle.accent)
+                    .rotationEffect(.degrees(expanded ? 180 : 0))
+                Text(L(title)).font(.system(size: 12, weight: .semibold))
+                Spacer(minLength: 12)
+                Text(L(expanded ? "收起" : "展开")).font(TerminalStyle.mono(10)).foregroundStyle(TerminalStyle.accent)
+            }.padding(.horizontal, 14).frame(maxWidth: .infinity, minHeight: 46)
+                .background(expanded ? TerminalStyle.selection.opacity(0.5) : TerminalStyle.recess)
+                .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.7)))
+                .contentShape(Rectangle())
+        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
+            .accessibilityLabel(L(title)).accessibilityValue(L(expanded ? "已展开" : "已折叠"))
     }
 
     private func refreshTelemetry(refreshRules: Bool = false) async {
@@ -320,14 +379,21 @@ struct TriggersView: View {
         return condition.kind.title + "：" + condition.value
     }
     private func permissionRow(kind: TriggerKind, title: String, explanation: String) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text(L(title)).font(WorkType.controlLabel)
-            Text(L(explanation)).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
-            HStack {
-                Button(L("请求授权")) { controller.requestPermission(for: kind); Task { await refreshTelemetry() } }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
-                Button(L("打开权限设置")) { controller.openPermissionSettings(for: kind) }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+        let authorized = controller.permissionState(for: kind) == .authorized
+        return VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 8) {
+                TerminalIcon(name: kind == .wifiSSID ? "wifi" : "bluetooth", size: 16).foregroundStyle(TerminalStyle.accent)
+                Text(L(title)).font(.system(size: 13, weight: .semibold))
             }
-        }
+            Text(L(explanation)).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
+                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+            HStack(spacing: 10) {
+                Button(L(authorized ? "已授权" : "请求授权")) { controller.requestPermission(for: kind); Task { await refreshTelemetry() } }
+                    .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0).disabled(authorized)
+                Button(L("打开权限设置")) { controller.openPermissionSettings(for: kind) }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+            }.frame(minHeight: 36)
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.6)))
     }
 }
 
@@ -419,8 +485,8 @@ struct TriggerRuleEditor: View {
     private var basicFields: some View {
         VStack(alignment: .leading, spacing: 14) {
             labeledField("规则名称") { TextField(L("规则名称"), text: $rule.name) }
-            labeledField("进入模式") {
-                TerminalPicker("进入模式", selection: $rule.mode, choices: [TerminalChoice("桌面工作", .desk), TerminalChoice("后台工作", .background)])
+            labeledField("唤醒选项") {
+                WorkToggle(title: "合盖继续运行", isOn: Binding(get: { rule.mode == .background }, set: { rule.mode = $0 ? .background : .desk }))
             }
         }
     }
@@ -588,7 +654,7 @@ struct TriggerRuleEditor: View {
                         else { schedule.wrappedValue.weekdays.insert(day) }
                     } label: {
                         Text(L([1: "周日", 2: "周一", 3: "周二", 4: "周三", 5: "周四", 6: "周五", 7: "周六"][day]!))
-                    }.buttonStyle(WorkButtonStyle(prominent: selected)).workKeyboardFocus(radius: 0)
+                    }.buttonStyle(WorkButtonStyle(prominent: selected, width: 64)).workKeyboardFocus(radius: 0)
                         .accessibilityValue(L(selected ? "已选择" : "未选择"))
                 }
             }

@@ -85,7 +85,7 @@ import WakeMacCore
         await m.sessions.start()
         let deadline = m.sessions.deadline
         await m.performShortcut(1)
-        XCTAssertEqual(m.active, .background)
+        XCTAssertEqual(m.active, .desk)
         XCTAssertTrue(m.sessions.isActive)
         XCTAssertEqual(m.sessions.deadline, deadline)
         await m.performShortcut(2)

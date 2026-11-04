@@ -34,6 +34,10 @@ public struct WorkRequestSpec: Codable, Equatable, Sendable {
         self.profileID = profileID
         self.preventScreenSaver = preventScreenSaver
     }
+    public var requiredScreen: RequestScreen {
+        screen == .idle && preventScreenSaver == true ? .awake : screen
+    }
+
 }
 public struct WorkRequestRecord: Codable, Equatable, Identifiable, Sendable {
     public let id: UUID
@@ -73,8 +77,8 @@ public struct WorkRequestLedger: Sendable {
         let live = active
         guard !live.isEmpty else { return nil }
         return .init(mode: live.contains { $0.spec.mode == .background } ? .background : .desk,
-                     screen: live.map(\.spec.screen).max { $0.priority < $1.priority } ?? .idle,
-                     preventScreenSaver: live.contains { $0.spec.screen != .idle && ($0.spec.preventScreenSaver ?? true) })
+                     screen: live.map(\.spec.requiredScreen).max { $0.priority < $1.priority } ?? .idle,
+                     preventScreenSaver: live.contains { $0.spec.requiredScreen != .idle && ($0.spec.preventScreenSaver ?? true) })
     }
     @discardableResult public mutating func register(_ spec: WorkRequestSpec, handle: WorkRequestHandle = .init(), now: Date) throws -> WorkRequestHandle {
         if let existing = records.first(where: { $0.id == handle.id }) {

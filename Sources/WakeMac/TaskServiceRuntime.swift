@@ -13,9 +13,11 @@ import WakeMacCore
     private var ticking = false
     private var notifier: LocalNotifier?
     private var lastRefresh = Date.distantPast
+    private var hadGraphicalSession = false
     private let root = TaskServiceLauncher.stateDirectory
     func start() {
         do {
+            hadGraphicalSession = CGSessionCopyCurrentDictionary() != nil
             try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
             // Tests and explicit alternate instances use separate preferences as well as files.
             let defaults = TaskServiceLauncher.isolatedPreferences ?? .standard
@@ -70,6 +72,7 @@ import WakeMacCore
                         }
                         await self.model.tick(battery: BatterySource.read())
                         await self.model.advancePlans()
+                        _ = await self.stopAfterSessionEnds(sessionAvailable: CGSessionCopyCurrentDictionary() != nil)
                     }
                 }
             }
@@ -90,6 +93,18 @@ import WakeMacCore
         }
     }
     private func shutdown() { timer?.invalidate(); server?.stop(); exit(0) }
+
+    func stopAfterSessionEnds(sessionAvailable: Bool) async -> Bool {
+        if sessionAvailable { hadGraphicalSession = true; return false }
+        guard hadGraphicalSession else { return false }
+        if model.serviceStopping { return true }
+        // A detached service can outlive logout with an unusable WindowServer
+        // connection. Retire it through the idle-only cleanup path so the next
+        // connection starts a service in the current login session. Locking and
+        // fast user switching retain a session dictionary and do not retire it.
+        let reply = try? await model.handleServiceControl(.init("service-stop"))
+        return reply?.ok == true
+    }
 }
 
 extension AppModel {
@@ -174,6 +189,7 @@ extension AppModel {
             try await backend.verifyUnlockedWorkFromInterface()
             return taskControlReply()
         case "display-sleep":
+            guard !otherTasksRequireDisplay else { throw ModeError("其他任务需要屏幕，暂不能立即熄屏。") }
             await sleepDisplayNow()
             return taskControlReply()
         case "display-reapply":

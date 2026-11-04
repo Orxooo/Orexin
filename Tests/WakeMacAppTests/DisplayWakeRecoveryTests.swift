@@ -10,7 +10,9 @@ import WakeMacCore
     private let closed = DisplayState(lidClosed: true, builtInAsleep: true, sessionLocked: true)
 
     private func policy() -> WorkScreenPolicy {
-        WorkScreenPolicy(preferences: UserDefaults(suiteName: "WakeRecovery." + UUID().uuidString)!)
+        let value = WorkScreenPolicy(preferences: UserDefaults(suiteName: "WakeRecovery." + UUID().uuidString)!)
+        value.select(.dim, for: .background)
+        return value
     }
 
     func testLidOpeningRestoresBrightnessUntilNextCloseWithoutChangingSavedPolicy() async {
@@ -78,7 +80,7 @@ import WakeMacCore
     }
 
     func testExplicitDimSelectionReachesBackgroundServiceWithoutStoppingTasks() async throws {
-        let serverModel = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "WakeService." + UUID().uuidString)!)
+        let serverModel = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "WakeService." + UUID().uuidString)!, sessionEffects: VerifiedAwakeEffects())
         serverModel.isTaskService = true
         serverModel.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
         serverModel.thermalStateProvider = { .nominal }
@@ -128,7 +130,7 @@ import WakeMacCore
     }
 
     func testDeskDisplaySwitchDoesNotResumeAnIndependentBackgroundTasksDimming() async throws {
-        let service = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "WakeDeskService." + UUID().uuidString)!)
+        let service = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "WakeDeskService." + UUID().uuidString)!, sessionEffects: VerifiedAwakeEffects())
         service.isTaskService = true; service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
         service.thermalStateProvider = { .nominal }
         let background = try await service.registerWork(.init(title: "background", mode: .background, screen: .dim))

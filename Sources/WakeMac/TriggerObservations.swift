@@ -136,17 +136,21 @@ struct TriggerCPUSampler {
     }
 }
 
+enum TriggerPermissionState { case notDetermined, authorized, denied, restricted }
+
 @MainActor protocol TriggerObservationSource {
     func read(kinds: Set<TriggerKind>, now: Date) async -> TriggerSnapshot
     func openPermissionSettings(for kind: TriggerKind)
     func requestPermission(for kind: TriggerKind)
+    func permissionState(for kind: TriggerKind) -> TriggerPermissionState
 }
 extension TriggerObservationSource {
     func openPermissionSettings(for kind: TriggerKind) {}
     func requestPermission(for kind: TriggerKind) {}
+    func permissionState(for kind: TriggerKind) -> TriggerPermissionState { .notDetermined }
 }
 
-@MainActor final class NativeTriggerObservations: NSObject, TriggerObservationSource, CLLocationManagerDelegate, CBCentralManagerDelegate {
+@MainActor class NativeTriggerObservations: NSObject, TriggerObservationSource, CLLocationManagerDelegate, CBCentralManagerDelegate {
     static let permissionChanged = Notification.Name("Orexin.triggerPermissionChanged")
     private var cpu = TriggerCPUSampler()
     private var locationManager: CLLocationManager?
@@ -155,40 +159,80 @@ extension TriggerObservationSource {
     nonisolated func locationManagerDidChangeAuthorization(_ manager: CLLocationManager) {
         Task { @MainActor in NotificationCenter.default.post(name: Self.permissionChanged, object: nil) }
     }
-    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {}
+    nonisolated func centralManagerDidUpdateState(_ central: CBCentralManager) {
+        Task { @MainActor in NotificationCenter.default.post(name: Self.permissionChanged, object: nil) }
+    }
     func openPermissionSettings(for kind: TriggerKind) {
         let pane = kind == .bluetoothDevice ? "Privacy_Bluetooth" : "Privacy_LocationServices"
         if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?\(pane)") { NSWorkspace.shared.open(url) }
     }
     func requestPermission(for kind: TriggerKind) {
+        switch permissionState(for: kind) {
+        case .authorized:
+            NotificationCenter.default.post(name: Self.permissionChanged, object: nil)
+            return
+        case .denied, .restricted:
+            openPermissionSettings(for: kind)
+            return
+        case .notDetermined: break
+        }
         if kind == .bluetoothDevice {
-            guard Bundle.main.object(forInfoDictionaryKey: "NSBluetoothAlwaysUsageDescription") != nil || Bundle.main.object(forInfoDictionaryKey: "NSBluetoothUsageDescription") != nil else { openPermissionSettings(for: kind); return }
-            bluetoothManager = CBCentralManager(delegate: self, queue: .main)
+            requestBluetoothAuthorization()
         } else if kind == .wifiSSID {
-            guard Bundle.main.object(forInfoDictionaryKey: "NSLocationUsageDescription") != nil else { openPermissionSettings(for: kind); return }
-            let manager = locationManager ?? CLLocationManager()
-            manager.delegate = self; locationManager = manager
-            // A determined denial cannot produce another system prompt.
-            // Route that explicit request to the relevant settings pane.
-            switch manager.authorizationStatus {
-            case .notDetermined:
-                guard CLLocationManager.locationServicesEnabled() else { openPermissionSettings(for: kind); return }
-                if NSApp.isActive { manager.requestWhenInUseAuthorization() }
-                else {
-                    if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
-                    activationObserver = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: NSApp, queue: .main) { [weak self] _ in
-                        Task { @MainActor in
-                            guard let self else { return }
-                            if let activationObserver = self.activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
-                            self.activationObserver = nil
-                            self.locationManager?.requestWhenInUseAuthorization()
-                        }
-                    }
-                    NSApp.activate(ignoringOtherApps: true)
-                }
-            case .denied, .restricted: openPermissionSettings(for: kind)
-            default: break
+            requestLocationAuthorization()
+        }
+    }
+    func permissionState(for kind: TriggerKind) -> TriggerPermissionState {
+        if kind == .bluetoothDevice {
+            switch CBManager.authorization {
+            case .allowedAlways: return .authorized
+            case .denied: return .denied
+            case .restricted: return .restricted
+            default: return .notDetermined
             }
+        }
+        switch locationAuthorizationManager().authorizationStatus {
+        case .authorizedAlways, .authorizedWhenInUse: return .authorized
+        case .denied: return .denied
+        case .restricted: return .restricted
+        default: return .notDetermined
+        }
+    }
+    func requestBluetoothAuthorization() {
+        guard Bundle.main.object(forInfoDictionaryKey: "NSBluetoothAlwaysUsageDescription") != nil || Bundle.main.object(forInfoDictionaryKey: "NSBluetoothUsageDescription") != nil else { openPermissionSettings(for: .bluetoothDevice); return }
+        bluetoothManager = CBCentralManager(delegate: self, queue: .main)
+    }
+    func locationAuthorizationManager() -> CLLocationManager {
+        if let locationManager { return locationManager }
+        let manager = CLLocationManager()
+        manager.delegate = self
+        locationManager = manager
+        return manager
+    }
+    func requestLocationAuthorization() {
+        let kind = TriggerKind.wifiSSID
+        guard Bundle.main.object(forInfoDictionaryKey: "NSLocationUsageDescription") != nil else { openPermissionSettings(for: kind); return }
+        let manager = locationAuthorizationManager()
+        // A determined denial cannot produce another system prompt.
+        // Route that explicit request to the relevant settings pane.
+        switch manager.authorizationStatus {
+        case .notDetermined:
+            guard CLLocationManager.locationServicesEnabled() else { openPermissionSettings(for: kind); return }
+            if NSApp.isActive { manager.requestWhenInUseAuthorization() }
+            else {
+                if let activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+                activationObserver = NotificationCenter.default.addObserver(forName: NSApplication.didBecomeActiveNotification, object: NSApp, queue: .main) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self else { return }
+                        if let activationObserver = self.activationObserver { NotificationCenter.default.removeObserver(activationObserver) }
+                        self.activationObserver = nil
+                        self.locationManager?.requestWhenInUseAuthorization()
+                    }
+                }
+                NSApp.activate(ignoringOtherApps: true)
+            }
+        case .denied, .restricted: openPermissionSettings(for: kind)
+        default: break
         }
     }
     func read(kinds: Set<TriggerKind>, now: Date) async -> TriggerSnapshot {
@@ -244,7 +288,7 @@ extension TriggerObservationSource {
         if !kinds.isDisjoint(with: [.batteryCharging, .batteryAbove, .acConnected, .acDisconnected]) { readPower(into: &s) }
         if kinds.contains(.ipAddress) { s.ipAddresses = readIPs() }
         if kinds.contains(.wifiSSID) {
-            let authorization = CLLocationManager().authorizationStatus
+            let authorization = locationAuthorizationManager().authorizationStatus
             if authorization == .authorizedAlways {
                 s.wifiSSID = CWWiFiClient.shared().interface()?.ssid()
                 if s.wifiSSID == nil { s.unavailable[.wifiSSID] = "Wi-Fi 未连接或 macOS 隐私保护未提供 SSID；条件不会匹配。" }

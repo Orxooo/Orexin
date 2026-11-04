@@ -7,14 +7,15 @@ struct AdvancedView: View {
     @ObservedObject var appearance: AppearanceController
     @ObservedObject var notifier: LocalNotifier
     let availableWidth: CGFloat
+    private let iconControlWidth: CGFloat = 176
     @AppStorage("orexin.appearance.language") private var languageID = "zh-Hans"
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            if availableWidth > 850 {
+            if availableWidth > 1000 {
                 HStack(alignment: .top, spacing: 16) {
-                    leadingColumn.frame(width: (availableWidth - 16) * 0.58)
-                    trailingColumn.frame(width: (availableWidth - 16) * 0.42)
+                    leadingColumn.frame(width: (availableWidth - 16) * 0.55)
+                    trailingColumn.frame(width: (availableWidth - 16) * 0.45)
                 }
             } else {
                 leadingColumn
@@ -133,19 +134,48 @@ struct AdvancedView: View {
         VStack(alignment: .leading, spacing: 13) {
             panelHeading("03", title: "菜单栏外观", code: "GLYPH CONFIG")
             Text(L("配置 macOS 菜单栏图标、时间格式与留白。")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
+            configurationRow {
+                VStack(alignment: .leading, spacing: 10) {
+                    Text(L("菜单栏主题")).font(.system(size: 12, weight: .semibold))
+                    HStack(spacing: 10) {
+                        ForEach(AppearanceController.MenuLayout.allCases) { layout in
+                            Button { appearance.menuLayout = layout } label: {
+                                VStack(alignment: .leading, spacing: 8) {
+                                    HStack(spacing: 3) {
+                                        if layout == .deck {
+                                            Rectangle().fill(TerminalStyle.accent.opacity(0.5)).frame(width: 28, height: 25)
+                                            VStack(spacing: 3) { Rectangle().fill(TerminalStyle.muted); Rectangle().fill(TerminalStyle.accent) }.frame(width: 12, height: 25)
+                                        } else {
+                                            Rectangle().fill(TerminalStyle.accent.opacity(0.5)).frame(width: 76, height: 16)
+                                        }
+                                        Spacer(minLength: 0)
+                                        if appearance.menuLayout == layout { TerminalIcon(name: "checkmark", size: 12) }
+                                    }.frame(height: 28)
+                                    Text(layout.title).font(.system(size: 11, weight: .semibold))
+                                }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                                    .foregroundStyle(appearance.menuLayout == layout ? TerminalStyle.accent : TerminalStyle.muted)
+                                    .background(appearance.menuLayout == layout ? TerminalStyle.selection : TerminalStyle.surface)
+                                    .overlay(Rectangle().strokeBorder(appearance.menuLayout == layout ? TerminalStyle.accent : TerminalStyle.line))
+                            }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
+                                .accessibilityLabel(layout.title).accessibilityValue(L(appearance.menuLayout == layout ? "已选择" : "未选择"))
+                        }
+                    }
+                }
+            }
             HStack(spacing: 10) {
                 Image(nsImage: appearance.menuImage()).resizable().scaledToFit().frame(width: 27, height: 27).accessibilityHidden(true)
                 Text(L("图标")).font(.system(size: 11))
                 Spacer(minLength: 0)
                 TerminalPicker("菜单栏图标", selection: $appearance.icon,
                                choices: AppearanceController.Icon.allCases.map { TerminalChoice($0.title, $0) })
-                    .labelsHidden().frame(width: 165)
-            }.padding(10).background(TerminalStyle.recess)
-            HStack {
+                    .labelsHidden().frame(width: iconControlWidth)
+            }.padding(12).frame(minHeight: 60).background(TerminalStyle.recess)
+            configurationRow { HStack {
                 Text("PNG / JPEG / TIFF / ICNS").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
                 Spacer(minLength: 0)
-                Button(L("选择图标…"), action: appearance.chooseIcon).workKeyboardFocus(radius: 0)
-            }
+                Button(L("选择图标…"), action: appearance.chooseIcon)
+                    .buttonStyle(TerminalButtonStyle(width: iconControlWidth)).workKeyboardFocus(radius: 0)
+            } }
             if appearance.icon == .custom {
                 configurationRow {
                     WorkToggle(title: "图标跟随系统明暗", detail: "关闭后保留原图颜色。", compact: true, isOn: $appearance.template)
@@ -173,16 +203,19 @@ struct AdvancedView: View {
                 .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
             Text(L("支持短于 30 秒的 AIFF、WAV 或 CAF；通知权限仍由系统管理。"))
                 .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
-            HStack(spacing: 6) {
-                Button(L("选择声音…"), action: appearance.chooseSound).workKeyboardFocus(radius: 0)
-                Button(L("试听"), action: appearance.previewSound).workKeyboardFocus(radius: 0)
-                Spacer(minLength: 0)
-                Button(L("恢复默认"), action: appearance.resetSound).workKeyboardFocus(radius: 0)
+            configurationRow {
+                HStack(spacing: 8) { soundActions }
+                    .buttonStyle(TerminalButtonStyle(width: nil))
             }
             configurationRow { WorkToggle(title: "通知时播放声音", compact: true, isOn: $notifier.notificationSound) }
             configurationRow { WorkToggle(title: "会话开始与结束播放声音", compact: true, isOn: $notifier.lifecycleSound) }
             configurationRow { WorkToggle(title: "延长会话时播放声音", compact: true, isOn: $notifier.extensionSound) }
         }.padding(16).modifier(AppearanceRackSurface())
+    }
+    @ViewBuilder private var soundActions: some View {
+        Button(action: appearance.chooseSound) { Text(L("选择声音…")).frame(maxWidth: .infinity) }.workKeyboardFocus(radius: 0)
+        Button(action: appearance.previewSound) { Text(L("试听")).frame(maxWidth: .infinity) }.workKeyboardFocus(radius: 0)
+        Button(action: appearance.resetSound) { Text(L("恢复默认")).frame(maxWidth: .infinity) }.workKeyboardFocus(radius: 0)
     }
     private var languageSettings: some View {
         VStack(alignment: .leading, spacing: 14) {
@@ -210,7 +243,7 @@ struct AdvancedView: View {
         }
     }
     private func configurationRow<Content: View>(@ViewBuilder content: () -> Content) -> some View {
-        content().padding(10).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
+        content().padding(12).frame(minHeight: 60).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
     }
 }
 

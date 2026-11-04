@@ -153,8 +153,7 @@ struct WorkProfileEditor: View {
             Text(L("工作配置")).font(TerminalStyle.mono(13))
             TextField(L("名称"), text: $profile.name).textFieldStyle(TerminalTextFieldStyle())
             HStack {
-                TerminalPicker("工作模式", selection: $profile.mode,
-                    choices: [TerminalChoice("桌面工作", .desk), TerminalChoice("后台工作", .background)])
+                WorkToggle(title: "合盖继续运行", isOn: Binding(get: { profile.mode == .background }, set: { profile.mode = $0 ? .background : .desk }))
                 TerminalPicker("屏幕", selection: $profile.screen,
                     choices: [TerminalChoice("系统闲置", .idle), TerminalChoice("最低亮度", .dim), TerminalChoice("保持亮起", .awake)])
             }

@@ -30,6 +30,7 @@ enum SessionEffectTiming {
 }
 struct SessionEffectReport: Equatable {
     var displayAssertionActive = false
+    var screenSaverAssertionActive = false
     var display = "未启用"
     var screenSaver = "允许屏保"
     var cursor = "未启用"
@@ -99,6 +100,10 @@ struct SessionEffectReport: Equatable {
         } else {
             releaseAssertion(&userActivityID); lastScreenPulse = nil
             report.screenSaver = lidClosed ? "合盖时暂停屏保延后" : choices.preventScreenSaver ? "已锁定或状态未知，屏保控制已暂停" : "允许屏保"
+        }
+        if let id = userActivityID,
+           let properties = IOPMAssertionCopyProperties(id)?.takeRetainedValue() as? [String: Any] {
+            report.screenSaverAssertionActive = (properties[kIOPMAssertionLevelKey] as? NSNumber)?.uint32Value == UInt32(kIOPMAssertionLevelOn)
         }
         if choices.moveCursor {
             if lidClosed { report.cursor = "合盖时暂停鼠标移动" }

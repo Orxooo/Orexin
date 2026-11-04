@@ -56,6 +56,8 @@ import WakeMacCore
             status = "显示器保活生效：闲置熄屏锁定已暂停。"
         } else if screenSaverEnabled && allowsScreenSaver?() == false {
             status = "防止闲时屏保生效：闲置屏保已暂停。"
+        } else if lockEnabled && !immediateAuthentication() {
+            status = "当前密码策略不执行闲置锁定。"
         } else { status = "闲置动作遵循当前屏幕与密码策略。" }
         running = true; defer { running = false }
         do {

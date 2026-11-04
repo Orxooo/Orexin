@@ -1461,3 +1461,83 @@
 "Esc / 亮度键恢复" = "Restaurar con Esc / teclas de brillo";
 "屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Restaurar el brillo anterior y mantener activa la sesión de escritorio.";
 "跨应用恢复需要输入监控权限" = "Se necesita permiso de monitorización de entrada para restaurar desde otras apps";
+
+"唤醒模式" = "Modo despierto";
+"正常模式" = "Modo normal";
+"唤醒模式运行中" = "Modo despierto activo";
+"开启唤醒模式" = "Iniciar modo despierto";
+"开启唤醒模式（备用）" = "Iniciar modo despierto (alternativo)";
+"保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。" = "Mantener el sistema activo; configurar pantalla, salvapantallas, desbloqueo y tapa según se necesite.";
+"屏幕最暗时恢复原亮度，保留唤醒会话。" = "Restaurar el brillo sin terminar la sesión activa.";
+"每次新工作需账户授权；结束后恢复即时密码保护。" = "Autorizar cada sesión nueva; la protección inmediata con contraseña se restaura al terminar.";
+"屏幕：%@ · 屏保：%@ · 锁屏：%@ · 合盖：%@" = "Pantalla: %@ · Salvapantallas: %@ · Bloqueo: %@ · Tapa: %@";
+"开关可预先设置；进入唤醒模式后生效，恢复正常模式后停止。" = "Configura las opciones antes de iniciar. Se aplican en modo despierto y terminan en modo normal.";
+"启动唤醒模式并设置合盖行为" = "Iniciar modo despierto y configurar la tapa";
+"通过 CLI 或 AppleScript 启动唤醒会话，分别设置屏幕与合盖行为。" = "Inicia una sesión con CLI o AppleScript y configura por separado la pantalla y la tapa.";
+"保持未锁定" = "Mantener desbloqueado";
+"允许休眠" = "Permitir reposo";
+"继续运行" = "Seguir ejecutando";
+"mode 必须为 awake。" = "mode debe ser awake.";
+"唤醒选项已生效" = "Opciones de vigilia activas";
+"正在核验唤醒选项" = "Verificando opciones de vigilia";
+"屏保控制尚未通过系统核验。" = "El control del salvapantallas aún no ha superado la verificación del sistema.";
+
+"唤醒选项" = "Opciones de vigilia";
+
+"控制唤醒模式下的合盖行为。" = "Configura el comportamiento de la tapa en modo despierto.";
+
+"合盖服务已移除，唤醒模式仍可使用。" = "Servicio de tapa eliminado. El modo despierto sigue disponible.";
+"自动触发只支持启动唤醒模式。" = "Las reglas automáticas solo pueden iniciar el modo despierto.";
+"请先开启唤醒模式。" = "Inicia primero el modo despierto.";
+"脱离外接电源时，防止唤醒状态耗尽电池。" = "Protege la batería del funcionamiento prolongado al desconectar la alimentación externa.";
+
+"其他任务需要屏幕，暂不能立即熄屏。" = "Otras tareas necesitan la pantalla. El reposo de pantalla no está disponible por ahora.";
+"当前密码策略不执行闲置锁定。" = "La política de contraseña actual suspende el bloqueo por inactividad.";
+
+"其他任务仍要求屏幕保持工作。" = "Otras tareas aún necesitan la pantalla activa.";
+"其他任务仍要求暂停屏保。" = "Otras tareas aún necesitan impedir el salvapantallas.";
+
+"唤醒配置" = "Configuración de vigilia";
+"延长 1 小时" = "Ampliar 1 hora";
+
+"定位权限已授权，可读取 Wi-Fi 网络名称。" = "Acceso a la ubicación concedido. Se pueden leer los nombres de redes Wi-Fi.";
+"蓝牙权限已授权，可读取已连接设备。" = "Acceso a Bluetooth concedido. Se pueden leer los dispositivos conectados.";
+
+"设置定时" = "Programar";
+"合盖服务尚未授权" = "El servicio de sellado combinado aún no está autorizado";
+
+"菜单栏主题" = "Tema de la barra de menús";
+
+"仪表舱" = "Panel de instrumentos";
+
+"横向悬浮条" = "HUD horizontal";
+
+"屏幕策略" = "Comportamiento de pantalla";
+
+"切换模式" = "Cambiar modo";
+
+"未锁定" = "Sin bloqueo";
+
+
+
+"即时保护" = "Protección inmediata";
+
+
+
+"工作会话内生效" = "Se aplica durante las sesiones";
+
+"锁屏后立即要求密码" = "Contraseña tras bloquear";
+
+"使用系统锁屏策略" = "Usa el bloqueo del sistema";
+
+"系统后台辅助服务" = "Servicio auxiliar en segundo plano";
+
+"生效中" = "Activo";
+
+"待启用" = "En espera";
+
+"唤醒" = "Activo";
+
+"向左滚动" = "Desplazar a la izquierda";
+
+"向右滚动" = "Desplazar a la derecha";

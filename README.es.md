@@ -21,8 +21,8 @@ Orexin es una utilidad para la barra de menús de macOS que permite controlar cu
 
 ## Funciones
 
-- **Modos de trabajo:** Trabajo en segundo plano impide el reposo con la tapa cerrada. Trabajo en el escritorio impide el reposo por inactividad, pero lo permite al cerrar la tapa.
-- **Control de pantalla:** reduce el brillo al 0 %, conserva el brillo normal, sigue el tiempo de apagado configurado en el sistema o apaga la pantalla inmediatamente. Cada modo de trabajo recuerda su ajuste.
+- **Modo despierto y modo normal:** El modo despierto mantiene activo el Mac. Puedes configurar la pantalla, la tapa, el salvapantallas y el trabajo sin bloqueo. El modo normal libera la actividad mantenida por Orexin.
+- **Control de pantalla:** Elige el brillo mínimo o normal, sigue el tiempo de apagado del sistema o apaga la pantalla al instante. Después de usar el brillo mínimo, una nueva sesión activa recupera el brillo normal.
 - **Sesiones de trabajo:** finaliza una sesión tras una duración, a una hora concreta, cuando se cierre una aplicación o un proceso, o cuando termine una descarga.
 - **Comandos y planes de ejecución:** ejecuta comandos en paralelo y consulta sus códigos de salida y registros. Define en JSON las dependencias, los límites de concurrencia y las ramas que se seguirán en caso de error.
 - **Reglas automáticas y perfiles:** inicia el trabajo según la alimentación, las pantallas, los dispositivos, las aplicaciones, la red o la hora. Admite condiciones anidadas, simulaciones e importación y exportación de configuraciones.

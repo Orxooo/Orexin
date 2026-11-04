@@ -23,6 +23,7 @@ struct OrbitalMoon: View {
     @AppStorage("orexin.appearance.theme") private var themeID = "dark"
     @Environment(\.colorScheme) private var scheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.consoleArtworkModule) private var module
     @State private var breathing = false
     @State private var visible = false
     @State private var windowVisible = false
@@ -33,6 +34,13 @@ struct OrbitalMoon: View {
         return selected == .system ? (scheme == .dark ? .dark : .light) : selected
     }
     var body: some View {
+        if artworkTheme.moduleArtworkFolder != nil && !compact {
+            ModuleArtwork(slot: module, theme: artworkTheme)
+        } else {
+            moon
+        }
+    }
+    private var moon: some View {
         VStack(spacing: compact ? 0 : 10) {
             if !compact && labels {
                 HStack {

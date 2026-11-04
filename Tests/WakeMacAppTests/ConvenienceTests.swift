@@ -190,7 +190,7 @@ actor AutomationBackend: ModeBackend {
     func testCommandRunsThroughAppModelAndCancellationPreservesResult() async {
         let b = AutomationBackend()
         let dir = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
-        let m = AppModel(backend: b, preferences: UserDefaults(suiteName: "WakeMacTests." + UUID().uuidString)!, jobLogDirectory: dir)
+        let m = AppModel(backend: b, preferences: UserDefaults(suiteName: "WakeMacTests." + UUID().uuidString)!, jobLogDirectory: dir, sessionEffects: VerifiedAwakeEffects())
         defer { try? FileManager.default.removeItem(at: dir) }
         await m.choose(.normal)
         await m.startJob(command: "printf model-success", directory: "/tmp")
@@ -252,7 +252,7 @@ actor AutomationBackend: ModeBackend {
     func testMenuCountdownCanBeHidden() async {
         let b = AutomationBackend(), m = model(b), now = Date()
         await m.refresh(); m.now = now; m.automation.deadline = now.addingTimeInterval(61)
-        XCTAssertEqual(m.menuText, "桌面 · 2m")
+        XCTAssertEqual(m.menuText, L("唤醒") + " · 2m")
         m.setMenuLabel(false); XCTAssertEqual(m.menuText, "")
     }
 }

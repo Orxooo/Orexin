@@ -21,8 +21,8 @@ Nutze sie beim Kompilieren, Herunterladen, Präsentieren oder für lange Aufgabe
 
 ## Funktionen
 
-- **Arbeitsmodi:** „Hintergrundarbeit“ verhindert den Ruhezustand bei geschlossenem Deckel. „Arbeit am Schreibtisch“ verhindert den Ruhezustand bei Inaktivität, erlaubt ihn aber beim Zuklappen.
-- **Bildschirmsteuerung:** Helligkeit auf 0 % setzen, normale Helligkeit beibehalten, den Bildschirm nach dem Systemzeitplan oder sofort ausschalten. Beide Arbeitsmodi speichern ihre Einstellung getrennt.
+- **Wachmodus und Normalmodus:** Der Wachmodus hält den Mac aktiv. Bildschirm, Deckel, Bildschirmschoner und entsperrtes Arbeiten lassen sich einstellen. Der Normalmodus hebt die Orexin-Wachhaltung auf.
+- **Bildschirmsteuerung:** Minimale oder normale Helligkeit wählen, den Systemzeitplan für die Anzeige verwenden oder den Bildschirm sofort ausschalten. Nach minimaler Helligkeit startet eine neue Wachsitzung mit normaler Helligkeit.
 - **Arbeitssitzungen:** Nach einer bestimmten Dauer, zu einer festgelegten Uhrzeit, beim Beenden einer App oder eines Prozesses oder nach Abschluss eines Downloads enden.
 - **Befehle und Ausführungspläne:** Befehle parallel ausführen und ihre Exit-Codes und Protokolle einsehen. Abhängigkeiten, Parallelitätsgrenzen und Verzweigungen für Fehlerfälle lassen sich in JSON definieren.
 - **Automatische Regeln und Profile:** Arbeit anhand von Stromversorgung, Bildschirmen, Geräten, Apps, Netzwerk oder Uhrzeit auslösen. Verschachtelte Bedingungen, Testläufe sowie der Import und Export von Konfigurationen werden unterstützt.

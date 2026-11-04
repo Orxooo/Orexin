@@ -7,7 +7,7 @@ import WakeMacCore
 
 @MainActor final class LocalTaskControlTests: XCTestCase {
     private final class NoEffects: SessionEffectManaging {
-        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
+        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver) }
         func release() {}
     }
     private func fixture(backend: any ModeBackend = AutomationBackend()) async throws -> (AppModel, LocalControlServer, String, URL) {
@@ -51,6 +51,20 @@ import WakeMacCore
             try await Task.sleep(for: .milliseconds(10))
         }
         guard !model.workRequests.active.isEmpty else { throw ModeError("CLI did not register an active request (exit \(process.isRunning ? -999 : process.terminationStatus))") }
+    }
+    func testAwakeCLISeparatesClamshellFromScreenChoice() async throws {
+        let (model, server, path, directory) = try await fixture()
+        defer { server.stop(); try? FileManager.default.removeItem(at: directory) }
+        for enabled in [false, true] {
+            let launched = try launchCLI(["run", "--json", "--mode", "awake", "--clamshell", enabled ? "on" : "off", "--screen", "idle", "--", "/usr/bin/true"], socket: path)
+            let (exit, reply) = try await result(launched)
+            XCTAssertEqual(exit, 0)
+            XCTAssertTrue(reply.ok)
+            let record = try XCTUnwrap(model.workRequests.records.last)
+            XCTAssertEqual(record.spec.mode, enabled ? .background : .desk)
+            XCTAssertEqual(record.spec.screen, .idle)
+            XCTAssertEqual(record.state, .succeeded)
+        }
     }
     func testRealCLIOverlapFailureAndFinalTeardownAcrossSocket() async throws {
         let (model, server, path, directory) = try await fixture()

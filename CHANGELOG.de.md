@@ -6,52 +6,106 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.1.0 — 2026-11-04
+
+### Neu
+
+- Zwei Menüleistenansichten stehen zur Wahl: Cockpit und horizontale Leiste. Sie lassen sich unter Erscheinungsbild umschalten; Pfeile zeigen weitere Aktionen.
+- Tron, Zima Blue und Blade Runner 2049 zeigen neue Bilder, die zufällig wechseln und jeweils eigene Animationen haben.
+
+### Verbessert
+
+- Die Arbeitsmodi heißen nun „Wachmodus“ und „Normalmodus“. Bildschirm, Deckel, Bildschirmschoner und entsperrtes Arbeiten lassen sich nach Bedarf einstellen. „Arbeitssitzung“ heißt jetzt „Wachhalte-Einstellungen“.
+- Die Seiten für Arbeitsmodus, Wachkonfiguration, Auslöser, automatischen Abschluss und Einstellungen wurden neu angeordnet; Schalter, Tasten und Statusanzeigen sind einheitlicher.
+
+### Behoben
+
+- Nach einer Sitzung mit minimaler Helligkeit stellt eine neue Wachsitzung die normale Helligkeit wieder her.
+- Beim Wiederherstellen der Anzeige wird die laufende Arbeitsanforderung auf normale Helligkeit gesetzt, damit die alte Einstellung den Bildschirm nicht erneut abdunkelt.
+- Die WLAN- und Bluetooth-Berechtigungsschaltflächen reagieren nun korrekt, wenn der Zugriff bereits erlaubt oder abgelehnt wurde.
+
 ## V1.0.5 HotFix 4 — 2026-11-02
+
+### Behoben
 
 - Die Wiederherstellung per Tastatur funktioniert auch, wenn macOS bei einer aktiven, angemeldeten Konsolensitzung das Sperrkennzeichen weglässt.
 - Esc und Helligkeitstasten werden im Oberflächenprozess erfasst und die Wiederherstellung an den Hintergrunddienst weitergeleitet. Berechtigungsprüfung und Hinweise zur Eingabeüberwachung werden korrigiert; die Arbeit läuft nach der Wiederherstellung weiter.
 
 ## V1.0.5 HotFix 3 — 2026-10-31
 
+### Neu
+
 - Standardmäßig aktivierte Wiederherstellung mit Esc oder Helligkeitstasten: Bei minimaler Helligkeit im Desktopbetrieb wird die vorherige Helligkeit wiederhergestellt, ohne die Arbeit zu beenden. Minimale Helligkeit erneut auswählen, um wieder abzudunkeln.
+
+### Verbessert
+
 - Wiederherstellungsstatus und Hinweise zur Eingabeüberwachung werden zwischen Hintergrunddienst und Oberfläche synchronisiert; die Wiederherstellung nach dem Aufwachen bleibt erhalten.
 
 ## V1.0.5 HotFix 2 — 2026-10-28
 
-- Die Oberfläche startet einen getrennten Hintergrunddienst automatisch neu, verbindet sich mit zunehmenden Abständen und stellt weiterhin gültige Arbeitsanforderungen mit vorhandener Systemfreigabe wieder her. Befehle und Pläne werden nicht erneut ausgeführt; ausdrückliche Stopps bleiben wirksam.
+### Verbessert
+
 - Schreibtisch-, Display- und Bildschirmschonerschutz benötigen kein Passwort. Temporäres entsperrtes Arbeiten verwendet eine gültige Autorisierung erneut und prüft sie nach einem Prozesswechsel getrennt vom Sperrstatus.
-- Nach einer kurzen Verbindungsunterbrechung des Zuklappdienstes wird die bestehende Stromfreigabe wiederhergestellt. Richtlinienablehnungen und abgelaufene Entsperrautorisierungen bleiben Fehler; ein Kaltstart stellt den Passwortschutz wieder her.
 - Autorisierungs- und Sitzungsstartfehler erscheinen in der gewählten Sprache, einschließlich gespeicherter älterer englischer Meldungen. Der ursprüngliche Verlauf bleibt erhalten.
+
+### Behoben
+
+- Die Oberfläche startet einen getrennten Hintergrunddienst automatisch neu, verbindet sich mit zunehmenden Abständen und stellt weiterhin gültige Arbeitsanforderungen mit vorhandener Systemfreigabe wieder her. Befehle und Pläne werden nicht erneut ausgeführt; ausdrückliche Stopps bleiben wirksam.
+- Nach einer kurzen Verbindungsunterbrechung des Zuklappdienstes wird die bestehende Stromfreigabe wiederhergestellt. Richtlinienablehnungen und abgelaufene Entsperrautorisierungen bleiben Fehler; ein Kaltstart stellt den Passwortschutz wieder her.
 
 ## V1.0.5 HotFix 1 — 2026-10-28
 
+### Verbessert
+
+- Beschreibungen für Desktop-Modus und Autorisierung präzisiert. Versionszusatz HotFix 1 ergänzt; die Update-Prüfung behandelt Hotfixes als stabile Korrekturversionen.
+
+### Behoben
+
 - Falsche Meldungen über eine fehlende Freigabe des Hilfsdienstes behoben. Maßgeblich ist jetzt die tatsächlich signaturgeprüfte Verbindung; fehlgeschlagene Verbindungen können durch erneutes Versuchen wiederhergestellt werden.
 - Die Bildschirmsperre bei Inaktivität pausiert, solange der Bildschirm wach gehalten wird. Die Desktop-Anzeige und das Verhindern des Bildschirmschoners haben Vorrang; gespeicherte Regeln bleiben erhalten.
-- Beschreibungen für Desktop-Modus und Autorisierung präzisiert. Versionszusatz HotFix 1 ergänzt; die Update-Prüfung behandelt Hotfixes als stabile Korrekturversionen.
 
 ## V1.0.5 — 2026-10-27
 
-- Behoben: Nach dem Öffnen des Deckels, Aufwecken des Displays oder Entsperren während der Hintergrundarbeit fiel die Helligkeit erneut auf null. Die ursprüngliche Helligkeit wird wiederhergestellt; Aufgaben laufen weiter.
+### Verbessert
+
 - Erneutes Schließen des Deckels oder die ausdrückliche Auswahl der minimalen Helligkeit aktiviert das Abdunkeln wieder. Gespeicherte Bildschirmvorgaben bleiben auch beim eigenständigen Hintergrunddienst erhalten.
+
+### Behoben
+
+- Behoben: Nach dem Öffnen des Deckels, Aufwecken des Displays oder Entsperren während der Hintergrundarbeit fiel die Helligkeit erneut auf null. Die ursprüngliche Helligkeit wird wiederhergestellt; Aufgaben laufen weiter.
 
 ## V1.0.4 — 2026-10-26
 
-- Die Display-Richtlinie überschreibt Sitzungsschalter nicht mehr unbemerkt. Der Bildschirmschonerschutz lässt sich separat deaktivieren; seine Aktivierung wählt eine kompatible Display-Richtlinie.
+### Verbessert
+
 - Die Bedienungshilfen-Berechtigung zeigt ihren Status und öffnet die Systemeinstellungen. Die Zeigerbewegung erklärt Wartezeiten und Pausen.
 - Regel-Editor mit beschrifteten Feldern, einklappbaren erweiterten Optionen, festen Speichern- und Abbrechen-Aktionen sowie weniger verschachtelten Rahmen und Scrollbereichen überarbeitet.
 
+### Behoben
+
+- Die Display-Richtlinie überschreibt Sitzungsschalter nicht mehr unbemerkt. Der Bildschirmschonerschutz lässt sich separat deaktivieren; seine Aktivierung wählt eine kompatible Display-Richtlinie.
+
 ## V1.0.3 — 2026-10-25
+
+### Neu
 
 - „Meldungen und Hinweise“ hinzugefügt: Speichert Nachrichten zu Updates, Dienstproblemen, abgelaufenen Anforderungen, bevorstehendem Sitzungsende und Wärmeschutz.
 - Pop-ups für wichtige Ereignisse und macOS-Mitteilungen hinzugefügt. Doppelte Hinweise und nachträgliche Warnungen zu bereits behobenen Problemen werden vermieden.
+
+### Verbessert
+
 - Updates werden nach dem Start und anschließend alle 6 Stunden geprüft. Jede Version wird nur einmal gemeldet; Download und Installation erfolgen manuell.
 - Chinesische und englische Anleitungen sowie Screenshots aktualisiert.
 
 ## V1.0.2 — 2026-10-22
 
+### Behoben
+
 - Behoben, dass sich das Hauptfenster und das Schnellzugriffsfenster nicht schließen ließen und der Menüpunkt „Schließen“ sowie `⌘W` nicht funktionierten. Nach dem Schließen eines Fensters laufen die Menüleisten-App und Hintergrundaufgaben weiter.
 
 ## V1.0.1 — 2026-10-18
+
+### Behoben
 
 - Sekündliches Flackern des Menüleistenfensters, überlagerter Text und springendes Layout während der Arbeit behoben.
 
@@ -59,37 +113,60 @@ Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](h
 
 Erste stabile Veröffentlichung.
 
+### Neu
+
 - Eigenständigen Hintergrunddienst für Aufgaben hinzugefügt. Befehle und Ausführungspläne laufen nach dem Beenden der Benutzeroberfläche weiter.
 - JSON-Ausführungspläne hinzugefügt, mit Abhängigkeiten, serieller und paralleler Ausführung, Parallelitätsgrenzen, Verzweigungen für Fehlerfälle und Protokollen je Eintrag.
 - Noch nicht gestartete Befehle in einem Plan lassen sich abbrechen. Bereits gestartete Befehle laufen weiter; ein Neustart des Dienstes führt Aufgaben nicht erneut aus.
+
+### Verbessert
+
 - Schaltflächen, Auswahlfelder und Schalter vereinheitlicht, Layoutprobleme bei Karten, Filtern und Protokollen behoben und die Bedienung in schmalen Fenstern sowie per Tastatur verbessert.
+
+### Behoben
+
 - Behoben, dass die CLI im Installationspaket den Hintergrunddienst nicht starten konnte.
 
 ## V0.3.0 Preview.1 — 2026-10-18
 
 Die Veröffentlichung heißt auf der Release-Seite V0.3.1 Preview; der ursprüngliche Tag lautet `v0.3.0-preview.1`, die App-Version ist `0.3.0`.
 
+### Neu
+
 - Erweiterte Regeln mit verschachtelten Bedingungen, Prioritäten, Bedingungen, die über eine festgelegte Dauer erfüllt sein müssen, Abklingzeiten und Testläufen hinzugefügt.
 - Energieanalyse hinzugefügt, um Energieanforderungen des Systems (Power Assertions), erkennbare Quellprozesse und eine Ereigniszeitleiste einzusehen.
 - Arbeitsprofile sowie JSON-Import und -Export hinzugefügt. Unterschiede lassen sich vorab ansehen; Konfigurationen können zusammengeführt oder ersetzt werden. Importierte Regeln und Skripte müssen auf dem jeweiligen Mac aktiviert werden.
 - CLI um Arbeitsprofile, Regeltestläufe, Energieabfragen sowie Konfigurationsimport und -export erweitert.
+
+### Verbessert
+
 - Ausrichtung und Layout der Aufgabenverwaltung in schmalen Fenstern korrigiert und Kompilierungsfehler mit Xcode 26.3 behoben.
 
 ## V0.2.0 Preview — 2026-10-14
+
+### Neu
 
 - Verwaltung paralleler Aufgaben hinzugefügt. Jede Aufgabe protokolliert ihren Exit-Code, ihre Ausgaben und ihren Status zum Wachhalten getrennt.
 - Integrierte `orexin`-CLI hinzugefügt, mit Befehlsausführung, Registrierung externer Aufgaben, Heartbeats und Statusabfragen.
 - Das Ende einer einzelnen Aufgabe beeinflusst andere Aufgaben nicht. Wenn alle erfolgreich abgeschlossen sind und keine andere Quelle den Mac wach hält, kann ein Countdown von 60 Sekunden bis zum Ruhezustand beginnen.
 - Anforderungen zum Wachhalten lassen sich einzeln oder gemeinsam aufheben, ohne laufende Befehle zu beenden.
+
+### Verbessert
+
 - Layout der Aufgabenseite überarbeitet und Texte in allen sieben Sprachen vervollständigt.
 
 ## V0.1.0 Preview — 2026-10-12
 
 Erste öffentliche Vorschauversion.
 
+### Neu
+
 - Arbeitsmodi für Hintergrundarbeit und Arbeit am Schreibtisch, zeit- und bedingungsgesteuerte Sitzungen sowie Steuerung der Bildschirmhelligkeit und des Ausschaltens bereitgestellt.
 - Automatische Auslöser, Befehlsaufgaben, Schutz bei hoher Wärmebelastung und niedrigem Akkustand sowie einen lokalen Ausführungsverlauf unterstützt.
 - Menüleistenfenster, drei Designs, sieben Sprachen und optionale Klickgeräusche bereitgestellt.
 - Prüfung auf Updates für Vorschauversionen unterstützt.
-- Wiederholte Ruhezustandsanforderungen nach einem zeitgesteuerten Ende und horizontale Verschiebungen beim Wechsel zwischen bestimmten Seiten behoben.
 - Unter GPL-3.0-only veröffentlicht.
+
+### Behoben
+
+- Wiederholte Ruhezustandsanforderungen nach einem zeitgesteuerten Ende und horizontale Verschiebungen beim Wechsel zwischen bestimmten Seiten behoben.

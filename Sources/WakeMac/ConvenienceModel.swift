@@ -19,9 +19,8 @@ extension AppModel {
     }
     var menuText: String {
         guard menuLabelEnabled else { return "" }
-        if busy { return L("切换中") }
-        if error || pending != nil { return L("待处理") }
-        let name = active.map { $0 == .background ? L("后台") : $0 == .desk ? L("桌面") : L("正常") } ?? L("未知")
+        guard let active else { return "" }
+        let name = active == .normal ? L("正常") : L("唤醒")
         guard let end = [automation.nextDeadline, sessions.deadline, serviceSleepAt].compactMap({ $0 }).min() else { return name }
         if appearance.showEndTime {
             let formatter = DateFormatter(); formatter.locale = AppLanguage.selected.locale
@@ -39,7 +38,7 @@ extension AppModel {
     }
     func scheduleRestore(at date: Date) {
         guard !busy, active == .desk || active == .background else {
-            convenienceMessage = "请先选择后台工作或桌面工作。"; return
+            convenienceMessage = "请先开启唤醒模式。"; return
         }
         guard date > Date() else { convenienceMessage = "请选择未来的时间。"; return }
         automation.deadline = date

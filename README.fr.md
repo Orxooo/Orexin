@@ -21,8 +21,8 @@ Utilisez-le pour les compilations, les téléchargements, les présentations ou 
 
 ## Fonctionnalités
 
-- **Modes de travail :** le mode Travail en arrière-plan empêche la mise en veille lorsque le capot est fermé. Le mode Travail sur le bureau empêche la veille liée à l’inactivité, mais autorise la veille à la fermeture du capot.
-- **Contrôle de l’écran :** réglez la luminosité à 0 %, conservez la luminosité normale, suivez le délai d’extinction défini par le système ou éteignez l’écran immédiatement. Chaque mode de travail mémorise son réglage.
+- **Mode éveillé et mode normal :** le mode éveillé garde le Mac actif. Réglez l’écran, le capot, l’économiseur et le maintien déverrouillé selon vos besoins. Le mode normal libère le maintien actif d’Orexin.
+- **Contrôle de l’écran :** choisissez la luminosité minimale ou normale, le délai du système ou l’extinction immédiate. Après une session à luminosité minimale, une nouvelle session d’éveil rétablit la luminosité normale.
 - **Sessions de travail :** mettez fin à une session après une durée donnée, à une heure précise, à la fermeture d’une application ou d’un processus, ou à la fin d’un téléchargement.
 - **Commandes et plans d’exécution :** exécutez des commandes en parallèle et consultez leurs codes de sortie et leurs journaux. Définissez en JSON les dépendances, les limites d’exécution simultanée et les branches à suivre en cas d’échec.
 - **Règles automatiques et profils :** déclenchez le travail selon l’alimentation, les écrans, les périphériques, les applications, le réseau ou l’heure. Les conditions imbriquées, les simulations et l’importation/exportation de configurations sont pris en charge.

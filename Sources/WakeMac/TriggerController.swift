@@ -173,7 +173,7 @@ struct TriggerRule: Codable, Identifiable, Equatable {
     enum CodingKeys: String, CodingKey { case id, name, mode, enabled, combination, conditions, preventDisplaySleep, preventScreenSaver, expression, priority, sustainedMatchSeconds, cooldownSeconds }
     var validationError: String? {
         if name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty { return "请填写规则名称。" }
-        if mode == .normal { return "触发规则只能选择桌面工作或后台工作。" }
+        if mode == .normal { return "自动触发只支持启动唤醒模式。" }
         guard (-1000...1000).contains(priority) else { return "优先级必须在 -1000 至 1000 之间。" }
         guard sustainedMatchSeconds.isFinite, (0...86400).contains(sustainedMatchSeconds), cooldownSeconds.isFinite, (0...86400).contains(cooldownSeconds) else { return "持续匹配和冷却时间必须为 0–86400 秒。" }
         if let error = effectiveExpression.validationError() { return error }
@@ -362,4 +362,5 @@ struct TriggerConditionResult: Codable, Equatable {
     }
     func openPermissionSettings(for kind: TriggerKind) { source.openPermissionSettings(for: kind) }
     func requestPermission(for kind: TriggerKind) { source.requestPermission(for: kind) }
+    func permissionState(for kind: TriggerKind) -> TriggerPermissionState { source.permissionState(for: kind) }
 }

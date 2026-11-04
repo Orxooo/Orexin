@@ -144,10 +144,14 @@ enum BuiltInBrightness {
         self.runtimeEnabled = runtimeEnabled
         self.monitorKeyboard = monitorKeyboard
         restoreDesktopBrightnessOnKey = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
-        background = WorkScreenBehavior(rawValue: preferences.string(forKey: "orexin.screen.background") ?? "") ?? .dim
-        desktop = WorkScreenBehavior(rawValue: preferences.string(forKey: "orexin.screen.desktop") ?? "") ?? .normalBrightness
-        if !WorkScreenBehavior.choices(for: .background).contains(background) { background = .systemIdle }
-        if !WorkScreenBehavior.choices(for: .desk).contains(desktop) { desktop = .systemIdle }
+        let legacyScreenKey = preferences.string(forKey: "orexin.session.defaultMode") == "background"
+            ? "orexin.screen.background" : "orexin.screen.desktop"
+        let stored = preferences.string(forKey: "orexin.screen.awake")
+            ?? preferences.string(forKey: legacyScreenKey)
+            ?? preferences.string(forKey: "orexin.screen.desktop")
+        let selected = WorkScreenBehavior(rawValue: stored ?? "") ?? .normalBrightness
+        let restored = WorkScreenBehavior.choices(for: .desk).contains(selected) ? selected : .systemIdle
+        desktop = restored; background = restored
         originalBrightness = (preferences.object(forKey: "orexin.screen.restoreBrightness") as? NSNumber).map { $0.floatValue }
     }
     func behavior(for mode: WorkMode) -> WorkScreenBehavior {
@@ -190,8 +194,10 @@ enum BuiltInBrightness {
     func select(_ behavior: WorkScreenBehavior, for mode: WorkMode) {
         guard mode != .normal, WorkScreenBehavior.choices(for: mode).contains(behavior) else { return }
         reapplyDimming()
-        if mode == .background { background = behavior } else { desktop = behavior }
-        preferences.set(behavior.rawValue, forKey: mode == .background ? "orexin.screen.background" : "orexin.screen.desktop")
+        desktop = behavior; background = behavior
+        preferences.set(behavior.rawValue, forKey: "orexin.screen.awake")
+        preferences.set(behavior.rawValue, forKey: "orexin.screen.desktop")
+        preferences.set(behavior.rawValue, forKey: "orexin.screen.background")
         runtimeBehavior = nil; revision += 1; appliedBehavior = nil
     }
     func handleDimExitInput() {
@@ -258,7 +264,7 @@ enum BuiltInBrightness {
         guard runtimeEnabled else { return }
         let saved = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
         if saved != restoreDesktopBrightnessOnKey { restoreDesktopBrightnessOnKey = saved }
-        dimExitArmed = working && mode == .desk && behavior(for: .desk) == .dim
+        dimExitArmed = working && mode != .normal && mode != nil && behavior(for: mode!) == .dim
             && state.sessionLocked == false && state.builtInAsleep == false && state.lidClosed == false
         if monitorKeyboard && dimExitArmed && restoreDesktopBrightnessOnKey {
             dimExitKeys.onKey = { [weak self] in self?.handleDimExitInput() }

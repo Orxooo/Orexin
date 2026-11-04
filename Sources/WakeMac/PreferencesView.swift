@@ -6,8 +6,68 @@ import AppKit
 import ServiceManagement
 import WakeMacCore
 
+struct HardwareSecurityStatus: View {
+    @ObservedObject var model: AppModel
+    private var policyActive: Bool {
+        if model.unlockedWorkEnabled { return model.awakeOptionsVerified && model.snapshot?.lockPolicy == .off }
+        return !model.error && (model.requiresImmediateLock ? model.snapshot?.lockPolicy == .immediate : model.snapshot != nil)
+    }
+    private var policyState: String {
+        if model.unlockedWorkEnabled { return policyActive ? "生效中" : "待启用" }
+        return model.requiresImmediateLock ? model.snapshot?.lockPolicy == .immediate ? "即时保护" : "待核验" : "跟随系统"
+    }
+    private var policyDetail: String {
+        model.unlockedWorkEnabled ? "工作会话内生效" : model.requiresImmediateLock ? "锁屏后立即要求密码" : "使用系统锁屏策略"
+    }
+    private var serviceState: String {
+        switch model.helperStatus {
+        case .enabled: model.runsWithLidClosed ? "运行中" : "已授权"
+        case .requiresApproval: "等待批准"
+        default: "未授权"
+        }
+    }
+    var body: some View {
+        VStack(spacing: 6) {
+            HStack(spacing: 5) {
+                Circle().fill(model.error ? TerminalStyle.warning : TerminalStyle.signal).frame(width: 5, height: 5)
+                Text("HARDWARE SECURITY").font(TerminalStyle.mono(7)).tracking(0.2).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                Text(model.error ? "CHECK" : model.snapshot == nil ? "READING" : "MONITORING")
+                    .font(TerminalStyle.mono(6)).foregroundStyle(model.error ? TerminalStyle.warning : TerminalStyle.signal)
+                    .padding(.horizontal, 3).padding(.vertical, 3)
+                    .background(TerminalStyle.signal.opacity(0.05))
+                    .overlay(Rectangle().strokeBorder(TerminalStyle.signal.opacity(0.25)))
+            }
+            Rectangle().fill(TerminalStyle.accent.opacity(0.20)).frame(height: 1)
+            statusRow(title: model.lockSummary, detail: policyDetail, state: policyState,
+                      icon: "checkmark.shield", color: policyActive ? TerminalStyle.accent : TerminalStyle.muted)
+            statusRow(title: "合盖服务", detail: "系统后台辅助服务", state: serviceState,
+                      icon: "laptopcomputer", color: model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber)
+        }.padding(6).background(TerminalStyle.paper)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.22)))
+    }
+    private func statusRow(title: String, detail: String, state: String, icon: String, color: Color) -> some View {
+        HStack(spacing: 5) {
+            TerminalIcon(name: icon, size: 13).foregroundStyle(color).frame(width: 20, height: 22)
+                .background(color.opacity(0.07))
+                .overlay(Rectangle().strokeBorder(color.opacity(0.24)))
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L(title)).font(.system(size: 9, weight: .semibold)).foregroundStyle(TerminalStyle.ink)
+                    .lineLimit(1).minimumScaleFactor(0.7)
+                Text(L(detail)).font(.system(size: 7)).foregroundStyle(TerminalStyle.muted).lineLimit(1).minimumScaleFactor(0.7)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            HStack(spacing: 4) {
+                Circle().fill(color).frame(width: 4, height: 4)
+                Text(L(state)).font(.system(size: 7, weight: .medium)).foregroundStyle(color).lineLimit(2)
+            }.frame(width: 31, alignment: .trailing)
+        }.padding(.horizontal, 5).padding(.vertical, 4).frame(maxWidth: .infinity).frame(height: 36)
+            .background(TerminalStyle.surface.opacity(0.35))
+            .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.17)))
+    }
+}
+
 private enum PreferencePage: String, CaseIterable {
-    case power = "工作模式", sessions = "工作会话", triggers = "自动触发", automation = "自动收尾", command = "任务管理", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", notices = "消息提醒", history = "运行记录", about = "关于软件"
+    case power = "工作模式", sessions = "唤醒配置", triggers = "自动触发", automation = "自动收尾", command = "任务管理", settings = "偏好设置", thermal = "温度保护", advanced = "主题外观", notices = "消息提醒", history = "运行记录", about = "关于软件"
     var icon: String {
         switch self { case .power: "sun.max"; case .sessions: "hourglass"; case .triggers: "bolt.badge.clock"; case .automation: "timer"; case .command: "terminal"; case .settings: "slider.horizontal.3"; case .thermal: "thermometer"; case .advanced: "paintbrush.pointed"; case .notices: "bell"; case .history: "clock.arrow.circlepath"; case .about: "info.circle" }
     }
@@ -15,10 +75,18 @@ private enum PreferencePage: String, CaseIterable {
         switch self { case .power: "MODES"; case .sessions: "SESS"; case .triggers: "TRIG"; case .automation: "TEAR"; case .command: "TASKS"; case .settings: "CONF"; case .thermal: "TEMP"; case .advanced: "STYLE"; case .notices: "ALERTS"; case .history: "LOGS"; case .about: "ABOUT" }
     }
     var number: String { String(format: "%02d", (Self.allCases.firstIndex(of: self) ?? 0) + 1) }
+    var artworkModule: ConsoleArtworkModule {
+        switch self {
+        case .power: .power; case .sessions: .sessions; case .triggers: .triggers
+        case .automation: .automation; case .command: .command; case .settings: .settings
+        case .thermal: .thermal; case .advanced: .advanced; case .notices: .notices
+        case .history: .history; case .about: .about
+        }
+    }
     var englishTitle: String {
         switch self {
         case .power: "POWER CONTROL SYSTEM"
-        case .sessions: "SESSION TARGET CONTROL"
+        case .sessions: "WAKE CONFIGURATION"
         case .triggers: "AUTO DISPATCH SYSTEM"
         case .automation: "AUTO TEARDOWN & POWER DEFENSE"
         case .command: "TASK MANAGEMENT"
@@ -126,6 +194,7 @@ struct PreferencesView: View {
                             ForEach(PreferencePage.allCases, id: \.self) { item in
                                 if page == item {
                                     VStack(alignment: .leading, spacing: 16) { pageContent(item, contentWidth: width) }
+                                        .environment(\.consoleArtworkModule, item.artworkModule)
                                         .frame(minWidth: 0, maxWidth: .infinity, alignment: .topLeading)
                                         .padding(.horizontal, 20).padding(.top, 18).padding(.bottom, 20)
                                         .transition(reduceMotion ? .identity : .asymmetric(
@@ -214,6 +283,7 @@ struct PreferencesView: View {
                 Text("AVIONICS CORE").font(TerminalStyle.mono(9)).tracking(1.1).foregroundStyle(TerminalStyle.muted)
                 Text("SUBSYSTEM NAVIGATION").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.ink)
             }.padding(.horizontal, 18).padding(.top, 24).padding(.bottom, 22)
+            ScrollView {
             VStack(spacing: 5) {
                 ForEach(PreferencePage.allCases, id: \.self) { item in
                     Button {
@@ -240,52 +310,21 @@ struct PreferencesView: View {
                     .animation(reduceMotion ? nil : .spring(response: 0.32, dampingFraction: 0.8), value: page)
                     .allowsHitTesting(false)
             }.padding(.horizontal, 10)
-            Spacer(minLength: 18)
-            VStack(alignment: .leading, spacing: 8) {
-                Text("HARDWARE SECURITY").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
-                TerminalLabel(model.lockSummary, systemImage: model.requiresImmediateLock ? "checkmark.shield" : "gearshape")
-                    .font(.system(size: 10)).foregroundStyle(TerminalStyle.accent).fixedSize(horizontal: false, vertical: true)
-                HStack {
-                    Text(L("合盖服务")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
-                    Spacer()
-                    Text(L(model.helperStatus == .enabled ? "已授权" : "未授权")).font(TerminalStyle.mono(9)).foregroundStyle(model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber)
-                }
-            }.padding(12).background(TerminalStyle.surface).padding(12)
+            }.scrollIndicators(.hidden).frame(maxHeight: .infinity, alignment: .top)
+            HardwareSecurityStatus(model: model).padding(10)
         }.frame(width: 206).frame(maxHeight: .infinity).background(TerminalStyle.recess)
     }
 
     private func sessionsTab(contentWidth: CGFloat) -> some View {
-        VStack(alignment: .leading, spacing: 16) {
-            orbitalColumns(contentWidth: contentWidth) {
-                SessionsView(model: model, controller: model.sessions)
-                IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: model.snapshot?.lockPolicy == .immediate)
-            } trailing: {
-                VStack(spacing: 16) {
-                    VStack(spacing: 14) {
-                        OrbitalMoon(phase: model.active?.rawValue ?? "unknown").frame(height: 210)
-                        Rectangle().fill(TerminalStyle.line).frame(height: 1)
-                        Text("REMAINING CYCLE").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
-                        Text(sessionRemaining).font(TerminalStyle.mono(28)).foregroundStyle(TerminalStyle.ink)
-                        Button(L("+15 MIN // 延长")) { _ = model.sessions.extend(minutes: 15); model.onUpdate?() }
-                            .disabled(!model.verifiedWork || model.sessions.deadline == nil)
-                    }.padding(16).terminalSurface()
-                    OrbitalEventFeed(entries: model.history, title: "会话记录")
-                }
-            }
-        }
-    }
-    private var sessionRemaining: String {
-        guard let deadline = model.sessions.deadline else { return model.sessions.isActive ? "∞" : "--:--:--" }
-        let seconds = max(0, Int(deadline.timeIntervalSince(model.now)))
-        return String(format: "%02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60)
+        SessionsView(model: model, controller: model.sessions, availableWidth: max(0, contentWidth - 40))
     }
 
-    private func settingsTab(contentWidth: CGFloat) -> some View {
+    func settingsTab(contentWidth: CGFloat) -> some View {
         Group {
             PreferencesConsoleRack(number: "01", title: "合盖运行特权服务", code: "SMAPPSERVICE CLAMSHELL DAEMON", metadata: "DAEMON CONTROL") {
                 Text(L("合盖继续运行需要启用 Orexin 自带的系统服务，并在系统设置中批准一次。"))
                     .font(.system(size: 12)).foregroundStyle(WorkStyle.muted)
-                PreferencesConsoleFooter(stacked: contentWidth < 760) {
+                PreferencesConsoleFooter(stacked: contentWidth < 600) {
                     HStack(spacing: 8) {
                         if model.helperStatus == .enabled {
                             PreferencesServiceReadyBadge()
@@ -331,17 +370,17 @@ struct PreferencesView: View {
                     }
                 } action: {
                     Button(action: model.openLockSettings) {
-                        PreferencesTelemetryLabel(title: "打开系统锁屏设置", code: "LOCK_SETTINGS", icon: "shield")
+                        PreferencesTelemetryLabel(title: "打开锁屏设置", code: "LOCK_SETTINGS", icon: "shield")
                     }.workKeyboardFocus(radius: 0)
                 }
             }
             PreferencesConsoleRack(number: "03", title: "日常使用偏好", code: "CONSOLE INTERACTION", accent: TerminalStyle.muted, metadata: "LOCAL PREFERENCES") {
-                WorkToggle(title: "菜单栏显示模式和倒计时", detail: "在 macOS 状态栏显示当前模式，以及剩余时长或结束时间。", isOn: Binding(get: { model.menuLabelEnabled }, set: model.setMenuLabel)).padding(.vertical, 5)
-                Rectangle().fill(WorkStyle.line).frame(height: 1)
-                WorkToggle(title: "登录时启动 // Launch at Login", detail: "登录后启动 Orexin 菜单栏应用；是否自动开始会话由下方默认会话设置控制。", isOn: Binding(get: { model.loginEnabled }, set: model.setLogin)).padding(.vertical, 5)
-                Rectangle().fill(WorkStyle.line).frame(height: 1)
-                WorkToggle(title: "低电量保护", detail: LF("电池供电且电量达到 %d%% 时，留出 60 秒取消后请求休眠。", model.automation.batteryThreshold), isOn: Binding(get: { model.automation.batteryEnabled }, set: { model.setBatteryProtection(enabled: $0, threshold: model.automation.batteryThreshold) })).padding(.vertical, 5)
-                Rectangle().fill(WorkStyle.line).frame(height: 1)
+                WorkToggle(title: "菜单栏显示模式和倒计时", detail: "在 macOS 状态栏显示当前模式，以及剩余时长或结束时间。", isOn: Binding(get: { model.menuLabelEnabled }, set: model.setMenuLabel))
+                    .padding(12).background(TerminalStyle.recess)
+                WorkToggle(title: "登录时启动 // Launch at Login", detail: "登录后启动 Orexin 菜单栏应用；是否自动开始会话由下方默认会话设置控制。", isOn: Binding(get: { model.loginEnabled }, set: model.setLogin))
+                    .padding(12).background(TerminalStyle.recess)
+                WorkToggle(title: "低电量保护", detail: LF("电池供电且电量达到 %d%% 时，留出 60 秒取消后请求休眠。", model.automation.batteryThreshold), isOn: Binding(get: { model.automation.batteryEnabled }, set: { model.setBatteryProtection(enabled: $0, threshold: model.automation.batteryThreshold) }))
+                    .padding(12).background(TerminalStyle.recess)
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(L("系统通知")).font(WorkType.controlLabel)
@@ -357,7 +396,7 @@ struct PreferencesView: View {
                         if notifier.enabled { notifier.showSettings() }
                         else { Task { _ = await notifier.request() } }
                     }.workKeyboardFocus(radius: 0)
-                }
+                }.padding(12).background(TerminalStyle.recess)
                 if !notifier.message.isEmpty { WorkNote(text: notifier.message) }
             }.toggleStyle(TerminalSwitchStyle()).controlSize(.small)
             settingsEventStream
@@ -391,13 +430,6 @@ struct PreferencesView: View {
                 }
                 BehaviorSettingsView(behavior: model.behavior)
             }
-            HStack {
-                WorkNote(text: "退出前会恢复正常休眠。", icon: "power")
-                Spacer()
-                Button(L("提交问题")) { NSWorkspace.shared.open(OrexinRelease.issuesURL) }.workKeyboardFocus(radius: 0)
-                Button(L("退出 Orexin")) { Task { await model.requestQuit() } }.workKeyboardFocus(radius: 0).disabled(model.busy)
-            }
-            if model.jobRunning { WorkNote(text: "命令仍在运行，退出时会等待任务结束。") }
         }
     }
 
@@ -416,7 +448,7 @@ struct PreferencesView: View {
             ForEach(model.history.prefix(4)) { entry in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("[" + entry.date.formatted(date: .omitted, time: .standard) + "]").foregroundStyle(TerminalStyle.muted)
-                    Text(L(entry.text)).foregroundStyle(TerminalStyle.accent).fixedSize(horizontal: false, vertical: true)
+                    Text(L(entry.text)).foregroundStyle(TerminalStyle.accent).lineLimit(3).help(L(entry.text))
                 }.font(TerminalStyle.mono(9))
             }
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)

@@ -8,13 +8,12 @@ import WakeMacCore
 import WakeMacPower
 
 extension WorkMode {
-    var recordTitle: String { switch self { case .background: "后台工作"; case .desk: "桌面工作"; case .normal: "正常休眠" } }
-    var title: String { switch self { case .background: L("后台工作"); case .desk: L("桌面工作"); case .normal: L("正常休眠") } }
-    var icon: String { switch self { case .background: "moon.stars"; case .desk: "laptopcomputer"; case .normal: "lock.shield" } }
+    var recordTitle: String { self == .normal ? "正常模式" : "唤醒模式" }
+    var title: String { L(recordTitle) }
+    var icon: String { self == .normal ? "moon.zzz" : "sun.max" }
     var detail: String {
         switch self {
-        case .background: L("合盖继续运行，允许屏幕自动关闭")
-        case .desk: L("屏幕与屏保由会话效果控制")
+        case .background, .desk: L("保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。")
         case .normal: L("恢复闲置与合盖休眠")
         }
     }
@@ -238,11 +237,20 @@ extension WorkMode {
     }
     var keepsAwake: Bool { snapshot?.idleSleepPrevented == true }
     var runsWithLidClosed: Bool { snapshot?.backgroundLeaseActive == true && snapshot?.sleepDisabled == true }
+    var preferredAwakeMode: WorkMode { sessions.defaultMode }
+    var clamshellOptionEnabled: Bool { keepsAwake ? runsWithLidClosed : preferredAwakeMode == .background }
+    func setClamshellOption(_ enabled: Bool) async {
+        guard !busy, !sessions.isStarting else { return }
+        sessions.defaultMode = enabled ? .background : .desk
+        if keepsAwake { await changeSessionLidMode(enabled) }
+    }
     func setKeepsAwake(_ enabled: Bool) async {
+        if enabled && verifiedWork { return }
         quitWhenReady = false
-        await choose(enabled ? (runsWithLidClosed ? .background : .desk) : .normal)
+        await choose(enabled ? preferredAwakeMode : .normal)
     }
     func setRunsWithLidClosed(_ enabled: Bool) async {
+        sessions.defaultMode = enabled ? .background : .desk
         quitWhenReady = false
         await choose(enabled ? .background : (keepsAwake ? .desk : .normal))
     }
@@ -274,7 +282,7 @@ extension WorkMode {
         }
         do {
             try await SMAppService.daemon(plistName: PowerService.plistName).unregister()
-            helperMessage = "合盖服务已移除。桌面工作仍可使用。"
+            helperMessage = "合盖服务已移除，唤醒模式仍可使用。"
         } catch { helperMessage = error.localizedDescription }
     }
     func refresh() async {
@@ -311,6 +319,10 @@ extension WorkMode {
         }
     }
     func choose(_ requestedMode: WorkMode, sleep: Bool = false, automatic: Bool = false, batterySleep: Bool = false, startupRecovery: Bool = false, reconcilingRequests: Bool = false) async {
+        if !automatic, !reconcilingRequests, !startupRecovery, !busy, !verifiedWork, requestedMode != .normal,
+           workScreen.ownBehavior(for: requestedMode) == .dim {
+            workScreen.select(.normalBrightness, for: requestedMode)
+        }
         if serviceSocket != nil { await chooseThroughService(requestedMode, sleep: sleep, automatic: automatic, reconcilingRequests: reconcilingRequests); return }
         let globalStop = requestedMode == .normal && !reconcilingRequests
         if globalStop {
@@ -343,7 +355,8 @@ extension WorkMode {
         }
         let sleepIdlePeriod = sleep ? workScreen.currentIdlePeriod() : nil
         let previousMode = active
-        if !reconcilingRequests && (!automatic || mode == .normal) {
+        let continuingAwake = (previousMode == .desk || previousMode == .background) && mode != .normal
+        if !reconcilingRequests && (!automatic || mode == .normal) && !continuingAwake {
             sessions.effectOverrides = nil
             sessions.manualModeChanged()
             if !startupRecovery { suppressCurrentTriggers() }
@@ -360,7 +373,7 @@ extension WorkMode {
             sessions.screenPolicyPreventsSleep = nil
             do { try workScreen.restore() }
             catch { record("屏幕亮度恢复失败：" + error.localizedDescription) }
-        } else if !reconcilingRequests { workScreen.runtimeBehavior = nil }
+        } else if !reconcilingRequests && !continuingAwake { workScreen.runtimeBehavior = nil }
         message = LF("正在应用并核验「%@」…", mode.title); onUpdate?()
         let revision = automaticSleepRevision
         let result = sleep ? await coordinator.sleep(lockRequirement: lockRequirement) { [weak self] in
@@ -489,22 +502,24 @@ extension WorkMode {
         NSApp.appearance = model.appearance.theme.appearance
         item = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
         configureApplicationMenu()
-        let quickHeight = min(650, max(360, (NSScreen.main?.visibleFrame.height ?? 800) - 80))
-        quickPanel = ConsoleMenuPanel(contentRect: NSRect(x: 0, y: 0, width: 500, height: quickHeight), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
+        let quickSize = model.appearance.menuLayout.size(available: NSScreen.main?.visibleFrame.size ?? CGSize(width: 1280, height: 800))
+        quickPanel = ConsoleMenuPanel(contentRect: NSRect(origin: .zero, size: quickSize), styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         quickPanel.title = "Orexin · 菜单控制"; quickPanel.level = .popUpMenu
         quickPanel.hidesOnDeactivate = true; quickPanel.isReleasedWhenClosed = false
+        quickPanel.isOpaque = false; quickPanel.backgroundColor = .clear; quickPanel.hasShadow = false
         quickPanel.delegate = self
-        let menuHost = NSHostingView(rootView: ControlPanel(model: model, height: quickHeight, closePopover: { [weak self] in self?.quickPanel.orderOut(nil) }))
+        let menuHost = NSHostingView(rootView: ControlPanel(model: model, closePopover: { [weak self] in self?.quickPanel.orderOut(nil) }))
         menuHost.sizingOptions = []
         quickPanel.contentView = menuHost
         item.button?.target = self
         item.button?.action = #selector(togglePopover)
-        panel = ConsoleWindow(contentRect: NSRect(x: 0, y: 0, width: 500, height: quickHeight), styleMask: [.borderless, .closable, .miniaturizable], backing: .buffered, defer: false)
+        panel = ConsoleWindow(contentRect: NSRect(origin: .zero, size: quickSize), styleMask: [.borderless, .closable, .miniaturizable], backing: .buffered, defer: false)
         panel.delegate = self
-        panel.backgroundColor = .windowBackgroundColor
+        panel.isOpaque = false; panel.backgroundColor = .clear; panel.hasShadow = false
+        panel.isMovableByWindowBackground = true
         panel.title = "Orexin · 快捷面板"
         panel.isReleasedWhenClosed = false
-        let panelHost = NSHostingView(rootView: ControlPanel(model: model, standalone: true, height: quickHeight))
+        let panelHost = NSHostingView(rootView: ControlPanel(model: model, standalone: true))
         panelHost.sizingOptions = [.minSize, .intrinsicContentSize]
         panel.contentView = panelHost
         panel.center()
@@ -641,16 +656,19 @@ extension WorkMode {
     @objc func sleepNow() { Task { await model.choose(.normal, sleep: true) } }
     @objc func quit() { NSApp.terminate(nil) }
     @objc func togglePopover() {
-        guard let button = item.button, let statusWindow = button.window else { return }
         if quickPanel.isVisible { quickPanel.orderOut(nil); return }
-        let anchor = statusWindow.convertToScreen(button.convert(button.bounds, to: nil))
-        let screen = statusWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
-        let x = min(max(anchor.maxX - quickPanel.frame.width, screen.minX + 8), screen.maxX - quickPanel.frame.width - 8)
-        let y = max(screen.minY + 8, anchor.minY - quickPanel.frame.height - 6)
-        quickPanel.setFrameOrigin(NSPoint(x: x, y: y))
+        positionQuickPanel()
         quickPanel.makeKeyAndOrderFront(nil)
         NSApp.activate(ignoringOtherApps: true)
         Task { await model.refresh() }
+    }
+    private func positionQuickPanel() {
+        guard let button = item.button, let statusWindow = button.window else { return }
+        let anchor = statusWindow.convertToScreen(button.convert(button.bounds, to: nil))
+        let screen = statusWindow.screen?.visibleFrame ?? NSScreen.main?.visibleFrame ?? .zero
+        let x = max(screen.minX + 8, screen.maxX - quickPanel.frame.width - 8)
+        let y = max(screen.minY + 8, anchor.minY - quickPanel.frame.height - 6)
+        quickPanel.setFrameOrigin(NSPoint(x: x, y: y))
     }
     func showPreferences() {
         NSApp.setActivationPolicy(.regular)
@@ -685,6 +703,12 @@ extension WorkMode {
         if !anotherVisible { NSApp.setActivationPolicy(.accessory) }
     }
     func updateMenu() {
+        let quickSize = model.appearance.menuLayout.size(available: NSScreen.main?.visibleFrame.size ?? CGSize(width: 1280, height: 800))
+        for window in [panel, quickPanel].compactMap({ $0 }) where window.frame.size != quickSize {
+            window.setContentSize(quickSize)
+            if window === panel { window.center() }
+        }
+        if quickPanel?.isVisible == true { positionQuickPanel() }
         let appearance = model.appearance.theme.appearance
         if NSApp.appearance != appearance { NSApp.appearance = appearance }
         for window in [preferencesWindow, panel, quickPanel].compactMap({ $0 }) where window.appearance != appearance {

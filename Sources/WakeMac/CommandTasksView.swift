@@ -116,12 +116,11 @@ struct CommandTasksView: View {
         VStack(alignment: .leading, spacing: 16) {
             executionProtocol
             console
-            WorkNote(text: "支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。")
-                .padding(14).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
-            DisclosureGroup("运行前须知与休眠规则") {
-                Text(L("使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。"))
-                    .font(WorkType.caption).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true).padding(.top, 6)
-            }.font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
+            VStack(alignment: .leading, spacing: 12) {
+                WorkNote(text: "支持多个前台命令并行执行；外部任务通过 CLI 明确报告完成，不推测其他应用的任务状态。")
+                Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1)
+                WorkNote(text: "使用非交互的前台命令，不支持密码输入或 & / nohup 后台任务。所有重叠请求成功且没有其他保活来源时，倒计时 60 秒；失败、取消、失联或到期时只释放保活。日志保存 stdout 和 stderr 的前 5 MB。")
+            }.padding(14).frame(maxWidth: .infinity, alignment: .leading).terminalSurface()
             if !model.convenienceMessage.isEmpty { WorkNote(text: model.convenienceMessage) }
         }
     }

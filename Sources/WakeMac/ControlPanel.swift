@@ -35,243 +35,481 @@ struct ControlPanel: View {
     @ObservedObject var model: AppModel
     @ObservedObject private var sessions: SessionController
     @ObservedObject private var appearance: AppearanceController
+    @ObservedObject private var screen: WorkScreenPolicy
     var standalone = false
-    var height: CGFloat = 650
+    var height: CGFloat = 720
     var closePopover: (() -> Void)?
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    var availableSize: CGSize?
     @AppStorage("orexin.appearance.language") private var languageID = "zh-Hans"
 
-    init(model: AppModel, standalone: Bool = false, height: CGFloat = 650, closePopover: (() -> Void)? = nil) {
+    init(model: AppModel, standalone: Bool = false, height: CGFloat = 720, closePopover: (() -> Void)? = nil, availableSize: CGSize? = nil) {
         self.model = model; self.sessions = model.sessions; self.appearance = model.appearance
-        self.standalone = standalone; self.height = height; self.closePopover = closePopover
+        self.screen = model.workScreen; self.standalone = standalone; self.height = height
+        self.closePopover = closePopover; self.availableSize = availableSize
     }
-
-    private var protected: Bool { model.snapshot?.lockPolicy == .immediate }
-    private var statusColor: Color {
-        model.error || model.pending != nil ? TerminalStyle.warning : TerminalStyle.signal
+    private var size: CGSize {
+        appearance.menuLayout.size(available: availableSize ?? NSScreen.main?.visibleFrame.size ?? CGSize(width: 1280, height: height + 64))
     }
+    private var disabled: Bool { model.busy || sessions.isStarting || model.snapshot == nil || model.pending != nil }
     private var title: String {
         model.busy ? "正在切换" : model.pending != nil ? "等待确认" : model.error ? "需要检查" : model.active?.title ?? "等待核验"
     }
-    private var sessionSummary: String {
-        if let countdown = model.countdownText { return countdown }
-        if !model.workRequests.active.isEmpty { return L("并行工作请求") + " · \(model.workRequests.active.count)" }
-        if sessions.isActive { return sessions.status }
-        if model.triggerOwnedMode != nil { return model.triggerSummary }
-        return model.verifiedWork ? "手动结束" : "尚未开始会话"
+    private var signal: Color { model.error || model.pending != nil ? MenuHUD.warning : model.keepsAwake ? MenuHUD.signal : MenuHUD.muted }
+    private var assertion: String {
+        model.snapshot == nil ? "READING" : sessions.effectReport.displayAssertionActive ? "NoDisplaySleep" : model.keepsAwake ? "NoIdleSleep" : "RELEASED"
     }
-    private var durationUnavailable: Bool {
-        model.busy || sessions.isStarting || model.jobRunning || model.snapshot == nil || model.pending != nil || model.error || (sessions.isActive && sessions.deadline == nil)
+    private var deadline: Date? { [model.automation.nextDeadline, sessions.deadline, model.serviceSleepAt].compactMap { $0 }.min() }
+    private var missionTime: String {
+        let seconds: Int
+        if let deadline { seconds = max(0, Int(ceil(deadline.timeIntervalSince(model.now)))) }
+        else if let start = model.workRequests.active.map(\.createdAt).min() { seconds = max(0, Int(model.now.timeIntervalSince(start))) }
+        else { seconds = 0 }
+        return String(format: "%02d:%02d:%02d", seconds / 3600, seconds / 60 % 60, seconds % 60)
     }
+    private var timeCaption: String { deadline != nil ? "REMAINING" : model.keepsAwake ? "ACTIVE MISSION TIME" : "STANDBY" }
+    private var screenChoices: [WorkScreenBehavior] { WorkScreenBehavior.choices(for: model.active ?? .desk) }
+    private var keepAwake: Binding<Bool> { Binding(get: { model.keepsAwake }, set: { value in Task { await model.setKeepsAwake(value) } }) }
+    private var clamshell: Binding<Bool> { Binding(get: { model.clamshellOptionEnabled }, set: { value in Task { await model.setClamshellOption(value) } }) }
+    private var display: Binding<Bool> { Binding(get: { screen.behavior(for: model.active ?? .desk) == .normalBrightness }, set: { value in
+        Task { await model.setWorkScreenBehavior(value ? .normalBrightness : .systemIdle) }
+    }) }
+    private var saver: Binding<Bool> { Binding(get: { sessions.effectivePreventScreenSaver }, set: { value in Task { await model.changeScreenSaverPrevention(value) } }) }
+    private var unlocked: Binding<Bool> { Binding(get: { model.unlockedWorkEnabled }, set: { value in Task { await model.setUnlockedWork(value) } }) }
+
+
+    private var dimmed: Binding<Bool> {
+        Binding(get: { screen.behavior(for: model.active ?? .desk) == .dim }, set: { value in
+            Task { await model.setWorkScreenBehavior(value ? .dim : .normalBrightness) }
+        })
+    }
+    private var modeCode: String { model.active == .normal ? "NORMAL" : model.active == nil ? "—" : "AWAKE" }
+    private var thermalLevel: Int {
+        switch model.thermalStateProvider() { case .nominal: 3; case .fair: 5; case .serious: 7; case .critical: 8; @unknown default: 0 }
+    }
+    private var thermalColor: Color { thermalLevel <= 3 ? MenuHUD.signal : thermalLevel < 8 ? MenuHUD.amber : MenuHUD.warning }
 
     var body: some View {
-        VStack(spacing: 0) {
-            header
-            ScrollView {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 8) {
-                        TerminalSignal(color: TerminalStyle.accent)
-                        Text("TLM // LOCAL").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.accent)
-                        Spacer()
-                        Text("CPU: \(ProcessInfo.processInfo.activeProcessorCount) CORE").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
-                        Text(model.snapshot == nil ? "READING" : "IOPM READY").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.signal)
-                    }
-                    status
-                    HStack { TerminalSignal(color: TerminalStyle.accent); Text(L("执行模式 // SELECT POWER VECTOR")).font(TerminalStyle.mono(9)); Spacer() }.foregroundStyle(TerminalStyle.muted)
-                    modes
-                    matrix
-                    quickActions
-                    if !model.workRequests.active.isEmpty {
-                        Button { model.openWorkRequests(); closePopover?() } label: {
-                            Text(L("并行工作请求") + " · \(model.workRequests.active.count)")
-                        }.workKeyboardFocus(radius: 0)
-                    }
-                    if model.pending != nil || model.error { feedback }
-                }.padding(12)
-            }.frame(maxWidth: .infinity)
-            footer
-        }.id(appearance.theme.rawValue + "/" + languageID).frame(width: 500, height: height)
+        Group { if appearance.menuLayout == .deck { deck } else { band } }
+            .frame(width: size.width, height: size.height)
             .environment(\.locale, (AppLanguage(rawValue: languageID) ?? .simplifiedChinese).locale)
-            .background { TerminalStyle.paper; TerminalAtmosphere() }
-            .foregroundStyle(TerminalStyle.ink).tint(TerminalStyle.accent)
-            .buttonStyle(TerminalButtonStyle()).focusEffectDisabled().preferredColorScheme(appearance.theme.colorScheme)
+            .background(appearance.menuLayout == .band ? Color.clear : MenuHUD.paper)
+            .foregroundStyle(MenuHUD.ink).tint(MenuHUD.accent).font(.system(size: 11))
+            .preferredColorScheme(appearance.theme.colorScheme).focusEffectDisabled()
             .onExitCommand { if !standalone { closePopover?() } }
     }
 
-    private var header: some View {
-        HStack(spacing: 9) {
+    private var deck: some View {
+        VStack(spacing: 10) {
+            deckHeader
+            ScrollView {
+                HStack(alignment: .top, spacing: 10) {
+                    VStack(spacing: 10) { statusDeck; interlocks }.frame(maxWidth: .infinity)
+                    missionPresets.frame(width: (size.width - 30) * 0.325)
+                }.padding(.bottom, 1)
+            }.scrollIndicators(.hidden)
+            eventStream
+        }.padding(10)
+    }
+    private var deckHeader: some View {
+        HStack(spacing: 12) {
             if standalone { ConsoleWindowControls() }
-            ApplicationBadge().frame(width: 22, height: 22)
-            Text("OREXIN").font(TerminalStyle.mono(14)).tracking(1).shadow(color: TerminalStyle.accent.opacity(0.5), radius: 4)
-            Text(OrexinRelease.displayVersion)
-                .font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.accent).padding(5).overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.4)))
-            if standalone { WindowDragRegion().frame(maxWidth: .infinity, maxHeight: .infinity) } else { Spacer(minLength: 0) }
-            if let battery = model.battery {
-                Text("\(battery.percent)%").font(TerminalStyle.mono(11)).foregroundStyle(TerminalStyle.signal)
-                    .help(battery.onBattery ? "电池供电" : "已接电源")
-            }
-            Button { openMain() } label: {
-                TerminalIcon(name: "arrow.up.right.square", size: 15).frame(width: 24, height: 24)
-            }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
-                .accessibilityLabel("打开主窗口").help("打开 Orexin 主窗口")
-        }.padding(.horizontal, 14).frame(height: 38).background(TerminalStyle.surface)
-            .overlay(alignment: .bottom) { rule }
+            MenuLight(color: MenuHUD.accent, size: 8)
+            Text("OREXIN //\nSYS.ORBITAL").font(MenuHUD.serif(17, bold: true))
+                .foregroundStyle(MenuHUD.accent).lineSpacing(0)
+            if standalone { WindowDragRegion().frame(maxWidth: .infinity, maxHeight: .infinity) }
+            else { Spacer(minLength: 0) }
+            headerReading("AVIONICS", value: "HUD / " + OrexinRelease.displayVersion, color: MenuHUD.muted)
+            headerReading("IOPM:", value: model.snapshot == nil ? "READING" : model.keepsAwake ? "ASSERTED" : "RELEASED", color: signal)
+            headerReading("SYSTEM //", value: "\(ProcessInfo.processInfo.activeProcessorCount) CPU / \(Int(ProcessInfo.processInfo.physicalMemory / 1_073_741_824)) GB", color: MenuHUD.secondary)
+            moreMenu
+        }.padding(.horizontal, 14).frame(height: 54).background(MenuHUD.surface, in: MenuCutShape(cut: 14))
     }
-
-    private var status: some View {
-        HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 6) {
-                HStack(spacing: 8) {
-                    TerminalCursor()
-                    Text("ACTIVE VECTOR // \(model.active == .background ? "01" : model.active == .desk ? "02" : model.active == .normal ? "03" : "UNKNOWN")").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.accent)
-                    if model.snapshot != nil && model.active != nil && !model.busy && !model.error && model.pending == nil {
-                        Text(L("已核验")).font(.system(size: 9)).foregroundStyle(TerminalStyle.signal).padding(3).background(TerminalStyle.selection)
-                    }
-                }
-                HStack(spacing: 8) {
-                    Text(L(title)).font(.system(size: 23, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.8).accessibilityAddTraits(.isHeader)
-                    if model.busy { ProgressView().controlSize(.small) }
-                }
-                Text(L(model.active == .normal ? "闲置与合盖时恢复系统自然休眠，释放 Orexin 的保活设置。" : model.active == .background ? "保持唤醒，合盖后继续运行后台任务。" : model.active == .desk ? "保持桌面工作，合盖后允许休眠。" : "当前电源状态尚未匹配工作模式，请等待核验或重新检查。"))
-                    .font(.system(size: 11)).foregroundStyle(TerminalStyle.muted).lineLimit(2).fixedSize(horizontal: false, vertical: true)
-                if sessions.isActive || model.triggerOwnedMode != nil {
-                    Text(L(sessionSummary)).font(.system(size: 10)).foregroundStyle(TerminalStyle.accent).lineLimit(1)
-                }
-                HStack(spacing: 7) {
-                    OrbitalReadout(label: "THERMAL", value: model.thermalSummary, color: TerminalStyle.signal, compact: true)
-                    OrbitalReadout(label: "IOPM ASSERT", value: model.keepsAwake ? "NoIdleSleep" : model.snapshot == nil ? "UNKNOWN" : "None", compact: true)
-                }
-            }.frame(maxWidth: .infinity, alignment: .leading)
-            OrbitalMoon(phase: model.active?.rawValue ?? "unknown", labels: false).frame(width: 104, height: 104)
-        }.padding(10).background(TerminalGrid()).terminalSurface()
-            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: title)
+    private func headerReading(_ title: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title); Text(value)
+        }.font(MenuHUD.serif(9, bold: true)).foregroundStyle(color).fixedSize()
     }
-
-    private var modes: some View {
-        HStack(spacing: 9) {
-            ForEach(Array(WorkMode.allCases.enumerated()), id: \.element) { index, mode in
-                modeButton(mode, number: index + 1)
-            }
-        }
-    }
-
-    private func modeButton(_ mode: WorkMode, number: Int) -> some View {
-        let selected = model.active == mode && model.pending == nil && !model.error
-        let code = mode == .background ? "CLAMSHELL" : mode == .desk ? "PRESENTATION" : "DEFAULT"
-        return Button {
-            model.quitWhenReady = false
-            Task { await model.selectWorkPreset(mode) }
-        } label: {
-            VStack(alignment: .leading, spacing: 5) {
-                HStack {
-                    Text("RACK_0\(number)").font(TerminalStyle.mono(9))
-                    Spacer(minLength: 0)
-                    Rectangle().fill(selected ? TerminalStyle.signal : TerminalStyle.muted).frame(width: 5, height: 5)
-                }
-                HStack(spacing: 7) {
-                    TerminalIcon(name: mode == .background ? "laptopcomputer" : mode == .desk ? "display" : "moon", size: 19)
-                    Text(mode.title).font(.system(size: 13, weight: .semibold))
-                        .lineLimit(2)
-                }.frame(height: 34, alignment: .leading)
-                Text(code).font(TerminalStyle.mono(8)).lineLimit(1).minimumScaleFactor(0.7)
-                rule
-                Text(selected ? "ACTIVE" : "STANDBY").font(TerminalStyle.mono(9))
-            }.foregroundStyle(selected ? TerminalStyle.accent : TerminalStyle.muted)
-                .padding(9).frame(maxWidth: .infinity, alignment: .leading)
-                .background(selected ? TerminalStyle.selection : TerminalStyle.surface)
-                .overlay(Rectangle().strokeBorder(TerminalStyle.line, lineWidth: 0.6))
-                .overlay(alignment: .top) { Rectangle().fill(selected ? TerminalStyle.accent : .clear).frame(height: 2) }
-                .contentShape(Rectangle())
-        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
-            .disabled(model.busy || sessions.isStarting || (mode == .background && model.helperStatus != .enabled))
-            .accessibilityAddTraits(selected ? [.isSelected] : [])
-    }
-
-    private var matrix: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            PowerAssertionRows(model: model, sessions: sessions, compact: true)
-            rule
-            HStack(spacing: 8) {
-                TerminalIcon(name: "checkmark.shield", size: 14).foregroundStyle(TerminalStyle.signal)
-                Text(L(model.helperStatus == .enabled ? "系统已批准辅助服务" : "合盖服务需要授权")).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
-                Spacer()
-                if model.helperStatus == .enabled {
-                    Button(L("重新核验")) { Task { await model.refresh() } }.buttonStyle(TerminalPlainButtonStyle()).foregroundStyle(TerminalStyle.accent).disabled(model.busy)
-                } else {
-                    Button(L("启用服务"), action: model.enableHelper).buttonStyle(TerminalPlainButtonStyle()).foregroundStyle(TerminalStyle.accent).disabled(model.busy)
-                }
-            }.padding(.vertical, 8)
-        }.padding(.horizontal, 12).terminalSurface()
-    }
-
-    private var quickActions: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            HStack(spacing: 5) {
-                durationButton("+15m", minutes: 15)
-                durationButton("+30m", minutes: 30)
-                durationButton("+1.0h", minutes: 60)
-                durationButton("+2.0h", minutes: 120)
-                Button { openMain(); NotificationCenter.default.post(name: .wakeMacOpenCommandTask, object: nil) } label: {
-                    Text(L("编译后")).font(.system(size: 10)).frame(maxWidth: .infinity)
-                }.workKeyboardFocus(radius: 0)
-            }.frame(maxWidth: .infinity)
-            HStack(spacing: 8) {
-                if let countdown = model.countdownText {
+    private var statusDeck: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            sector("01", title: "RETICLE DECK", color: MenuHUD.accent)
+            HStack(spacing: 14) {
+                OrbitalMoon(phase: model.active?.rawValue ?? "unknown", labels: false)
+                    .environment(\.consoleArtworkModule, standalone ? .notices : .command)
+                    .frame(width: min(144, (size.width - 30) * 0.24), height: 144)
+                VStack(alignment: .leading, spacing: 5) {
+                    Button(action: cycleMode) {
+                        HStack(spacing: 6) {
+                            Text(model.keepsAwake ? "AWAKE.VEC" : "NORMAL.VEC").font(MenuHUD.serif(10, bold: true))
+                                .padding(.horizontal, 6).padding(.vertical, 3).background(MenuHUD.accent).foregroundStyle(MenuHUD.onAccent)
+                            Text(L(model.keepsAwake ? "唤醒模式运行中" : title)).font(MenuHUD.song(16)).foregroundStyle(signal)
+                                .lineLimit(1).minimumScaleFactor(0.7)
+                        }.frame(maxWidth: .infinity, alignment: .leading)
+                    }.buttonStyle(MenuActionStyle()).disabled(disabled).accessibilityHint(L("切换模式"))
                     VStack(alignment: .leading, spacing: 3) {
-                        Text(countdown).font(.system(size: 10)).foregroundStyle(TerminalStyle.warning)
-                        Button(L("取消倒计时"), action: model.cancelVisibleCountdown).buttonStyle(TerminalPlainButtonStyle()).font(.system(size: 10)).foregroundStyle(TerminalStyle.accent)
+                        HStack { Text(timeCaption); Spacer(minLength: 0); Text(model.keepsAwake ? "RUNNING" : "IDLE").foregroundStyle(MenuHUD.accent) }
+                            .font(MenuHUD.serif(9, bold: true)).foregroundStyle(MenuHUD.muted)
+                        HStack(alignment: .firstTextBaseline, spacing: 0) {
+                            Text(String(missionTime.dropLast(2))).foregroundStyle(MenuHUD.ink)
+                            Text(String(missionTime.suffix(2))).foregroundStyle(model.keepsAwake ? MenuHUD.signal : MenuHUD.muted)
+                        }.font(MenuHUD.serif(30, bold: true)).monospacedDigit().lineLimit(1).minimumScaleFactor(0.7)
+                    }.padding(7).frame(maxWidth: .infinity, alignment: .leading).background(MenuHUD.recess)
+                    HStack(spacing: 5) {
+                        metric("ASSERTION", value: assertion, color: MenuHUD.ink)
+                        metric("POWER", value: model.battery.map { "\($0.percent)%" } ?? "—", color: MenuHUD.signal)
                     }
-                } else {
-                    Text(L(sessions.isActive && sessions.deadline != nil ? "快捷延长当前定时会话" : sessions.isActive ? "当前会话按任务条件结束" : "快捷开始定时会话"))
-                        .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
-                }
-                Spacer(minLength: 0)
-                Button { Task { await model.choose(.normal, sleep: true) } } label: {
-                    TerminalLabel("立即休眠", systemImage: "power").font(.system(size: 12, weight: .semibold))
-                }.buttonStyle(TerminalButtonStyle(prominent: true)).workKeyboardFocus(radius: 0).disabled(model.busy)
+                }.frame(maxWidth: .infinity)
             }
+            HStack(spacing: 5) {
+                Text(model.keepsAwake ? "CARRIER: CONTINUOUS WAKE-LOCK" : "CARRIER: SYSTEM POWER POLICY")
+                    .font(MenuHUD.serif(9)).foregroundStyle(MenuHUD.muted).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                ForEach(0..<7) { index in Rectangle().fill(model.keepsAwake && index < 5 ? index == 4 ? MenuHUD.signal : MenuHUD.accent : MenuHUD.line).frame(width: 7, height: 10) }
+            }.padding(.horizontal, 3).padding(.vertical, 3).background(MenuHUD.recess)
+        }.padding(14).frame(height: 234).background { MenuHUD.surface; MenuDeckGrid() }
+            .clipShape(MenuCutShape(cut: 20))
+    }
+    private func metric(_ label: String, value: String, color: Color) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(label).font(MenuHUD.serif(9)).foregroundStyle(MenuHUD.muted)
+            Text(value).font(MenuHUD.serif(10, bold: true)).foregroundStyle(color).lineLimit(1).minimumScaleFactor(0.7)
+        }.frame(maxWidth: .infinity, alignment: .leading).padding(5).background(MenuHUD.silver)
+    }
+    private func sector(_ number: String, title: String, color: Color) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: number == "01" ? "scope" : "slider.horizontal.3").font(.system(size: 15))
+            Text("SECTOR." + number + " // " + title).font(MenuHUD.serif(13, bold: true)).tracking(0.3)
+                .lineLimit(1).minimumScaleFactor(0.7)
+            Spacer(minLength: 0)
+        }.foregroundStyle(color)
+    }
+    private var interlocks: some View {
+        VStack(spacing: 5) {
+            sector("02", title: "POWER INTERLOCK ARRAY", color: MenuHUD.signal).padding(.bottom, 8)
+            interlock("01", title: "保持唤醒", code: "HOLD_CPU_EXECUTION_STATE", binding: keepAwake, effective: model.keepsAwake)
+                .disabled(disabled)
+            interlock("02", title: "合盖继续运行", code: "CLAMSHELL_MODE_OVERRIDE", binding: clamshell, effective: model.runsWithLidClosed)
+                .disabled(disabled || model.helperStatus != .enabled)
+            interlock("03", title: "屏幕最暗", code: "PANEL_BACKLIGHT_DIM", binding: dimmed, effective: model.verifiedWork && dimmed.wrappedValue)
+                .disabled(disabled || !model.verifiedWork || !model.allowsScreenChoice(.dim))
+
+            interlock("04", title: "防止闲时屏保", code: "BLOCK_SAVER_ACTIVATION", binding: saver, effective: model.verifiedWork && sessions.effectReport.screenSaverAssertionActive)
+                .disabled(disabled || model.screenEffectsControlledByOtherTasks || model.otherTasksRequireScreenSaverPrevention)
+            interlock("05", title: "工作时保持未锁定", code: "SESSION_AUTHORIZATION", binding: unlocked, effective: model.verifiedWork && model.snapshot?.lockPolicy == .off)
+                .disabled(disabled || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))
+            if model.error || model.pending != nil {
+                Text(L(model.message)).font(.system(size: 9)).foregroundStyle(MenuHUD.warning).fixedSize(horizontal: false, vertical: true)
+            }
+        }.padding(.horizontal, 14).padding(.vertical, 16).frame(minHeight: 284).background(MenuHUD.surface, in: MenuCutShape(cut: 20))
+    }
+    private func interlock(_ number: String, title: String, code: String, binding: Binding<Bool>, effective: Bool) -> some View {
+        HStack(spacing: 9) {
+            Text("PWR." + number).font(MenuHUD.serif(10, bold: true)).foregroundStyle(binding.wrappedValue ? MenuHUD.accent : MenuHUD.muted)
+                .lineLimit(1).fixedSize(horizontal: true, vertical: false).frame(width: 40, alignment: .leading)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(L(title)).font(MenuHUD.song(14.5)).foregroundStyle(MenuHUD.ink).lineLimit(1).minimumScaleFactor(0.7)
+                Text(code).font(MenuHUD.serif(10)).foregroundStyle(MenuHUD.muted).lineLimit(1).minimumScaleFactor(0.65)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            Toggle(L(title), isOn: binding).labelsHidden().toggleStyle(MenuDeckSwitchStyle(title: L(title), effective: effective))
+        }.padding(.horizontal, 10).frame(height: 42)
+            .background(binding.wrappedValue ? MenuHUD.silver : MenuHUD.surface.opacity(0.3), in: MenuInterlockShape(reverse: number == "02" || number == "04"))
+    }
+    private var missionPresets: some View {
+        VStack(spacing: 10) {
+            thermalDeck.frame(height: 106)
+            VStack(alignment: .leading, spacing: 5) {
+                HStack { Text("MISSION PRESET"); Spacer(minLength: 0); Text("DIAL").foregroundStyle(MenuHUD.accent) }
+                    .font(MenuHUD.serif(11, bold: true)).padding(.bottom, 8)
+                ForEach([15, 30, 60, 120], id: \.self) { minutes in preset(minutes) }
+                Button { engage(nil) } label: {
+                    HStack { Text("∞ INFINITY"); Spacer(minLength: 0); Text("ORBIT").font(MenuHUD.serif(8)) }
+                        .font(MenuHUD.serif(20, bold: true)).foregroundStyle(MenuHUD.secondary)
+                        .padding(.horizontal, 10).frame(height: 38).background(MenuHUD.recess, in: MenuCutShape(cut: 10))
+                }.buttonStyle(MenuActionStyle(cut: 10)).disabled(disabled || model.jobRunning || sessions.isActive)
+                Spacer(minLength: 12)
+                Button { Task { await model.sleepDisplayNow() } } label: {
+                    HStack { Image(systemName: "display").font(.system(size: 16)); Text(L("立即熄屏")); Spacer(minLength: 0); Text("DISP.OFF").font(MenuHUD.serif(8)) }
+                }.buttonStyle(MenuDeckButtonStyle()).disabled(disabled || !model.verifiedWork || model.otherTasksRequireDisplay)
+                Button(role: .destructive) { Task { await model.choose(.normal, sleep: true) } } label: {
+                    HStack { Image(systemName: "power").font(.system(size: 17)); Text(L("立即休眠")); Spacer(minLength: 0); Text("SLEEP").font(MenuHUD.serif(8)) }
+                }.buttonStyle(MenuDeckButtonStyle(prominent: true)).disabled(model.busy)
+            }.padding(14).frame(height: 412).background(MenuHUD.surface, in: MenuCutShape(cut: 20))
         }
     }
-
-    private func durationButton(_ label: String, minutes: Double) -> some View {
-        Button {
-            Task {
-                if sessions.isActive { _ = sessions.extend(minutes: minutes) }
-                else {
-                    sessions.endCondition = .duration
-                    sessions.durationMinutes = minutes
-                    await sessions.start()
-                }
-                model.onUpdate?()
-            }
-        } label: { Text(L(label)).font(TerminalStyle.mono(10)).frame(maxWidth: .infinity) }
-            .workKeyboardFocus(radius: 0).disabled(durationUnavailable)
-            .help(sessions.isActive ? "延长当前定时会话" : "按默认工作模式启动定时会话")
-    }
-
-    private func openMain() { model.openPreferences?(); if !standalone { closePopover?() } }
-
-    private var feedback: some View {
-        VStack(alignment: .leading, spacing: 10) {
-            WorkNote(text: model.message, icon: "exclamationmark.circle")
+    private func preset(_ minutes: Int) -> some View {
+        let selected = sessions.isActive && sessions.deadline != nil && Int(sessions.durationMinutes) == minutes
+        let captions = [15: "BURST", 30: "STAGING", 60: "ACTIVE", 120: "EXTENDED"]
+        return Button { engage(Double(minutes)) } label: {
             HStack {
-                if model.pending != nil { Button(L("打开系统设置"), action: model.openLockSettings).workKeyboardFocus(radius: 0) }
-                Button(L("重新检查")) { model.error = false; Task { await model.refresh() } }.workKeyboardFocus(radius: 0)
+                Text(minutes < 60 ? "+\(minutes) MIN" : String(format: "+%.1f HOUR", Double(minutes) / 60))
+                    .font(MenuHUD.serif(20, bold: true)).lineLimit(1).minimumScaleFactor(0.7)
+                Spacer(minLength: 0)
+                Text(selected ? "ACTIVE" : minutes == 60 ? "STANDARD" : captions[minutes] ?? "").font(MenuHUD.serif(8))
+            }.padding(.horizontal, 10).frame(height: 38)
+                .foregroundStyle(selected ? MenuHUD.onAccent : MenuHUD.ink)
+                .background(selected ? MenuHUD.accent : MenuHUD.recess, in: MenuCutShape(cut: 10))
+        }.buttonStyle(MenuActionStyle(cut: 10)).disabled(disabled || model.jobRunning || model.error || (sessions.isActive && sessions.deadline == nil))
+            .accessibilityLabel(L(selected ? "延长会话" : "开始默认会话") + " \(minutes) min")
+    }
+    private var thermalDeck: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack { Text("THERMAL.IO"); Spacer(minLength: 0); Text(L(model.thermalSummary)).foregroundStyle(thermalColor) }
+                .font(MenuHUD.serif(12, bold: true))
+            VStack(spacing: 4) {
+                HStack(spacing: 4) { ForEach(0..<8) { index in Rectangle().fill(index >= thermalLevel ? MenuHUD.line : index < 3 ? MenuHUD.signal : index < 5 ? MenuHUD.accent : index == 7 ? MenuHUD.warning : MenuHUD.amber).frame(height: 15) } }
+                HStack { Text("COOL"); Spacer(minLength: 0); Text("MED"); Spacer(minLength: 0); Text("CRIT") }
+                    .font(MenuHUD.serif(9)).foregroundStyle(MenuHUD.muted)
+            }.padding(5).background(MenuHUD.recess)
+            HStack {
+                Text("POWER:").foregroundStyle(MenuHUD.muted)
+                Spacer(minLength: 0)
+                Text(model.battery.map { "\($0.percent)% / " + ($0.onBattery ? "BAT" : "AC") } ?? "—").foregroundStyle(MenuHUD.signal)
+            }.font(MenuHUD.serif(10, bold: true))
+        }.padding(14).background(MenuHUD.surface, in: MenuCutShape(cut: 20))
+    }
+    private var eventStream: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack {
+                Image(systemName: "terminal").foregroundStyle(MenuHUD.accent)
+                Text("TLM.STREAM // IOPM_ASSERTIONS").foregroundStyle(MenuHUD.muted)
+                Spacer(minLength: 0)
+                Button(L(model.helperStatus == .enabled ? "重新核验" : "启用服务")) {
+                    if model.helperStatus == .enabled { Task { await model.refresh() } } else { model.enableHelper() }
+                }.buttonStyle(MenuActionStyle()).foregroundStyle(model.helperStatus == .enabled ? MenuHUD.signal : MenuHUD.amber)
+                Text("LOCAL").foregroundStyle(MenuHUD.accent)
+            }.font(MenuHUD.serif(9)).padding(.bottom, 2)
+            if model.history.isEmpty { Text(L("等待运行记录")).font(.system(size: 9)).foregroundStyle(MenuHUD.muted) }
+            ForEach(model.history.prefix(2)) { entry in
+                HStack(alignment: .firstTextBaseline, spacing: 6) {
+                    Text(entry.date.formatted(date: .omitted, time: .standard)).foregroundStyle(MenuHUD.muted)
+                    Text(L(entry.text)).foregroundStyle(MenuHUD.accent).lineLimit(1)
+                }.font(MenuHUD.mono(8))
             }
-        }.padding(12).background(TerminalStyle.surface)
-            .overlay(Rectangle().strokeBorder(TerminalStyle.warning.opacity(0.5)))
+        }.padding(10).frame(maxWidth: .infinity, alignment: .leading).frame(height: 72).background(MenuHUD.recess, in: MenuCutShape(cut: 14))
     }
 
-    private var footer: some View {
-        HStack(spacing: 8) {
-            TerminalIcon(name: protected ? "lock.shield" : "lock.trianglebadge.exclamationmark", size: 12)
-            Text(L(model.lockSummary)).font(.system(size: 10)).lineLimit(1).minimumScaleFactor(0.8)
-            Spacer(minLength: 0)
-            Text(model.display.lidClosed.map { $0 ? "LID::CLOSED" : "LID::OPEN" } ?? "LID::UNKNOWN")
-                .font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.accent)
-        }.foregroundStyle(protected ? TerminalStyle.signal : TerminalStyle.muted)
-            .padding(.horizontal, 16).frame(height: 32).background(TerminalStyle.surface)
-            .overlay(alignment: .top) { rule }
+    private var band: some View {
+        bandRack(compact: size.width < 1000)
+            .padding(.horizontal, 8).frame(maxWidth: .infinity, alignment: .leading).frame(height: 74)
+            .background(MenuHUD.surface)
+            .overlay(Rectangle().strokeBorder(MenuHUD.line.opacity(0.55), lineWidth: 0.6))
+            .shadow(color: MenuHUD.accent.opacity(0.18), radius: 8, x: -4)
+            .shadow(color: MenuHUD.secondary.opacity(0.15), radius: 8, x: 4)
+            .padding(4)
     }
-    private var rule: some View { Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1) }
+    private func bandRack(compact: Bool) -> some View {
+        HStack(spacing: compact ? 6 : 8) {
+            Button(action: cycleMode) {
+                HStack(spacing: 9) {
+                    ZStack(alignment: .bottomTrailing) {
+                        ApplicationBadge().frame(width: compact ? 36 : 44, height: compact ? 36 : 44)
+                        MenuLight(color: signal, size: 6).padding(1)
+                    }
+                    VStack(alignment: .leading, spacing: 5) {
+                        HStack(spacing: 5) {
+                            Text(L(title)).font(.system(size: 13, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                            Text(modeCode).font(MenuHUD.mono(8)).padding(.horizontal, 4).padding(.vertical, 2).background(MenuHUD.silver)
+                        }
+                        HStack(spacing: 5) { Text(L("切换模式")); Image(systemName: "chevron.right") }.font(.system(size: 9)).foregroundStyle(MenuHUD.muted)
+                    }
+                }.frame(width: compact ? 132 : 158, alignment: .leading)
+            }.buttonStyle(MenuActionStyle()).disabled(disabled)
+            separator
+            VStack(alignment: .leading, spacing: 4) {
+                HStack(spacing: 5) {
+                    MenuLight(color: signal, size: 6)
+                    Text(model.keepsAwake ? "AWAKE ACTIVE" : "SYSTEM NORMAL").font(MenuHUD.mono(9))
+                    if !compact, let pid = model.serviceInfo?.pid { Text("PID \(pid)").font(MenuHUD.mono(7)).padding(.horizontal, 3).background(MenuHUD.silver) }
+                }
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(missionTime).font(.system(size: compact ? 18 : 21, weight: .semibold, design: .monospaced)).tracking(0.5)
+                    if !compact { Text(deadline != nil ? "REMAINING" : "ELAPSED").font(MenuHUD.mono(6)).foregroundStyle(MenuHUD.muted) }
+                }
+            }.frame(width: compact ? 118 : 170, alignment: .leading)
+            if !compact {
+                HStack(spacing: 6) {
+                    Image(systemName: "thermometer.medium").foregroundStyle(thermalColor)
+                    Text(L(model.thermalSummary)).font(MenuHUD.mono(10))
+                }.frame(width: 84, height: 44, alignment: .center)
+                separator
+            }
+            MenuActionRail(accent: MenuHUD.accent, background: MenuHUD.recess, border: MenuHUD.line,
+                           previousLabel: L("向左滚动"), nextLabel: L("向右滚动")) {
+                HStack(spacing: compact ? 6 : 8) {
+            bandToggle("合盖继续运行", label: "合盖运行", binding: clamshell, enabled: !disabled && model.helperStatus == .enabled, width: compact ? 72 : 90)
+            bandToggle("正常亮度", label: "屏幕常亮", binding: display, enabled: !disabled && model.verifiedWork && (!display.wrappedValue || model.allowsScreenChoice(.systemIdle)), width: compact ? 82 : 96)
+            bandToggle("防止闲时屏保", label: "防屏保", binding: saver, enabled: !disabled && !model.screenEffectsControlledByOtherTasks && !model.otherTasksRequireScreenSaverPrevention, width: compact ? 74 : 82)
+            bandToggle("工作时保持未锁定", label: "未锁定", binding: unlocked, enabled: !disabled && (model.unlockedWorkEnabled || model.helperStatus == .enabled), width: compact ? 74 : 82)
+            separator
+            HStack(spacing: 0) { bandPreset(15); bandPreset(30) }.background(MenuHUD.recess)
+            railCommands
+                }.padding(.horizontal, 12)
+            }.frame(maxWidth: .infinity).frame(height: 44)
+
+        }.foregroundStyle(MenuHUD.ink)
+    }
+    private var separator: some View { Rectangle().fill(MenuHUD.line).frame(width: 1, height: 40) }
+    private func bandToggle(_ title: String, label: String, binding: Binding<Bool>, enabled: Bool, width: CGFloat) -> some View {
+        Toggle(L(title), isOn: binding).toggleStyle(MenuBandSwitchStyle(label: L(label), width: width)).disabled(!enabled).accessibilityLabel(L(title))
+    }
+    private func bandPreset(_ minutes: Int) -> some View {
+        Button { engage(Double(minutes)) } label: { Text("+\(minutes)m").font(MenuHUD.mono(10)).frame(width: 43, height: 32) }
+            .buttonStyle(MenuActionStyle()).disabled(disabled || model.jobRunning || model.error || (sessions.isActive && sessions.deadline == nil))
+    }
+    private var moreMenu: some View {
+        Button(action: openMain) { Image(systemName: "ellipsis").font(.system(size: 13, weight: .semibold)).frame(width: 22, height: 28).foregroundStyle(MenuHUD.accent) }
+            .buttonStyle(MenuActionStyle()).accessibilityLabel(L("打开主窗口"))
+    }
+    @ViewBuilder private var railCommands: some View {
+        railButton("打开主窗口", icon: "arrow.up.right.square", action: openMain)
+        railButton(model.helperStatus == .enabled ? "重新核验" : "启用服务", icon: "checkmark.shield") {
+            if model.helperStatus == .enabled { Task { await model.refresh() } } else { model.enableHelper() }
+        }.disabled(model.busy)
+        if !model.workRequests.active.isEmpty {
+            railButton("并行工作请求", icon: "list.bullet") { model.openWorkRequests(); closePopover?() }
+        }
+        ForEach(screenChoices.filter { model.allowsScreenChoice($0) }) { choice in
+            railButton(choice.title, icon: choice.icon) { Task { await model.setWorkScreenBehavior(choice) } }.disabled(disabled || !model.verifiedWork)
+        }
+        if model.countdownText != nil { railButton("取消倒计时", icon: "xmark", action: model.cancelVisibleCountdown) }
+        railButton("立即熄屏", icon: "display") { Task { await model.sleepDisplayNow() } }.disabled(disabled || !model.verifiedWork || model.otherTasksRequireDisplay)
+        railButton("立即休眠", icon: "power") { Task { await model.choose(.normal, sleep: true) } }.disabled(model.busy)
+        if model.pending != nil { railButton("打开系统设置", icon: "gearshape", action: model.openLockSettings) }
+        railButton("退出 Orexin", icon: "power") { Task { await model.requestQuit() } }.disabled(model.busy)
+    }
+    private func railButton(_ title: String, icon: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) { Image(systemName: icon).symbolRenderingMode(.monochrome).foregroundStyle(MenuHUD.ink); Text(L(title)) }.font(.system(size: 11, weight: .medium))
+                .padding(.horizontal, 10).frame(height: 32).foregroundStyle(MenuHUD.ink).background(MenuHUD.recess)
+        }.buttonStyle(MenuActionStyle())
+    }
+    private func engage(_ minutes: Double?) {
+        Task {
+            if let minutes, sessions.isActive { _ = sessions.extend(minutes: minutes) }
+            else { sessions.endCondition = minutes == nil ? .indefinite : .duration; if let minutes { sessions.durationMinutes = minutes }; await sessions.start() }
+            model.onUpdate?()
+        }
+    }
+    private func cycleMode() { Task { await model.selectWorkPreset(model.keepsAwake ? .normal : model.preferredAwakeMode) } }
+    private func openMain() { model.openPreferences?(); if !standalone { closePopover?() } }
+}
+
+private enum MenuHUD {
+    static var paper: Color { TerminalStyle.paper }
+    static var surface: Color { TerminalStyle.surface }
+    static var silver: Color { TerminalStyle.silver }
+    static var recess: Color { TerminalStyle.recess }
+    static var ink: Color { TerminalStyle.ink }
+    static var muted: Color { TerminalStyle.muted }
+    static var line: Color { TerminalStyle.line }
+    static var accent: Color { TerminalStyle.accent }
+    static var signal: Color { TerminalStyle.signal }
+    static var amber: Color { TerminalStyle.amber }
+    static var warning: Color { TerminalStyle.warning }
+    static var secondary: Color { TerminalStyle.secondary }
+    static var onAccent: Color { TerminalStyle.onAccent }
+    static func mono(_ size: CGFloat) -> Font { .custom("IBMPlexMono", size: size) }
+    static func serif(_ size: CGFloat, bold: Bool = false) -> Font { .custom(bold ? "TimesNewRomanPS-BoldMT" : "TimesNewRomanPSMT", size: size) }
+    static func song(_ size: CGFloat) -> Font { .custom("STSongti-SC-Bold", size: size) }
+}
+private struct MenuLight: View {
+    let color: Color
+    var size: CGFloat = 5
+    var body: some View { Circle().fill(color).frame(width: size, height: size).shadow(color: color.opacity(0.65), radius: 4) }
+}
+private struct MenuCutShape: Shape {
+    var cut: CGFloat = 10
+    func path(in r: CGRect) -> Path {
+        Path { p in
+            p.move(to: CGPoint(x: r.minX, y: r.minY)); p.addLine(to: CGPoint(x: r.maxX - cut, y: r.minY))
+            p.addLine(to: CGPoint(x: r.maxX, y: r.minY + cut)); p.addLine(to: CGPoint(x: r.maxX, y: r.maxY))
+            p.addLine(to: CGPoint(x: r.minX + cut, y: r.maxY)); p.addLine(to: CGPoint(x: r.minX, y: r.maxY - cut)); p.closeSubpath()
+        }
+    }
+}
+private struct MenuInterlockShape: Shape {
+    var reverse = false
+    func path(in r: CGRect) -> Path {
+        let s: CGFloat = 10
+        return Path { p in
+            p.move(to: CGPoint(x: reverse ? 0 : s, y: 0)); p.addLine(to: CGPoint(x: reverse ? r.maxX - s : r.maxX, y: 0))
+            p.addLine(to: CGPoint(x: reverse ? r.maxX : r.maxX - s, y: r.maxY)); p.addLine(to: CGPoint(x: reverse ? s : 0, y: r.maxY)); p.closeSubpath()
+        }
+    }
+}
+private struct MenuDeckSwitchStyle: ToggleStyle {
+    let title: String
+    let effective: Bool
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: 5) {
+                Text(effective ? "ACTIVE" : "STANDBY").font(MenuHUD.serif(9))
+                    .frame(width: 54, height: 18).foregroundStyle(effective ? MenuHUD.onAccent : MenuHUD.muted)
+                    .background(effective ? MenuHUD.accent : MenuHUD.line.opacity(0.7))
+                ZStack(alignment: configuration.isOn ? .trailing : .leading) {
+                    Rectangle().fill(MenuHUD.recess)
+                    Rectangle().fill(configuration.isOn ? MenuHUD.accent : MenuHUD.muted).frame(width: 15, height: 16).padding(3)
+                        .shadow(color: configuration.isOn ? MenuHUD.accent.opacity(0.65) : .clear, radius: 5)
+                }.frame(width: 43, height: 22)
+            }.opacity(enabled ? 1 : 0.45)
+                .animation(reduceMotion ? nil : .easeInOut(duration: 0.18), value: configuration.isOn)
+        }.buttonStyle(MenuActionStyle()).accessibilityLabel(title).accessibilityValue(configuration.isOn ? "ON" : "OFF")
+    }
+}
+private struct MenuDeckButtonStyle: PrimitiveButtonStyle {
+    var prominent = false
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: configuration.role) { configuration.trigger() } label: {
+            configuration.label.font(MenuHUD.song(12)).lineLimit(1).minimumScaleFactor(0.7)
+                .padding(.horizontal, 10).frame(maxWidth: .infinity).frame(height: 38)
+                .foregroundStyle(prominent ? MenuHUD.onAccent : MenuHUD.ink)
+                .background(prominent ? Color(red: 0.78, green: 0.04, blue: 0.07) : MenuHUD.silver, in: MenuCutShape(cut: 9)).opacity(enabled ? 1 : 0.4)
+        }.buttonStyle(MenuActionStyle(cut: 9))
+    }
+}
+private struct MenuBandSwitchStyle: ToggleStyle {
+    let label: String
+    let width: CGFloat
+    @Environment(\.isEnabled) private var enabled
+    func makeBody(configuration: Configuration) -> some View {
+        Button { configuration.isOn.toggle() } label: {
+            HStack(spacing: 6) {
+                MenuLight(color: configuration.isOn ? MenuHUD.accent : MenuHUD.muted, size: 5)
+                Text(label).font(.system(size: 12.5, weight: .semibold)).lineLimit(1).minimumScaleFactor(0.7)
+                Text(configuration.isOn ? "ON" : "OFF").font(MenuHUD.mono(9)).foregroundStyle(configuration.isOn ? MenuHUD.ink : MenuHUD.muted)
+                    .padding(.horizontal, 4).padding(.vertical, 2).background(MenuHUD.paper)
+            }.frame(width: width, height: 32).background(MenuHUD.recess).opacity(enabled ? 1 : 0.4)
+        }.buttonStyle(MenuActionStyle()).accessibilityLabel(label).accessibilityValue(configuration.isOn ? "ON" : "OFF")
+    }
+}
+private struct MenuDeckGrid: View {
+    var body: some View {
+        Canvas { context, size in
+            for x in stride(from: CGFloat(10), through: size.width, by: 20) {
+                for y in stride(from: CGFloat(10), through: size.height, by: 20) {
+                    context.fill(Path(ellipseIn: CGRect(x: x, y: y, width: 2, height: 2)), with: .color(MenuHUD.accent.opacity(0.12)))
+                }
+            }
+        }.allowsHitTesting(false)
+    }
+}
+private struct MenuActionStyle: PrimitiveButtonStyle {
+    var cut: CGFloat = 0
+    func makeBody(configuration: Configuration) -> some View {
+        Button(role: configuration.role) { ControlAudio.shared.click(); configuration.trigger() } label: { configuration.label }
+            .buttonStyle(MenuPressStyle(cut: cut))
+    }
+}
+private struct MenuPressStyle: ButtonStyle {
+    let cut: CGFloat
+    @Environment(\.isEnabled) private var enabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label.brightness(configuration.isPressed ? -0.16 : 0)
+            .opacity(enabled ? 1 : 0.45)
+            .clipShape(MenuCutShape(cut: cut)).contentShape(MenuCutShape(cut: cut))
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: configuration.isPressed)
+    }
 }

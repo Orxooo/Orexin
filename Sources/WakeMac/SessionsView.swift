@@ -7,6 +7,7 @@ import WakeMacCore
 struct SessionsView: View {
     @ObservedObject var model: AppModel
     @ObservedObject var controller: SessionController
+    var availableWidth: CGFloat
     @State private var extensionMinutes: Double = 15
     @State private var processSearch = ""
     @State private var showingSaverOptions = false
@@ -30,44 +31,114 @@ struct SessionsView: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            settingsPanel
-            effectsPanel
+        Group {
+            if availableWidth >= 920 {
+                HStack(alignment: .top, spacing: 18) {
+                    configurationPanels.frame(width: availableWidth - telemetryWidth - 18)
+                    telemetry.frame(width: telemetryWidth)
+                }
+            } else {
+                VStack(alignment: .leading, spacing: 18) {
+                    configurationPanels
+                    telemetry
+                }
+            }
         }
         .task { controller.refreshCursorAccess() }
         .onReceive(NotificationCenter.default.publisher(for: NSApplication.didBecomeActiveNotification)) { _ in
             controller.refreshCursorAccess()
         }
     }
+    private var telemetryWidth: CGFloat { min(340, availableWidth * 0.32) }
+    private var configurationWidth: CGFloat { availableWidth >= 920 ? availableWidth - telemetryWidth - 18 : availableWidth }
+    private var configurationPanels: some View {
+        VStack(alignment: .leading, spacing: 18) {
+            settingsPanel
+            effectsPanel
+            IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: model.snapshot?.lockPolicy == .immediate,
+                                  availableWidth: configurationWidth)
+        }
+    }
+    private var telemetry: some View {
+        VStack(spacing: 18) {
+            VStack(spacing: 14) {
+                HStack(spacing: 7) {
+                    TerminalSignal(color: TerminalStyle.accent)
+                    Text("OREXIN // LUNA.CORE").font(TerminalStyle.mono(11))
+                    Spacer(minLength: 0)
+                    Rectangle().fill(model.verifiedWork ? TerminalStyle.signal : TerminalStyle.line).frame(width: 5, height: 5)
+                }
+                Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1)
+                OrbitalMoon(phase: model.active?.rawValue ?? "unknown", labels: false)
+                    .frame(height: 250).background(TerminalStyle.recess)
+                    .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.5)))
+                VStack(spacing: 14) {
+                    HStack {
+                        Text("REMAINING CYCLE").font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
+                        Spacer(minLength: 0)
+                        TerminalSignal(color: controller.isActive ? TerminalStyle.signal : TerminalStyle.line)
+                    }
+                    Text(remaining).font(TerminalStyle.mono(34)).foregroundStyle(TerminalStyle.accent)
+                        .lineLimit(1).minimumScaleFactor(0.7)
+                    HStack(spacing: 8) {
+                        Button { _ = controller.extend(minutes: 15); model.onUpdate?() } label: {
+                            Text(L("+15 分钟")).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                        Button { _ = controller.extend(minutes: 60); model.onUpdate?() } label: {
+                            Text(L("延长 1 小时")).lineLimit(1).minimumScaleFactor(0.7).frame(maxWidth: .infinity, minHeight: 36)
+                        }
+                    }.buttonStyle(TerminalButtonStyle(width: nil)).disabled(!model.verifiedWork || controller.deadline == nil)
+                }.padding(12).background(TerminalStyle.recess)
+                    .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.5)))
+            }.padding(16).terminalSurface()
+            VStack(alignment: .leading, spacing: 12) {
+                HStack(spacing: 7) {
+                    TerminalIcon(name: "terminal", size: 13).foregroundStyle(TerminalStyle.signal)
+                    Text(L("会话记录")).font(.system(size: 11, weight: .medium))
+                    Spacer(minLength: 0)
+                    Text("EVENT STREAM").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
+                }
+                Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1)
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 12) {
+                        if model.history.isEmpty { Text(L("等待运行记录")).font(WorkType.caption).foregroundStyle(TerminalStyle.muted) }
+                        ForEach(model.history.prefix(8)) { entry in
+                            HStack(alignment: .top, spacing: 8) {
+                                Text(entry.date.formatted(date: .omitted, time: .standard)).foregroundStyle(TerminalStyle.muted)
+                                Text(L(entry.text)).foregroundStyle(TerminalStyle.accent).lineLimit(4).help(L(entry.text))
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }.font(TerminalStyle.mono(9))
+                        }
+                    }.frame(maxWidth: .infinity, alignment: .topLeading)
+                }.frame(height: availableWidth >= 920 ? 570 : 240)
+            }.padding(16).frame(maxWidth: .infinity, alignment: .topLeading).terminalSurface()
+        }.buttonStyle(TerminalButtonStyle())
+    }
+    private var remaining: String {
+        guard let deadline = controller.deadline else { return controller.isActive ? "∞" : "--:--:--" }
+        let seconds = max(0, Int(deadline.timeIntervalSince(model.now)))
+        return String(format: "%02d:%02d:%02d", seconds / 3600, (seconds / 60) % 60, seconds % 60)
+    }
 
     private var settingsPanel: some View {
         sessionPanel(number: "01", title: "会话设置", subtitle: "TARGET PRESETS", signal: TerminalStyle.accent) {
             VStack(alignment: .leading, spacing: 14) {
-                VStack(alignment: .leading, spacing: 8) {
-                    fieldHeading("开始时使用", subtitle: "INITIAL WORK MODE")
-                    HStack(spacing: 6) {
-                        modeCard(.desk, title: "桌面工作", detail: "屏幕与屏保由会话效果控制", icon: "display")
-                        modeCard(.background, title: "后台工作", detail: "合盖保活", icon: "laptopcomputer")
-                    }.padding(5).background(TerminalStyle.recess)
-                }.disabled(configurationLocked)
+                WorkToggle(title: "合盖继续运行", detail: "控制唤醒模式下的合盖行为。", icon: "laptopcomputer", isOn: Binding(get: { controller.defaultMode == .background }, set: { controller.defaultMode = $0 ? .background : .desk }))
+                    .padding(12).background(TerminalStyle.recess)
+                    .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.4)))
+                    .disabled(configurationLocked)
 
                 VStack(alignment: .leading, spacing: 8) {
-                    fieldHeading("结束条件", subtitle: "TERMINATION TRIGGER")
-                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 6), count: 4), spacing: 6) {
+                    HStack(alignment: .center, spacing: 8) {
+                        fieldHeading("结束条件", subtitle: "TERMINATION")
+                        Spacer(minLength: 0)
+                        otherConditions
+                    }
+                    LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 10), count: 2), spacing: 10) {
                         conditionCard(.indefinite, title: "手动结束", detail: "保持至手动切换", index: "01")
                         conditionCard(.duration, title: "定时持续", detail: "到时恢复正常休眠", index: "02")
                         conditionCard(.application, title: "应用退出", detail: "监测所选应用退出", index: "03")
                         conditionCard(.download, title: "下载完成", detail: "观察文件增长与稳定", index: "04")
-                    }
-                    HStack(spacing: 10) {
-                        Text(L("其他结束条件")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
-                        Spacer(minLength: 8)
-                        TerminalActionMenu(
-                            title: controller.endCondition == .untilDate || controller.endCondition == .process ? controller.endCondition.title : "指定时间 / 单个进程",
-                            titles: [SessionEndCondition.untilDate.title, SessionEndCondition.process.title]
-                        ) { index in
-                            controller.endCondition = index == 0 ? .untilDate : .process
-                        }.frame(width: 205)
                     }
                 }.disabled(configurationLocked)
 
@@ -81,6 +152,13 @@ struct SessionsView: View {
                 sessionAction
             }
         }
+    }
+    private var otherConditions: some View {
+        TerminalActionMenu(
+            title: controller.endCondition == .untilDate || controller.endCondition == .process ? controller.endCondition.title : "指定时间 / 单个进程",
+            titles: [SessionEndCondition.untilDate.title, SessionEndCondition.process.title]
+        ) { index in controller.endCondition = index == 0 ? .untilDate : .process }
+            .frame(width: 180)
     }
 
     private var durationPresets: some View {
@@ -101,15 +179,15 @@ struct SessionsView: View {
                     controller.endCondition = .indefinite
                 } label: {
                     Text(L("∞ 无限")).font(TerminalStyle.mono(11))
-                        .frame(minWidth: 58, minHeight: 30)
+                        .frame(maxWidth: .infinity, minHeight: 34)
                         .foregroundStyle(WorkStyle.ink)
-                        .background(controller.endCondition == .indefinite ? TerminalStyle.silver : WorkStyle.surface)
+                        .background(controller.endCondition == .indefinite ? TerminalStyle.silver : TerminalStyle.recess)
+                        .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
                         .overlay(alignment: .top) { selectionBar(controller.endCondition == .indefinite) }
                         .contentShape(Rectangle())
                 }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
                     .accessibilityLabel("不限时，手动结束")
                     .accessibilityAddTraits(controller.endCondition == .indefinite ? [.isSelected] : [])
-                Spacer(minLength: 0)
             }
             if controller.endCondition == .duration {
                 HStack(spacing: 10) {
@@ -120,10 +198,8 @@ struct SessionsView: View {
                     Text(L("分钟")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
                     Spacer(minLength: 0)
                 }
-            } else {
-                effectText("保持工作状态，直到你结束会话或手动切换模式。")
             }
-        }.padding(12).background(TerminalStyle.recess)
+        }
     }
 
     private func durationButton(_ title: String, minutes: Double) -> some View {
@@ -132,9 +208,10 @@ struct SessionsView: View {
             controller.durationMinutes = minutes
             controller.endCondition = .duration
         } label: {
-            Text(L(title)).font(TerminalStyle.mono(11)).frame(width: 40, height: 30)
+            Text(L(title)).font(TerminalStyle.mono(11)).frame(maxWidth: .infinity, minHeight: 34)
                 .foregroundStyle(WorkStyle.ink)
-                .background(selected ? TerminalStyle.silver : WorkStyle.surface)
+                .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
+                .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
                 .overlay(alignment: .top) { selectionBar(selected) }
                 .contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
@@ -143,32 +220,41 @@ struct SessionsView: View {
     }
 
     private var sessionAction: some View {
-        HStack(alignment: .center, spacing: 18) {
-            HStack(alignment: .top, spacing: 8) {
-                TerminalIcon(name: "info.circle", size: 15)
-                    .foregroundStyle(controller.isActive ? TerminalStyle.signal : WorkStyle.muted)
-                VStack(alignment: .leading, spacing: 3) {
-                    Text(L("当前会话状态")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
-                    Text(L(controller.status)).font(WorkType.body).fixedSize(horizontal: false, vertical: true)
-                        .accessibilityLabel(LF("会话状态：%@", L(controller.status)))
-                }
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 16) { sessionStatus; sessionButton }
+            VStack(alignment: .leading, spacing: 12) {
+                sessionStatus
+                sessionButton.frame(maxWidth: .infinity, alignment: .trailing)
             }
-            Spacer(minLength: 0)
-            Button {
-                Task {
-                    if controller.isActive { await controller.end() }
-                    else { await controller.start() }
-                }
-            } label: {
-                HStack(spacing: 10) {
-                    TerminalIcon(name: controller.isActive ? "stop.fill" : "play", size: 15)
-                    Text(L(controller.isStarting ? "正在核验…" : controller.isActive ? "结束会话" : "开始会话"))
-                        .font(.system(size: 16, weight: .semibold))
-                    Text(controller.isActive ? "END_SESSION" : "ENGAGE_SESSION").font(TerminalStyle.mono(11))
-                }.frame(minWidth: 230, minHeight: 42)
-            }.buttonStyle(WorkButtonStyle(prominent: true)).workKeyboardFocus(radius: 0)
-                .disabled(controller.isStarting)
-        }
+        }.padding(12).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.45)))
+    }
+    private var sessionStatus: some View {
+        HStack(alignment: .top, spacing: 8) {
+            TerminalIcon(name: "info.circle", size: 15)
+                .foregroundStyle(controller.isActive ? TerminalStyle.signal : WorkStyle.muted)
+            VStack(alignment: .leading, spacing: 3) {
+                Text(L("当前会话状态")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
+                Text(L(controller.status)).font(WorkType.body).fixedSize(horizontal: false, vertical: true)
+                    .accessibilityLabel(LF("会话状态：%@", L(controller.status)))
+            }
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var sessionButton: some View {
+        Button {
+            Task {
+                if controller.isActive { await controller.end() }
+                else { await controller.start() }
+            }
+        } label: {
+            HStack(spacing: 10) {
+                TerminalIcon(name: controller.isActive ? "stop.fill" : "play", size: 15)
+                Text(L(controller.isStarting ? "正在核验…" : controller.isActive ? "结束会话" : "开始会话"))
+                    .font(.system(size: 16, weight: .semibold))
+                Text(controller.isActive ? "END_SESSION" : "ENGAGE_SESSION").font(TerminalStyle.mono(11))
+            }.frame(minWidth: 210, minHeight: 42)
+        }.buttonStyle(WorkButtonStyle(prominent: true, width: 240)).workKeyboardFocus(radius: 0)
+            .disabled(controller.isStarting)
     }
 
     private func extensionControls(deadline: Date) -> some View {
@@ -186,17 +272,15 @@ struct SessionsView: View {
 
     private var effectsPanel: some View {
         sessionPanel(number: "02", title: "会话效果", subtitle: "HARDWARE ASSERTION MATRIX", signal: TerminalStyle.signal) {
-            effectText("保持桌面可见需同时开启防熄屏与防屏保；无需开启「工作时保持未锁定」。")
             VStack(alignment: .leading, spacing: 12) {
-                effectText("开关可预先设置；进入桌面或后台工作后生效，恢复正常休眠后停止。")
                 if model.screenEffectsControlledByOtherTasks {
                     WorkNote(text: "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。")
                 }
                 if !controller.screenSaverControlAvailable {
                     WorkNote(text: "当前后台服务不支持独立屏保控制，请完成任务后重启后台服务。")
                 }
-                effectRow(code: "DISPLAY", descriptor: "IDLE DISPLAY", title: "防止显示器闲时休眠", detail: "不会改变锁屏或密码设置；锁定后暂停。", isOn: displayPrevention, report: controller.effectReport.display, enabled: !model.screenEffectsControlledByOtherTasks) { EmptyView() }
-                effectRow(code: "SAVER", descriptor: "USER ACTIVITY", title: "防止闲时屏保", detail: "开启时也会保持显示器唤醒；锁定后暂停。", isOn: saverPrevention, report: controller.effectReport.screenSaver, enabled: controller.screenSaverControlAvailable && !model.screenEffectsControlledByOtherTasks,
+                effectRow(code: "DISPLAY", descriptor: "IDLE DISPLAY", title: "防止显示器闲时休眠", detail: model.otherTasksRequireDisplay ? "其他任务仍要求屏幕保持工作。" : "不会改变锁屏或密码设置；锁定后暂停。", isOn: displayPrevention, report: controller.effectReport.display, enabled: !model.screenEffectsControlledByOtherTasks && (!model.otherTasksRequireDisplay || !controller.effectivePreventDisplaySleep)) { EmptyView() }
+                effectRow(code: "SAVER", descriptor: "USER ACTIVITY", title: "防止闲时屏保", detail: model.otherTasksRequireScreenSaverPrevention ? "其他任务仍要求暂停屏保。" : "开启时也会保持显示器唤醒；锁定后暂停。", isOn: saverPrevention, report: controller.effectReport.screenSaver, enabled: controller.screenSaverControlAvailable && !model.screenEffectsControlledByOtherTasks && (!model.otherTasksRequireScreenSaverPrevention || !controller.effectivePreventScreenSaver),
                           actionTitle: L("例外应用") + (controller.screenSaverExceptionBundleIDs.isEmpty ? "" : " · \(controller.screenSaverExceptionBundleIDs.count)"), action: { showingSaverOptions.toggle() }) {
                     if showingSaverOptions {
                         VStack(alignment: .leading, spacing: 10) {
@@ -268,10 +352,10 @@ struct SessionsView: View {
                                           actionTitle: String? = nil, action: (() -> Void)? = nil,
                                           @ViewBuilder controls: () -> Content) -> some View {
         VStack(alignment: .leading, spacing: 9) {
-            HStack(alignment: .top, spacing: 10) {
+            HStack(alignment: .center, spacing: 10) {
                 Text("[" + code + "]").font(TerminalStyle.mono(9))
                     .foregroundStyle(isOn.wrappedValue ? TerminalStyle.accent : WorkStyle.muted)
-                    .frame(width: 63, alignment: .leading).padding(.top, 4)
+                    .frame(width: 63, alignment: .leading)
                 VStack(alignment: .leading, spacing: 5) {
                     ViewThatFits(in: .horizontal) {
                         HStack(spacing: 7) {
@@ -282,59 +366,41 @@ struct SessionsView: View {
                     }
                     Text(L(detail)).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
                         .fixedSize(horizontal: false, vertical: true)
-                    HStack(alignment: .top, spacing: 5) {
-                        Text("↳").font(TerminalStyle.mono(10)).foregroundStyle(WorkStyle.muted)
-                        Text(L(report)).font(TerminalStyle.mono(9)).foregroundStyle(WorkStyle.muted)
-                            .fixedSize(horizontal: false, vertical: true)
-                    }.accessibilityLabel(LF("运行反馈：%@", L(report)))
                 }.frame(maxWidth: .infinity, alignment: .leading)
                 Spacer(minLength: 0)
-                VStack(alignment: .trailing, spacing: 8) {
-                    Toggle(L(title), isOn: isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
-                            .disabled(!enabled)
-                        .accessibilityLabel(title).accessibilityHint(detail)
+                HStack(spacing: 8) {
                     if let actionTitle, let action {
-                        Button(L(actionTitle), action: action).font(WorkType.caption)
+                        Button(action: action) {
+                            Text(L(actionTitle)).lineLimit(1).minimumScaleFactor(0.7)
+                        }
                             .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
                     }
+                    Toggle(L(title), isOn: isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
+                        .disabled(!enabled)
+                        .accessibilityLabel(L(title)).accessibilityHint(L(detail))
                 }
             }
             controls()
-        }.padding(12).background(TerminalStyle.recess)
+        }.padding(12).background(TerminalStyle.recess).help(L(report))
             .overlay(Rectangle().strokeBorder(WorkStyle.line.opacity(0.3)))
-    }
-
-    private func modeCard(_ mode: WorkMode, title: String, detail: String, icon: String) -> some View {
-        let selected = controller.defaultMode == mode
-        return Button { controller.defaultMode = mode } label: {
-            HStack(spacing: 12) {
-                TerminalIcon(name: icon, size: 19)
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(L(title)).font(.system(size: 14, weight: .semibold))
-                    Text(L(detail)).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
-                }
-            }.frame(maxWidth: .infinity, minHeight: 46)
-                .foregroundStyle(selected ? WorkStyle.ink : WorkStyle.muted)
-                .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
-                .overlay(alignment: .top) { selectionBar(selected) }
-                .contentShape(Rectangle())
-        }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
-            .accessibilityLabel(title + "，" + detail)
-            .accessibilityAddTraits(selected ? [.isSelected] : [])
     }
 
     private func conditionCard(_ condition: SessionEndCondition, title: String, detail: String, index: String) -> some View {
         let selected = controller.endCondition == condition
         return Button { controller.endCondition = condition } label: {
             VStack(alignment: .leading, spacing: 6) {
-                Text("COND " + index).font(TerminalStyle.mono(10)).foregroundStyle(WorkStyle.muted)
-                Text(L(title)).font(.system(size: 14, weight: .semibold)).lineLimit(2)
-                    .minimumScaleFactor(0.85).frame(height: 34, alignment: .topLeading)
+                HStack {
+                    Text("COND " + index + " //").font(TerminalStyle.mono(9)).foregroundStyle(selected ? TerminalStyle.accent : WorkStyle.muted)
+                    Spacer(minLength: 0)
+                    TerminalSignal(color: selected ? TerminalStyle.accent : TerminalStyle.line)
+                }
+                Text(L(title)).font(.system(size: 14, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
                 Text(L(detail)).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
-                    .lineLimit(3).minimumScaleFactor(0.85).frame(height: 40, alignment: .topLeading)
-            }.frame(maxWidth: .infinity, alignment: .leading).padding(8)
+                    .fixedSize(horizontal: false, vertical: true)
+            }.frame(maxWidth: .infinity, minHeight: 66, alignment: .topLeading).padding(12)
                 .foregroundStyle(WorkStyle.ink)
                 .background(selected ? TerminalStyle.silver : TerminalStyle.recess)
+                .overlay(Rectangle().strokeBorder(selected ? TerminalStyle.accent.opacity(0.8) : TerminalStyle.line.opacity(0.45)))
                 .overlay(alignment: .top) { selectionBar(selected) }
                 .contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)

@@ -5,20 +5,33 @@ import Foundation
 import WakeMacCore
 
 extension AppModel {
-    var verifiedWork: Bool { !busy && !error && pending == nil && (active == .desk || active == .background) && keepsAwake && snapshot.map { lockRequirement.accepts($0.lockPolicy) } == true }
+    var verifiedWork: Bool { !busy && !error && pending == nil && (active == .desk || active == .background) && keepsAwake && snapshot.map { lockRequirement.accepts($0.lockPolicy) && (!unlockedWorkEnabled || $0.lockPolicy == .off) } == true }
+    var awakeOptionsVerified: Bool {
+        guard verifiedWork, let active else { return false }
+        if serviceSocket != nil {
+            return !remoteTaskStatus.values.contains { $0.request.state == .active && !$0.satisfied }
+        }
+        let behavior = workScreen.behavior(for: active)
+        return workScreen.isVerified(behavior)
+            && (!behavior.keepsDisplayActive || sessions.effectReport.displayAssertionActive)
+            && (!sessions.effectivePreventScreenSaver || sessions.effectReport.screenSaverAssertionActive)
+    }
     var screenEffectsControlledByOtherTasks: Bool { verifiedWork && legacyWorkMode == nil && workRequests.demand != nil }
     func changeDisplayPrevention(_ enabled: Bool) async {
+        if !enabled && otherTasksRequireDisplay {
+            message = "其他任务仍要求屏幕保持工作。"; onUpdate?(); return
+        }
         guard !screenEffectsControlledByOtherTasks else {
             message = "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。"
             onUpdate?(); return
         }
         let mode = legacyWorkMode ?? (active == .background ? WorkMode.background : .desk)
         if verifiedWork {
-            workScreen.runtimeBehavior = enabled ? (mode == .background ? .dim : .normalBrightness) : .systemIdle
+            workScreen.runtimeBehavior = enabled ? .normalBrightness : .systemIdle
             sessions.setDisplayPrevention(enabled)
         } else {
             for target in [WorkMode.desk, .background] {
-                workScreen.select(enabled ? (target == .background ? .dim : .normalBrightness) : .systemIdle, for: target)
+                workScreen.select(enabled ? .normalBrightness : .systemIdle, for: target)
             }
             sessions.preventDisplaySleep = enabled
         }
@@ -27,7 +40,10 @@ extension AppModel {
         onUpdate?()
     }
     func setWorkScreenBehavior(_ behavior: WorkScreenBehavior) async {
-        guard verifiedWork, let active else { return }
+        guard verifiedWork, let active, WorkScreenBehavior.choices(for: active).contains(behavior) else { return }
+        guard allowsScreenChoice(behavior) else {
+            message = "其他任务仍要求屏幕保持工作。"; onUpdate?(); return
+        }
         workScreen.select(behavior, for: legacyWorkMode ?? active)
         sessions.setDisplayPrevention(behavior.keepsDisplayActive)
         await applyWorkScreenPolicy(now: Date())
@@ -40,7 +56,7 @@ extension AppModel {
         catch { message = error.localizedDescription }
     }
     func restoreDesktopBrightnessFromKey() async {
-        guard verifiedWork, active == .desk, workScreen.restoreDesktopBrightnessOnKey,
+        guard verifiedWork, workScreen.restoreDesktopBrightnessOnKey,
               workScreen.behavior(for: .desk) == .dim else { return }
         if serviceSocket != nil {
             do { adoptServiceReply(try await serviceCall(.init("display-restore-on-key"))) }
@@ -50,7 +66,26 @@ extension AppModel {
         }
         onUpdate?()
     }
+    private var independentScreenRequirement: RequestScreen {
+        workRequests.active.filter { $0.spec.source != "interface" }.map(\.spec.requiredScreen)
+            .max { $0.priority < $1.priority } ?? .idle
+    }
+    var otherTasksRequireDisplay: Bool { independentScreenRequirement != .idle }
+    var otherTasksRequireScreenSaverPrevention: Bool {
+        workRequests.active.contains { $0.spec.source != "interface" && $0.spec.requiredScreen != .idle && $0.spec.preventScreenSaver != false }
+    }
+    func allowsScreenChoice(_ behavior: WorkScreenBehavior) -> Bool {
+        switch independentScreenRequirement {
+        case .idle: return true
+        case .dim: return behavior.keepsDisplayActive
+        case .awake: return behavior == .normalBrightness
+        }
+    }
     func sleepDisplayNow() async {
+        guard !otherTasksRequireDisplay else {
+            message = "其他任务需要屏幕，暂不能立即熄屏。"
+            onUpdate?(); return
+        }
         if serviceSocket != nil {
             do { adoptServiceReply(try await serviceCall(.init("display-sleep"))) } catch { message = error.localizedDescription }
             return
@@ -66,7 +101,7 @@ extension AppModel {
         } else { await choose(mode) }
     }
     func applyWorkScreenPolicy(now: Date) async {
-        workScreen.allowsDimExit = { [weak self] in self?.verifiedWork == true && self?.active == .desk }
+        workScreen.allowsDimExit = { [weak self] in self?.verifiedWork == true }
         // A mode transition temporarily clears active/snapshot. Do not treat
         // that transient state as a failed session when a display wakes.
         guard !busy else { return }
@@ -89,6 +124,9 @@ extension AppModel {
                               onBattery: battery?.onBattery == true, now: now)
     }
     func changeScreenSaverPrevention(_ enabled: Bool) async {
+        if !enabled && otherTasksRequireScreenSaverPrevention {
+            message = "其他任务仍要求暂停屏保。"; onUpdate?(); return
+        }
         guard !screenEffectsControlledByOtherTasks else {
             message = "当前仅有其他任务在运行；请先启动工作会话再调整显示器和屏保。"
             onUpdate?(); return
@@ -101,12 +139,12 @@ extension AppModel {
         if enabled {
             if verifiedWork {
                 if !workScreen.ownBehavior(for: mode).keepsDisplayActive {
-                    workScreen.runtimeBehavior = mode == .background ? .dim : .normalBrightness
+                    workScreen.runtimeBehavior = .normalBrightness
                     sessions.setDisplayPrevention(true)
                 }
             } else {
                 for target in [WorkMode.desk, .background] where !workScreen.ownBehavior(for: target).keepsDisplayActive {
-                    workScreen.select(target == .background ? .dim : .normalBrightness, for: target)
+                    workScreen.select(.normalBrightness, for: target)
                 }
             }
         }
@@ -131,6 +169,7 @@ extension AppModel {
         await tickFeatures(now: Date(), battery: battery)
     }
     func changeSessionLidMode(_ enabled: Bool) async {
+        sessions.defaultMode = enabled ? .background : .desk
         guard !busy, !sessions.isStarting else { return }
         if sessions.isActive || triggerOwnedMode != nil {
             let target: WorkMode = enabled ? .background : .desk
@@ -145,8 +184,7 @@ extension AppModel {
     func performShortcut(_ id: UInt32) async {
         guard !busy, !sessions.isStarting else { return }
         switch id {
-        case 1: await selectWorkPreset(.background)
-        case 2: await selectWorkPreset(.desk)
+        case 1, 2: await selectWorkPreset(preferredAwakeMode)
         case 3: await choose(.normal)
         case 4:
             if verifiedWork { await choose(.normal) }
@@ -194,10 +232,14 @@ enum ScriptControlAction: String, CaseIterable {
             if model.triggerOwnedMode != nil { return -1 }
             return model.sessions.isActive && [.application, .process, .download].contains(model.sessions.endCondition) ? -2 : 0
         case .displayAllowed: return !model.sessions.effectivePreventDisplaySleep
-        case .allowDisplay: await model.changeDisplayPrevention(false)
+        case .allowDisplay:
+            guard !model.otherTasksRequireDisplay else { throw ModeError("其他任务仍要求屏幕保持工作。") }
+            await model.changeDisplayPrevention(false)
         case .preventDisplay: await model.changeDisplayPrevention(true)
         case .saverAllowed: return !model.sessions.effectivePreventScreenSaver
-        case .allowSaver: await model.changeScreenSaverPrevention(false)
+        case .allowSaver:
+            guard !model.otherTasksRequireScreenSaverPrevention else { throw ModeError("其他任务仍要求暂停屏保。") }
+            await model.changeScreenSaverPrevention(false)
         case .preventSaver: await model.changeScreenSaverPrevention(true)
         case .closedEnabled: await model.refresh(); return model.verifiedWork && model.runsWithLidClosed
         case .enableClosed, .disableClosed:

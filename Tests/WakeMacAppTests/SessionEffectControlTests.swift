@@ -15,7 +15,7 @@ import WakeMacCore
     }
     private final class Effects: SessionEffectManaging {
         func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport {
-            .init(displayAssertionActive: choices.preventDisplaySleep,
+            .init(displayAssertionActive: choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver,
                   display: choices.preventDisplaySleep ? "display.active" : "允许显示器休眠",
                   screenSaver: choices.preventScreenSaver ? "saver.active" : "允许屏保",
                   cursor: choices.moveCursor ? "cursor.active" : "未启用")
@@ -206,7 +206,7 @@ import WakeMacCore
         XCTAssertTrue(client.workRequests.active.contains { $0.id == other.id })
         XCTAssertTrue(service.sessions.choices.preventScreenSaver)
         XCTAssertTrue(client.sessions.choices.preventScreenSaver)
-        XCTAssertTrue(client.sessions.effectReport.screenSaver.contains("其他工作任务"))
+        XCTAssertEqual(client.message, "其他任务仍要求暂停屏保。")
         try await service.completeWork(other, exitCode: 0)
         await client.choose(.normal)
     }
@@ -331,7 +331,7 @@ import WakeMacCore
         XCTAssertFalse(m.sessions.choices.preventScreenSaver)
         try await m.completeWork(other, exitCode: 0)
     }
-    func testServiceManualTransitionsClearTemporarySessionEffects() async throws {
+    func testServiceNormalTransitionClearsEffectsAndClamshellTransitionPreservesThem() async throws {
         let service = model()
         service.isTaskService = true
         service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
@@ -357,7 +357,8 @@ import WakeMacCore
         XCTAssertTrue(service.sessions.choices.preventScreenSaver)
         client.sessions.setScreenSaverPrevention(false)
         await client.choose(.background)
-        XCTAssertNil(client.sessions.effectOverrides)
+        XCTAssertEqual(client.sessions.effectOverrides?.saver, false)
+        XCTAssertFalse(service.sessions.choices.preventScreenSaver)
         await client.choose(.normal)
     }
     func testNewServiceSessionDoesNotInheritPreviousManualScreenOverride() async throws {
@@ -446,7 +447,7 @@ import WakeMacCore
         }
         // A separate mocked work session allows interactive review without touching live power.
         await m.choose(.desk)
-        let host = NSHostingView(rootView: ScrollView { SessionsView(model: m, controller: m.sessions).padding(20) }.preferredColorScheme(.dark))
+        let host = NSHostingView(rootView: ScrollView { SessionsView(model: m, controller: m.sessions, availableWidth: 960).padding(20) }.preferredColorScheme(.dark))
         window.setContentSize(.init(width: 1000, height: 800)); window.contentView = host
         window.makeKeyAndOrderFront(nil)
         try await Task.sleep(for: .milliseconds(350)); host.layoutSubtreeIfNeeded()

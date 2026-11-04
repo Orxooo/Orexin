@@ -22,17 +22,23 @@ enum TerminalStyle {
     static var warning: Color { adaptive(0xA14E43, 0xF3A29A) }
     static var secondary: Color { adaptive(0x63509B, 0xBFA2E1) }
     static var onAccent: Color { adaptive(0xFFFFFF, 0x06212B) }
+    static var switchOn: Color { adaptive(0x0087FF, 0x00D9EB, amber: 0xFFB52E) }
+    static var switchLabel: Color { adaptive(0x0059B3, 0x00D9EB, amber: 0xFFB52E) }
+    static var switchOff: Color { adaptive(0xA9C5D8, 0x789BA9, amber: 0x795B3E) }
+    static var switchTrack: Color { adaptive(0xF0F9FF, 0x070F17, amber: 0x14100B) }
+    static var switchLine: Color { adaptive(0x9BC3E0, 0x2C3C44, amber: 0x665036) }
+    static var switchMuted: Color { adaptive(0x4580A3, 0x82959B, amber: 0xBA9A70) }
     static func display(_ size: CGFloat) -> Font { .system(size: size, weight: .semibold) }
     static func mono(_ size: CGFloat) -> Font { .custom("IBMPlexMono", size: size) }
     private static let colors = NSCache<NSString, NSColor>()
-    private static func adaptive(_ light: UInt32, _ dark: UInt32) -> Color {
+    private static func adaptive(_ light: UInt32, _ dark: UInt32, amber amberOverride: UInt32? = nil) -> Color {
         let selectedTheme = UserDefaults.standard.string(forKey: "orexin.appearance.theme") ?? "dark"
-        let key = "Orexin.\(selectedTheme).\(light).\(dark)" as NSString
+        let key = "Orexin.\(selectedTheme).\(light).\(dark).\(amberOverride ?? 0)" as NSString
         if let color = colors.object(forKey: key) { return Color(nsColor: color) }
         let color = NSColor(name: NSColor.Name(key as String)) { appearance in
             let darkMode = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
             let amber = selectedTheme == "amber"
-            let amberColor: UInt32 = dark == 0x00D9EB ? 0xF3A567 : dark == 0x42EDAE ? 0xFFC568 : dark == 0x103B43 ? 0x3B2C1C : dark
+            let amberColor: UInt32 = amberOverride ?? (dark == 0x00D9EB ? 0xF3A567 : dark == 0x42EDAE ? 0xFFC568 : dark == 0x103B43 ? 0x3B2C1C : dark)
             let hex = darkMode ? (amber ? amberColor : dark) : light
             return NSColor(srgbRed: CGFloat((hex >> 16) & 255) / 255,
                            green: CGFloat((hex >> 8) & 255) / 255,
@@ -93,25 +99,28 @@ struct TerminalGrid: View {
 struct TerminalButtonStyle: PrimitiveButtonStyle {
     var prominent = false
     var sound = true
+    var width: CGFloat? = 132
     func makeBody(configuration: Configuration) -> some View {
         Button(role: configuration.role) {
             if sound { ControlAudio.shared.click() }
             configuration.trigger()
         } label: { configuration.label }
-            .buttonStyle(TerminalRenderedButtonStyle(prominent: prominent))
+            .buttonStyle(TerminalRenderedButtonStyle(prominent: prominent, width: width))
     }
 }
 
 private struct TerminalRenderedButtonStyle: ButtonStyle {
     var prominent = false
+    var width: CGFloat?
     @Environment(\.isEnabled) private var enabled
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     func makeBody(configuration: Configuration) -> some View {
-        TerminalButtonBody(configuration: configuration, prominent: prominent, enabled: enabled, reduceMotion: reduceMotion)
+        TerminalButtonBody(configuration: configuration, prominent: prominent, width: width, enabled: enabled, reduceMotion: reduceMotion)
     }
     private struct TerminalButtonBody: View {
         let configuration: Configuration
         let prominent: Bool
+        let width: CGFloat?
         let enabled: Bool
         let reduceMotion: Bool
         @State private var hovered = false
@@ -119,7 +128,8 @@ private struct TerminalRenderedButtonStyle: ButtonStyle {
         private var color: Color { destructive ? TerminalStyle.warning : TerminalStyle.accent }
         var body: some View {
             configuration.label.font(.system(size: 12, weight: .semibold))
-                .padding(.horizontal, 15).frame(minHeight: 36)
+                .lineLimit(1).minimumScaleFactor(0.6)
+                .padding(.horizontal, width == 36 ? 0 : 15).frame(width: width, height: 36)
                 .foregroundStyle(prominent ? TerminalStyle.onAccent : destructive ? TerminalStyle.warning : TerminalStyle.ink)
                 .background(prominent ? color : hovered && enabled ? TerminalStyle.selection : TerminalStyle.silver.opacity(0.65))
                 .clipShape(Rectangle())
@@ -171,19 +181,30 @@ struct TerminalSwitchStyle: ToggleStyle {
         })
         return Button { binding.wrappedValue.toggle() } label: {
             ZStack(alignment: .leading) {
-                Rectangle().fill(configuration.isOn ? TerminalStyle.accent : TerminalStyle.silver)
-                    .frame(width: 31, height: 25)
-                    .offset(x: configuration.isOn ? 0 : 31)
                 HStack(spacing: 0) {
-                    Text("ON").foregroundStyle(configuration.isOn ? TerminalStyle.onAccent : TerminalStyle.muted).frame(width: 31, height: 25)
-                    Text("OFF").foregroundStyle(configuration.isOn ? TerminalStyle.muted : TerminalStyle.ink).frame(width: 31, height: 25)
-                }
-            }.font(TerminalStyle.mono(10))
-                .padding(3).background(TerminalStyle.recess)
-                .overlay(Rectangle().strokeBorder(configuration.isOn ? TerminalStyle.accent.opacity(0.65) : TerminalStyle.line))
-                .opacity(enabled ? 1 : 0.4).padding(.vertical, 3).contentShape(Rectangle())
+                    Text("ON").foregroundStyle(TerminalStyle.switchLabel).frame(width: 34).opacity(configuration.isOn ? 1 : 0)
+                    Spacer(minLength: 0)
+                    Text("OFF").foregroundStyle(TerminalStyle.switchMuted).frame(width: 34).opacity(configuration.isOn ? 0 : 1)
+                }.frame(width: 76, height: 20)
+                Rectangle()
+                    .fill((configuration.isOn ? TerminalStyle.switchOn : TerminalStyle.switchOff).gradient)
+                    .overlay(Rectangle().strokeBorder(configuration.isOn ? TerminalStyle.switchOn.opacity(0.9) : TerminalStyle.switchLine))
+                    .overlay {
+                        HStack(spacing: 2) {
+                            ForEach(0..<3) { _ in Rectangle().fill(TerminalStyle.switchTrack.opacity(0.5)).frame(width: 1, height: 10) }
+                        }
+                    }
+                    .frame(width: 36, height: 20)
+                    .shadow(color: TerminalStyle.switchOn.opacity(configuration.isOn && enabled ? 0.65 : 0), radius: 4)
+                    .shadow(color: TerminalStyle.switchOn.opacity(configuration.isOn && enabled ? 0.25 : 0), radius: 8)
+                    .offset(x: configuration.isOn ? 40 : 0)
+            }.font(TerminalStyle.mono(9))
+                .padding(.horizontal, 5).padding(.vertical, 8).background(TerminalStyle.switchTrack)
+                .overlay(Rectangle().strokeBorder(TerminalStyle.switchLine, lineWidth: 2))
+                .overlay(Rectangle().strokeBorder(TerminalStyle.switchLine.opacity(0.55)).padding(3))
+                .animation(reduceMotion ? nil : .spring(response: 0.26, dampingFraction: 0.82), value: configuration.isOn)
+                .opacity(enabled ? 1 : 0.4).contentShape(Rectangle())
         }.buttonStyle(TerminalPlainButtonStyle(sound: false)).workKeyboardFocus(radius: 0)
-            .animation(reduceMotion ? nil : .spring(response: 0.3, dampingFraction: 0.72), value: configuration.isOn)
             .accessibilityRepresentation {
                 Toggle(isOn: binding) { configuration.label }.toggleStyle(.switch)
             }

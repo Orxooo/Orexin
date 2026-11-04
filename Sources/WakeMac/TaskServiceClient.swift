@@ -39,6 +39,10 @@ extension AppModel {
         return reply
     }
     func adoptServiceReply(_ reply: ControlReply) {
+        if reply.displayDimmingPaused == true, !busy, triggerOwnedMode == nil, interfaceHandle != nil, interfaceSpec?.screen == .dim,
+           let mode = reply.mode, mode != .normal, workScreen.ownBehavior(for: mode) == .dim {
+            workScreen.select(.normalBrightness, for: mode)
+        }
         workScreen.observeServiceDimState(paused: reply.displayDimmingPaused, needsAccess: reply.dimExitNeedsInputAccess)
         if let service = reply.service {
             if let previous = connectedServiceInstanceID, previous != service.instanceID {
@@ -138,6 +142,7 @@ extension AppModel {
     }
     func chooseThroughService(_ mode: WorkMode, sleep: Bool, automatic: Bool, reconcilingRequests: Bool) async {
         let attemptStarted = Date()
+        let continuingAwake = (active == .desk || active == .background) && mode != .normal
         if busy && mode != .normal { return }
         // The timer already renews the lease and reads service state. Reconcile
         // unchanged, verified work without publishing a user-visible transition.
@@ -154,7 +159,7 @@ extension AppModel {
             onUpdate?()
         }
         do {
-            if !reconcilingRequests && (!automatic || mode == .normal) {
+            if !reconcilingRequests && (!automatic || mode == .normal) && !continuingAwake {
                 sessions.effectOverrides = nil
                 workScreen.runtimeBehavior = nil
             }

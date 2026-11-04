@@ -1461,3 +1461,83 @@
 "Esc / 亮度键恢复" = "Rétablir avec Échap / touches de luminosité";
 "屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Rétablir la luminosité précédente en maintenant la session de bureau active.";
 "跨应用恢复需要输入监控权限" = "L’autorisation de surveillance de l’entrée est nécessaire depuis les autres apps";
+
+"唤醒模式" = "Mode éveillé";
+"正常模式" = "Mode normal";
+"唤醒模式运行中" = "Mode éveillé actif";
+"开启唤醒模式" = "Démarrer le mode éveillé";
+"开启唤醒模式（备用）" = "Démarrer le mode éveillé (autre raccourci)";
+"保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。" = "Garder le système actif ; régler l’écran, l’économiseur, le déverrouillage et le capot selon les besoins.";
+"屏幕最暗时恢复原亮度，保留唤醒会话。" = "Rétablir la luminosité sans terminer la session éveillée.";
+"每次新工作需账户授权；结束后恢复即时密码保护。" = "Autoriser chaque nouvelle session ; la protection immédiate par mot de passe revient à la fin.";
+"屏幕：%@ · 屏保：%@ · 锁屏：%@ · 合盖：%@" = "Écran : %@ · Économiseur : %@ · Verrouillage : %@ · Capot : %@";
+"开关可预先设置；进入唤醒模式后生效，恢复正常模式后停止。" = "Configurer les options avant le démarrage. Elles s’appliquent en mode éveillé et cessent en mode normal.";
+"启动唤醒模式并设置合盖行为" = "Démarrer le mode éveillé et configurer le capot";
+"通过 CLI 或 AppleScript 启动唤醒会话，分别设置屏幕与合盖行为。" = "Démarrer une session via CLI ou AppleScript et régler séparément l’écran et le capot.";
+"保持未锁定" = "Maintenir déverrouillé";
+"允许休眠" = "Autoriser la veille";
+"继续运行" = "Continuer";
+"mode 必须为 awake。" = "mode doit être awake.";
+"唤醒选项已生效" = "Options d’éveil actives";
+"正在核验唤醒选项" = "Vérification des options d’éveil";
+"屏保控制尚未通过系统核验。" = "Le contrôle de l’économiseur n’a pas encore été vérifié par le système.";
+
+"唤醒选项" = "Options d’éveil";
+
+"控制唤醒模式下的合盖行为。" = "Régler le comportement du capot en mode éveillé.";
+
+"合盖服务已移除，唤醒模式仍可使用。" = "Service de capot supprimé. Le mode éveillé reste disponible.";
+"自动触发只支持启动唤醒模式。" = "Les règles automatiques peuvent uniquement démarrer le mode éveillé.";
+"请先开启唤醒模式。" = "Démarrer d’abord le mode éveillé.";
+"脱离外接电源时，防止唤醒状态耗尽电池。" = "Protéger la batterie d’un éveil prolongé après débranchement de l’alimentation externe.";
+
+"其他任务需要屏幕，暂不能立即熄屏。" = "D’autres tâches nécessitent l’écran. La mise en veille de l’écran est temporairement indisponible.";
+"当前密码策略不执行闲置锁定。" = "La politique de mot de passe actuelle suspend le verrouillage à l’inactivité.";
+
+"其他任务仍要求屏幕保持工作。" = "D’autres tâches nécessitent toujours un écran actif.";
+"其他任务仍要求暂停屏保。" = "D’autres tâches nécessitent toujours de suspendre l’économiseur.";
+
+"唤醒配置" = "Configuration de veille active";
+"延长 1 小时" = "Prolonger de 1 heure";
+
+"定位权限已授权，可读取 Wi-Fi 网络名称。" = "Accès à la localisation autorisé. Les noms des réseaux Wi-Fi sont disponibles.";
+"蓝牙权限已授权，可读取已连接设备。" = "Accès Bluetooth autorisé. Les appareils connectés sont disponibles.";
+
+"设置定时" = "Programmer";
+"合盖服务尚未授权" = "Le service de couverture conjointe n'est pas encore autorisé";
+
+"菜单栏主题" = "Thème de la barre des menus";
+
+"仪表舱" = "Tableau de bord";
+
+"横向悬浮条" = "HUD horizontal";
+
+"屏幕策略" = "Comportement de l’écran";
+
+"切换模式" = "Changer de mode";
+
+"未锁定" = "Déverrouillé";
+
+
+
+"即时保护" = "Protection immédiate";
+
+
+
+"工作会话内生效" = "Actif pendant les sessions";
+
+"锁屏后立即要求密码" = "Mot de passe après verrouillage";
+
+"使用系统锁屏策略" = "Utilise le verrouillage système";
+
+"系统后台辅助服务" = "Service auxiliaire en arrière-plan";
+
+"生效中" = "Actif";
+
+"待启用" = "En attente";
+
+"唤醒" = "Éveil";
+
+"向左滚动" = "Défiler vers la gauche";
+
+"向右滚动" = "Défiler vers la droite";

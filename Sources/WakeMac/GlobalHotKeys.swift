@@ -14,7 +14,7 @@ struct ShortcutBinding: Codable, Equatable, Identifiable {
     }
     var title: String {
         switch id {
-        case 1: "后台工作"; case 2: "桌面工作"; case 3: "正常休眠"
+        case 1: "开启唤醒模式"; case 2: "开启唤醒模式（备用）"; case 3: "正常模式"
         case 4: "开始 / 结束会话"; case 5: "允许 / 阻止显示器休眠"
         case 6: "允许 / 阻止屏保"; case 7: "开启 / 关闭合盖运行"
         case 8: "延长会话 15 分钟"; case 9: "打开菜单栏面板"

@@ -34,6 +34,9 @@ extension AppModel {
         }
         controller.onBegin = { [weak self] mode in
             guard let self, !self.busy else { return false }
+            if !self.verifiedWork, self.workScreen.ownBehavior(for: mode) == .dim {
+                self.workScreen.select(.normalBrightness, for: mode)
+            }
             self.suppressCurrentTriggers()
             self.sessions.effectOverrides = nil
             self.workScreen.runtimeBehavior = nil
@@ -121,9 +124,9 @@ extension AppModel {
                 }
                 sessions.effectOverrides = behavior
                 if let display = desired.preventDisplaySleep {
-                    workScreen.runtimeBehavior = display ? (targetMode == .background ? .dim : .normalBrightness) : .systemIdle
+                    workScreen.runtimeBehavior = display ? .normalBrightness : .systemIdle
                 } else if desired.preventScreenSaver == true {
-                    workScreen.runtimeBehavior = targetMode == .background ? .dim : .normalBrightness
+                    workScreen.runtimeBehavior = .normalBrightness
                 } else { workScreen.runtimeBehavior = nil }
                 await applyWorkScreenPolicy(now: date)
                 await sessions.tick(now: date)

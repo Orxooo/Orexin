@@ -11,7 +11,7 @@ extension AppModel {
                 detail: item.state != .active ? item.reason ?? item.state.rawValue : satisfied ? "Verified" : requestUnsatisfiedReason(item.spec),
                 commandRunning: runningCommandIDs.contains(item.id))
         }
-        var reply = ControlReply(handle: handle, tasks: tasks, mode: active, verified: verifiedWork, sleepAt: automation.jobSleepAt)
+        var reply = ControlReply(handle: handle, tasks: tasks, mode: active, verified: awakeOptionsVerified, sleepAt: automation.jobSleepAt)
         reply.displayDimmingPaused = workScreen.dimmingPaused
         reply.dimExitNeedsInputAccess = workScreen.dimExitNeedsInputAccess
         reply.batterySleepAt = automation.batterySleepAt

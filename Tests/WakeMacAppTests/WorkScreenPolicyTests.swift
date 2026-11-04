@@ -60,13 +60,13 @@ import WakeMacCore
         await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now.addingTimeInterval(7))
         XCTAssertEqual(brightness, 0, accuracy: 0.001)
     }
-    func testDimExitDoesNotAffectBackgroundOrDisabledPreference() async {
+    func testDimExitSupportsClamshellButHonorsDisabledPreference() async {
         let policy = fixture(), now = Date()
         var brightness: Float = 0.6
         policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
         await policy.tick(mode: .background, working: true, state: awake, onBattery: false, now: now)
         policy.handleDimExitInput()
-        XCTAssertEqual(brightness, 0)
+        XCTAssertEqual(brightness, 0.6)
         policy.restoreDesktopBrightnessOnKey = false
         policy.select(.dim, for: .desk)
         await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now)
@@ -122,7 +122,8 @@ import WakeMacCore
         XCTAssertTrue(DimExitKeyMonitor.matches(escape))
     }
     func testDesktopDimExitPropagatesThroughServiceWithoutEndingWork() async throws {
-        let service = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "DimService." + UUID().uuidString)!)
+        let service = AppModel(backend: AutomationBackend(), preferences: UserDefaults(suiteName: "DimService." + UUID().uuidString)!, sessionEffects: VerifiedScreenEffects())
+        service.workScreen.readBrightness = { 0 }; service.workScreen.writeBrightness = { _ in }
         service.isTaskService = true
         service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
         service.thermalStateProvider = { .nominal }
@@ -209,7 +210,7 @@ import WakeMacCore
     func testPresetDefaultsAndLegacyImmediateSleepMigration() {
         let preferences = UserDefaults(suiteName: "ScreenDefaults." + UUID().uuidString)!
         let defaults = WorkScreenPolicy(preferences: preferences)
-        XCTAssertEqual(defaults.background, .dim)
+        XCTAssertEqual(defaults.background, .normalBrightness)
         XCTAssertEqual(defaults.desktop, .normalBrightness)
         preferences.set("immediateSleep", forKey: "orexin.screen.background")
         preferences.set("systemIdle", forKey: "orexin.screen.desktop")
@@ -236,9 +237,10 @@ import WakeMacCore
         var brightness: Float = 0.64, sleeps = 0
         policy.readBrightness = { brightness }; policy.writeBrightness = { brightness = $0 }
         policy.requestSleep = { sleeps += 1 }
-        policy.select(.dim, for: .background); policy.select(.normalBrightness, for: .desk)
+        policy.select(.dim, for: .background)
         await policy.tick(mode: .background, working: true, state: awake, onBattery: false, now: now)
         XCTAssertEqual(brightness, 0, accuracy: 0.001)
+        policy.select(.normalBrightness, for: .desk)
         await policy.tick(mode: .desk, working: true, state: awake, onBattery: false, now: now.addingTimeInterval(1))
         XCTAssertEqual(brightness, 0.64, accuracy: 0.001)
         XCTAssertEqual(sleeps, 0)
@@ -285,13 +287,13 @@ import WakeMacCore
         XCTAssertTrue(session.choices.moveCursor); XCTAssertTrue(session.choices.preventDisplaySleep)
         XCTAssertTrue(session.choices.preventScreenSaver)
     }
-    func testModeChoicesAndSavedPoliciesRemainIndependent() {
+    func testModeChoicesUseOneSharedSavedScreenPolicy() {
         let policy = fixture()
         XCTAssertEqual(WorkScreenBehavior.choices(for: .background), [.dim, .normalBrightness, .systemIdle])
         XCTAssertEqual(WorkScreenBehavior.choices(for: .desk), [.dim, .normalBrightness, .systemIdle])
         policy.select(.dim, for: .background)
         policy.select(.normalBrightness, for: .desk)
-        XCTAssertEqual(policy.behavior(for: .background), .dim)
+        XCTAssertEqual(policy.behavior(for: .background), .normalBrightness)
         XCTAssertEqual(policy.behavior(for: .desk), .normalBrightness)
         policy.select(.immediateSleep, for: .desk)
         XCTAssertEqual(policy.behavior(for: .desk), .normalBrightness)
@@ -321,4 +323,11 @@ import WakeMacCore
         let repeated = await policy.normalSleepIsDue(state: locked, onBattery: false, now: now.addingTimeInterval(5))
         XCTAssertFalse(repeated)
     }
+}
+
+@MainActor private final class VerifiedScreenEffects: SessionEffectManaging {
+    func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport {
+        .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver)
+    }
+    func release() {}
 }

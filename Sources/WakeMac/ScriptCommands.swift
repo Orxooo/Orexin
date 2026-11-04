@@ -10,8 +10,8 @@ struct ScriptSessionArguments {
     let mode: WorkMode
     let minutes: Double?
     init(_ args: [String: Any]) throws {
-        let raw = args["mode"] as? String ?? "desktop"
-        switch raw { case "desktop": mode = .desk; case "background": mode = .background; default: throw ModeError("mode 必须为 desktop 或 background。") }
+        let raw = args["mode"] as? String ?? "awake"
+        switch raw { case "awake": mode = (args["clamshell"] as? Bool == true) ? .background : .desk; case "desktop": mode = .desk; case "background": mode = .background; default: throw ModeError("mode 必须为 awake。") }
         if let value = args["minutes"] {
             guard let number = value as? NSNumber, number.doubleValue.isFinite, (1...10080).contains(number.doubleValue) else { throw ModeError("for minutes 必须为 1–10080 分钟。") }
             minutes = number.doubleValue

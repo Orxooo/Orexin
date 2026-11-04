@@ -9,6 +9,34 @@ struct TerminalChoice<Value: Hashable> {
     init(_ title: String, _ value: Value) { self.title = title; self.value = value }
 }
 
+struct TerminalDisclosureSection<Content: View>: View {
+    let title: String
+    @ViewBuilder var content: Content
+    @State private var expanded = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Button { expanded.toggle() } label: {
+                HStack(spacing: 10) {
+                    TerminalIcon(name: "chevron.right", size: 13).rotationEffect(.degrees(expanded ? 90 : 0))
+                    Text(L(title)).font(.system(size: 12, weight: .semibold))
+                    Spacer(minLength: 8)
+                    Text(L(expanded ? "收起" : "展开")).font(TerminalStyle.mono(9))
+                }.foregroundStyle(TerminalStyle.accent).padding(.horizontal, 14).frame(minHeight: 46)
+                    .frame(maxWidth: .infinity, alignment: .leading).contentShape(Rectangle())
+            }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
+                .accessibilityValue(L(expanded ? "已展开" : "已折叠"))
+            if expanded {
+                Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1)
+                content.padding(14).frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }.background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.65)))
+            .animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: expanded)
+    }
+}
+
 struct TerminalPicker<Value: Hashable>: View {
     let title: String
     @Binding var selection: Value
@@ -16,7 +44,7 @@ struct TerminalPicker<Value: Hashable>: View {
     let selectionSound: Bool
     let localizeChoices: Bool
     let controlHeight: CGFloat
-    init(_ title: String, selection: Binding<Value>, choices: [TerminalChoice<Value>], selectionSound: Bool = true, localizeChoices: Bool = true, controlHeight: CGFloat = 32) {
+    init(_ title: String, selection: Binding<Value>, choices: [TerminalChoice<Value>], selectionSound: Bool = true, localizeChoices: Bool = true, controlHeight: CGFloat = 36) {
         self.title = title; _selection = selection; self.choices = choices; self.selectionSound = selectionSound
         self.localizeChoices = localizeChoices
         self.controlHeight = controlHeight
@@ -34,7 +62,7 @@ struct TerminalActionMenu: View {
     let title: String
     let titles: [String]
     var action: (Int) -> Void
-    var body: some View { TerminalMenuControl(title: title, value: title, titles: titles, selected: nil, action: action) }
+    var body: some View { TerminalMenuControl(title: title, value: title, titles: titles, selected: titles.firstIndex(of: title), action: action) }
 }
 
 private struct TerminalMenuControl: View {
@@ -44,7 +72,7 @@ private struct TerminalMenuControl: View {
     let selected: Int?
     var selectionSound = true
     var localizeChoices = true
-    var controlHeight: CGFloat = 32
+    var controlHeight: CGFloat = 36
     let action: (Int) -> Void
     @State private var showing = false
     @Environment(\.isEnabled) private var enabled
@@ -73,7 +101,7 @@ private struct TerminalMenuControl: View {
     }
 }
 
-private struct TerminalMenuPanel: View {
+struct TerminalMenuPanel: View {
     let title: String
     let titles: [String]
     let selected: Int?
@@ -92,22 +120,25 @@ private struct TerminalMenuPanel: View {
                     VStack(spacing: 2) {
                         ForEach(titles.indices, id: \.self) { index in
                             Button { finish(index) } label: {
-                                HStack(spacing: 8) {
-                                    TerminalIcon(name: selected == index ? "checkmark" : "square", size: 12)
-                                        .foregroundStyle(selected == index ? TerminalStyle.accent : TerminalStyle.line)
-                                    Text(localizeChoices ? L(titles[index]) : titles[index]).font(WorkType.body).lineLimit(2)
+                                HStack(spacing: 10) {
+                                    Text(localizeChoices ? L(titles[index]) : titles[index])
+                                        .font(.system(size: 12, weight: selected == index ? .semibold : .regular)).lineLimit(2)
                                     Spacer(minLength: 0)
-                                }.padding(.horizontal, 9).frame(minHeight: 32)
+                                    ZStack {
+                                        Rectangle().fill(selected == index ? TerminalStyle.accent : .clear)
+                                        if selected == index { TerminalIcon(name: "checkmark", size: 13).foregroundStyle(TerminalStyle.onAccent) }
+                                    }.frame(width: 22, height: 22)
+                                }.padding(.horizontal, 10).frame(minHeight: 38)
                                     .foregroundStyle(TerminalStyle.ink)
-                                    .background(highlighted == index ? TerminalStyle.selection : .clear)
-                                    .overlay(alignment: .leading) { Rectangle().fill(TerminalStyle.accent).frame(width: 2).opacity(highlighted == index ? 1 : 0) }
+                                    .background(selected == index ? TerminalStyle.selection : highlighted == index ? TerminalStyle.silver.opacity(0.65) : .clear)
+                                    .overlay(Rectangle().strokeBorder(selected == index ? TerminalStyle.accent.opacity(0.7) : .clear))
                                     .contentShape(Rectangle())
                             }.buttonStyle(TerminalPlainButtonStyle(sound: selectionSound)).workKeyboardFocus(radius: 0).id(index)
                                 .accessibilityAddTraits(selected == index ? [.isSelected] : [])
                                 .onHover { if $0 { highlighted = index } }
                         }
                     }.padding(4)
-                }.frame(height: CGFloat(min(titles.count, 9)) * 34 + 8)
+                }.frame(height: CGFloat(min(titles.count, 9)) * 40 + 8)
                     .onChange(of: highlighted) { _, index in proxy.scrollTo(index) }
                     .onAppear { if let selected { proxy.scrollTo(selected) } }
             }
@@ -147,10 +178,10 @@ struct TerminalStepper<Value, Content: View>: View where Value: Strideable, Valu
         HStack(spacing: 8) {
             label
             HStack(spacing: 0) {
-                Button { adjust(increment: false) } label: { Text("−").frame(width: 24, height: 26) }
+                Button { adjust(increment: false) } label: { Text("−").frame(width: 36, height: 36) }
                     .workKeyboardFocus(radius: 0).disabled(value <= range.lowerBound).accessibilityLabel(L("减少") + " " + L(accessibilityTitle))
-                Rectangle().fill(TerminalStyle.line).frame(width: 1, height: 26)
-                Button { adjust(increment: true) } label: { Text("+").frame(width: 24, height: 26) }
+                Rectangle().fill(TerminalStyle.line).frame(width: 1, height: 36)
+                Button { adjust(increment: true) } label: { Text("+").frame(width: 36, height: 36) }
                     .workKeyboardFocus(radius: 0).disabled(value >= range.upperBound).accessibilityLabel(L("增加") + " " + L(accessibilityTitle))
             }.font(TerminalStyle.mono(14)).buttonStyle(TerminalPlainButtonStyle(sound: false)).focusEffectDisabled().background(TerminalStyle.silver.opacity(0.5))
                 .overlay(Rectangle().strokeBorder(TerminalStyle.line))

@@ -4,7 +4,7 @@ import WakeMacCore
 
 @MainActor final class WorkConfigurationTests: XCTestCase {
     private final class Effects: SessionEffectManaging {
-        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
+        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver) }
         func release() {}
     }
     private func fixture() async -> AppModel {

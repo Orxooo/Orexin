@@ -39,7 +39,18 @@ private struct ControlGlyph: Shape {
         func tick() { trace([7.5, 12, 10.5, 15, 16.5, 8.5]) }
         func lightning() { trace([13, 2.5, 5.5, 13, 11, 13, 10, 21.5, 18.5, 10.5, 13, 10.5], close: true) }
 
-        if name == "cpu" || name == "memorychip" {
+        if name == "globe" {
+            circle(12, 12, 9)
+            p.addEllipse(in: CGRect(x: 8, y: 3, width: 8, height: 18))
+            trace([3, 12, 21, 12]); trace([5, 7.5, 19, 7.5]); trace([5, 16.5, 19, 16.5])
+        } else if name == "bluetooth" {
+            trace([12, 2.5, 12, 21.5])
+            trace([6, 7, 18, 16, 12, 21.5]); trace([6, 17, 18, 8, 12, 2.5])
+        } else if name.contains("headphones") {
+            p.addArc(center: CGPoint(x: 12, y: 12), radius: 8, startAngle: .degrees(180), endAngle: .degrees(0), clockwise: false)
+            trace([4, 12, 4, 18]); trace([20, 12, 20, 18])
+            box(3, 12, 4, 8, radius: 1.5); box(17, 12, 4, 8, radius: 1.5)
+        } else if name == "cpu" || name == "memorychip" {
             box(6, 6, 12, 12, radius: 0); box(9, 9, 6, 6, radius: 0)
             for point: CGFloat in [8, 12, 16] {
                 trace([point, 2, point, 6]); trace([point, 18, point, 22])

@@ -6,7 +6,7 @@ import WakeMacCore
     private final class Effects: SessionEffectManaging {
         var canAcquire = true
         func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport {
-            .init(displayAssertionActive: canAcquire && working && choices.preventDisplaySleep)
+            .init(displayAssertionActive: canAcquire && working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver)
         }
         func release() {}
     }

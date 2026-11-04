@@ -1461,3 +1461,83 @@
 "Esc / 亮度键恢复" = "Mit Esc / Helligkeitstasten wiederherstellen";
 "屏幕最暗时恢复原亮度，保留桌面工作会话。" = "Vorherige Helligkeit wiederherstellen und die Desktop-Arbeitssitzung fortsetzen.";
 "跨应用恢复需要输入监控权限" = "Für die Wiederherstellung aus anderen Apps ist die Berechtigung zur Eingabeüberwachung erforderlich";
+
+"唤醒模式" = "Wachmodus";
+"正常模式" = "Normalmodus";
+"唤醒模式运行中" = "Wachmodus aktiv";
+"开启唤醒模式" = "Wachmodus starten";
+"开启唤醒模式（备用）" = "Wachmodus starten (alternativ)";
+"保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。" = "System wach halten; Display, Bildschirmschoner, Entsperrung und Deckelverhalten nach Bedarf einstellen.";
+"屏幕最暗时恢复原亮度，保留唤醒会话。" = "Helligkeit wiederherstellen, ohne die Wachsitzung zu beenden.";
+"每次新工作需账户授权；结束后恢复即时密码保护。" = "Jede neue Sitzung autorisieren; nach Arbeitsende gilt wieder der sofortige Passwortschutz.";
+"屏幕：%@ · 屏保：%@ · 锁屏：%@ · 合盖：%@" = "Display: %@ · Bildschirmschoner: %@ · Sperre: %@ · Deckel: %@";
+"开关可预先设置；进入唤醒模式后生效，恢复正常模式后停止。" = "Optionen vorab konfigurieren. Sie gelten im Wachmodus und enden im Normalmodus.";
+"启动唤醒模式并设置合盖行为" = "Wachmodus starten und Deckelverhalten einstellen";
+"通过 CLI 或 AppleScript 启动唤醒会话，分别设置屏幕与合盖行为。" = "Wachsitzung per CLI oder AppleScript starten; Display und Deckelverhalten getrennt einstellen.";
+"保持未锁定" = "Entsperrt halten";
+"允许休眠" = "Ruhezustand erlauben";
+"继续运行" = "Weiterlaufen";
+"mode 必须为 awake。" = "mode muss awake sein.";
+"唤醒选项已生效" = "Wachoptionen aktiv";
+"正在核验唤醒选项" = "Wachoptionen werden geprüft";
+"屏保控制尚未通过系统核验。" = "Bildschirmschonersteuerung wurde noch nicht vom System bestätigt.";
+
+"唤醒选项" = "Wachoptionen";
+
+"控制唤醒模式下的合盖行为。" = "Deckelverhalten im Wachmodus festlegen.";
+
+"合盖服务已移除，唤醒模式仍可使用。" = "Deckeldienst entfernt. Der Wachmodus bleibt verfügbar.";
+"自动触发只支持启动唤醒模式。" = "Automatische Regeln können nur den Wachmodus starten.";
+"请先开启唤醒模式。" = "Zuerst den Wachmodus starten.";
+"脱离外接电源时，防止唤醒状态耗尽电池。" = "Nach dem Trennen des Netzteils den Akku vor langem Wachbetrieb schützen.";
+
+"其他任务需要屏幕，暂不能立即熄屏。" = "Andere Aufgaben benötigen das Display. Der Display-Ruhezustand ist vorübergehend nicht verfügbar.";
+"当前密码策略不执行闲置锁定。" = "Die aktuelle Passwortrichtlinie setzt die Inaktivitätssperre aus.";
+
+"其他任务仍要求屏幕保持工作。" = "Andere Aufgaben benötigen weiterhin ein aktives Display.";
+"其他任务仍要求暂停屏保。" = "Andere Aufgaben müssen den Bildschirmschoner weiterhin verhindern.";
+
+"唤醒配置" = "Wachhalte-Einstellungen";
+"延长 1 小时" = "Um 1 Stunde verlängern";
+
+"定位权限已授权，可读取 Wi-Fi 网络名称。" = "Standortzugriff erlaubt. Wi-Fi-Netzwerknamen können gelesen werden.";
+"蓝牙权限已授权，可读取已连接设备。" = "Bluetooth-Zugriff erlaubt. Verbundene Geräte können gelesen werden.";
+
+"设置定时" = "Timer stellen";
+"合盖服务尚未授权" = "Der Zusammenklebservice ist noch nicht autorisiert";
+
+"菜单栏主题" = "Menüleisten-Design";
+
+"仪表舱" = "Instrumentendeck";
+
+"横向悬浮条" = "Horizontales HUD";
+
+"屏幕策略" = "Bildschirmverhalten";
+
+"切换模式" = "Modus wechseln";
+
+"未锁定" = "Entsperrt";
+
+
+
+"即时保护" = "Sofortschutz";
+
+
+
+"工作会话内生效" = "Gilt während Arbeitssitzungen";
+
+"锁屏后立即要求密码" = "Passwort direkt nach Sperrung";
+
+"使用系统锁屏策略" = "System-Sperrrichtlinie verwenden";
+
+"系统后台辅助服务" = "System-Hintergrunddienst";
+
+"生效中" = "Aktiv";
+
+"待启用" = "Bereit";
+
+"唤醒" = "Wach";
+
+"向左滚动" = "Nach links scrollen";
+
+"向右滚动" = "Nach rechts scrollen";

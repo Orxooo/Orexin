@@ -15,8 +15,8 @@ struct PowerControls: View {
                 Task { await model.setKeepsAwake(enabled) }
             }
             Rectangle().fill(WorkStyle.line.opacity(0.6)).frame(height: 1)
-            control("合盖继续运行", detail: "开启时同时保持唤醒", icon: "laptopcomputer", enabled: model.runsWithLidClosed) { enabled in
-                Task { await model.changeSessionLidMode(enabled) }
+            control("合盖继续运行", detail: "控制唤醒模式下的合盖行为。", icon: "laptopcomputer", enabled: model.clamshellOptionEnabled) { enabled in
+                Task { await model.setClamshellOption(enabled) }
             }.disabled(model.helperStatus != .enabled)
             HStack(spacing: 10) {
                 TerminalIcon(name: model.helperStatus == .enabled ? "checkmark.shield" : "key")

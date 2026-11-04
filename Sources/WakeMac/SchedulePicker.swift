@@ -39,7 +39,7 @@ struct SchedulePicker: View {
                     .monospacedDigit()
                 TerminalIcon(name: "chevron.down").font(.system(size: 9, weight: .semibold))
             }.font(.system(size: 12, weight: .medium))
-        }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0).accessibilityLabel("选择恢复日期和时间")
+        }.buttonStyle(WorkButtonStyle(width: 176)).workKeyboardFocus(radius: 0).accessibilityLabel("选择恢复日期和时间")
             .terminalPopup(isPresented: $showing, width: 332) {
                 SchedulePickerPanel(initial: selection) { value in
                     if let value { selection = value }

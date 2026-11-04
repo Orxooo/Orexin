@@ -4,6 +4,32 @@ import XCTest
 @testable import WakeMac
 
 @MainActor final class AppearanceThemeTests: XCTestCase {
+    func testMenuLayoutPersistsIndependentlyAndNotifiesWindowSizing() {
+        let name = "WakeMacMenuLayoutTests." + UUID().uuidString
+        let defaults = UserDefaults(suiteName: name)!
+        defer { defaults.removePersistentDomain(forName: name) }
+        let appearance = AppearanceController(preferences: defaults)
+        XCTAssertEqual(appearance.menuLayout, .deck)
+        var updates = 0
+        appearance.onUpdate = { updates += 1 }
+        appearance.menuLayout = .band
+        XCTAssertEqual(updates, 1)
+        let restored = AppearanceController(preferences: defaults)
+        XCTAssertEqual(restored.menuLayout, .band)
+        XCTAssertEqual(restored.theme, .dark)
+        defaults.set("unrecognized", forKey: "orexin.appearance.menuLayout")
+        XCTAssertEqual(AppearanceController(preferences: defaults).menuLayout, .deck)
+    }
+
+    func testMenuLayoutsFitScreenAndSwitchBetweenDistinctDimensions() {
+        let available = CGSize(width: 1280, height: 800)
+        let deck = AppearanceController.MenuLayout.deck.size(available: available)
+        let band = AppearanceController.MenuLayout.band.size(available: available)
+        XCTAssertLessThanOrEqual(deck.height, available.height - 64)
+        XCTAssertLessThanOrEqual(band.width, available.width - 32)
+        XCTAssertGreaterThan(band.width, deck.width)
+        XCTAssertLessThan(band.height, deck.height)
+    }
     func testThemeAndControlAudioPersistWithoutChangingExistingMenuPreferences() {
         let name = "WakeMacAppearanceTests." + UUID().uuidString
         let defaults = UserDefaults(suiteName: name)!

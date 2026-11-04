@@ -24,7 +24,7 @@ private actor InterceptServiceReply {
 
 @MainActor final class TaskServiceTests: XCTestCase {
     private final class Effects: SessionEffectManaging {
-        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
+        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver) }
         func release() {}
     }
     private func model() async -> AppModel {
@@ -46,6 +46,52 @@ private actor InterceptServiceReply {
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)
         }
         XCTAssertEqual(try TaskServiceLauncher.executable(near: cli).standardizedFileURL, service.standardizedFileURL)
+    }
+
+    func testServiceStopsAfterGraphicalSessionEnds() async throws {
+        let value = await model(), runtime = TaskServiceRuntime()
+        runtime.model = value
+        let stopped = expectation(description: "Old graphical session service exits")
+        value.stopTaskService = { stopped.fulfill() }
+        let connected = await runtime.stopAfterSessionEnds(sessionAvailable: true)
+        XCTAssertFalse(connected)
+        let ended = await runtime.stopAfterSessionEnds(sessionAvailable: false)
+        XCTAssertTrue(ended)
+        XCTAssertTrue(value.serviceStopping)
+        XCTAssertEqual(value.active, .normal)
+        await fulfillment(of: [stopped], timeout: 1)
+    }
+
+    func testServiceWaitsForIndependentWorkBeforeEndingLostSession() async throws {
+        let value = await model(), runtime = TaskServiceRuntime()
+        runtime.model = value
+        let handle = try await value.registerWork(.init(title: "independent"))
+        _ = await runtime.stopAfterSessionEnds(sessionAvailable: true)
+        let busy = await runtime.stopAfterSessionEnds(sessionAvailable: false)
+        XCTAssertFalse(busy)
+        XCTAssertFalse(value.serviceStopping)
+        XCTAssertEqual(value.workRequests.active.map(\.id), [handle.id])
+        try await value.completeWork(handle, exitCode: 0)
+        let ended = await runtime.stopAfterSessionEnds(sessionAvailable: false)
+        XCTAssertTrue(ended)
+        XCTAssertTrue(value.serviceStopping)
+    }
+
+    func testServiceWithoutAnObservedGraphicalSessionKeepsRunning() async {
+        let value = await model(), runtime = TaskServiceRuntime()
+        runtime.model = value
+        let ended = await runtime.stopAfterSessionEnds(sessionAvailable: false)
+        XCTAssertFalse(ended)
+        XCTAssertFalse(value.serviceStopping)
+    }
+
+    func testServiceKeepsRunningWhileGraphicalSessionExists() async {
+        let value = await model(), runtime = TaskServiceRuntime()
+        runtime.model = value
+        _ = await runtime.stopAfterSessionEnds(sessionAvailable: true)
+        let ended = await runtime.stopAfterSessionEnds(sessionAvailable: true)
+        XCTAssertFalse(ended)
+        XCTAssertFalse(value.serviceStopping)
     }
 
     func testServiceRefusesShutdownWithActiveWork() async throws {

@@ -11,19 +11,18 @@ struct PowerHomeView: View {
     var openSessions: () -> Void
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var working: Bool { model.active == .background || model.active == .desk || model.keepsAwake || model.runsWithLidClosed }
-    private var statusColor: Color { model.error ? TerminalStyle.warning : model.verifiedWork ? TerminalStyle.signal : TerminalStyle.amber }
+    private var statusColor: Color { model.error ? TerminalStyle.warning : model.awakeOptionsVerified ? TerminalStyle.signal : TerminalStyle.amber }
     private var status: String {
         if model.busy { return "正在切换" }
         if model.pending != nil { return "等待设置" }
         if model.error { return "需要处理" }
         if model.snapshot == nil || model.active == nil { return "等待核验" }
-        return model.verifiedWork ? (model.active == .background && model.helperStatus == .enabled ? "保持唤醒已生效 · 合盖服务已授权" : "保持唤醒已生效") : "允许正常休眠"
+        return model.verifiedWork ? (model.awakeOptionsVerified ? "唤醒选项已生效" : "正在核验唤醒选项") : "允许正常休眠"
     }
     private var detail: String {
         if model.busy || model.error || model.pending != nil { return model.headline }
         switch model.active {
-        case .background: return "保持系统唤醒，合盖后继续工作。屏幕行为由下方设置控制。"
-        case .desk: return "保持系统唤醒，合盖后允许休眠。适合桌面工作、演示与长时间任务。"
+        case .background, .desk: return "保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。"
         case .normal: return "工作已收尾，释放 Orexin 的保活设置，让系统恢复自然休眠。"
         case nil: return "读取并核验系统状态后即可开始工作。"
         }
@@ -57,44 +56,115 @@ struct PowerHomeView: View {
     }
     private var hero: some View {
         VStack(alignment: .leading, spacing: 16) {
-            HStack(alignment: .top, spacing: 20) {
-                VStack(alignment: .leading, spacing: 12) {
-                    Text(L("SESSION STATUS // 实时会话状态")).font(TerminalStyle.mono(10)).tracking(0.8).foregroundStyle(TerminalStyle.muted)
-                    HStack(alignment: .center, spacing: 12) {
-                        Text(L(model.active == .background ? "后台工作中" : model.active == .desk ? "桌面工作中" : model.active?.title ?? "等待核验"))
-                            .font(TerminalStyle.display(32)).lineLimit(1).minimumScaleFactor(0.7).accessibilityAddTraits(.isHeader)
-                        HStack(spacing: 7) {
-                            TerminalSignal(color: statusColor)
-                            Text(L(status)).font(.system(size: 10, weight: .semibold)).foregroundStyle(statusColor)
-                        }.padding(6).background(TerminalStyle.surface)
-                        if model.busy { ProgressView().controlSize(.small) }
-                    }
-                    Text(L(detail)).font(.system(size: 12)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
-                    HStack(spacing: 8) {
-                        OrbitalReadout(label: "THERMAL // 温度压力", value: model.thermalSummary, color: model.thermalProtectionRequired ? TerminalStyle.warning : TerminalStyle.signal)
-                        OrbitalReadout(label: "ASSERTION // 系统断言", value: model.snapshot == nil ? "待核验" : model.keepsAwake ? "NoIdleSleep" : "None")
-                        OrbitalReadout(label: "UPTIME // 系统运行", value: systemUptime, color: TerminalStyle.signal)
-                    }
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                OrbitalMoon(phase: model.active?.rawValue ?? "unknown").frame(width: 220, height: 205)
+            ViewThatFits(in: .horizontal) {
+                HStack(spacing: 16) { heroMetadata; Spacer(minLength: 16); heroActions }
+                VStack(alignment: .leading, spacing: 12) { heroMetadata; heroActions }
             }
-            HStack(spacing: 12) {
-                VStack(alignment: .leading, spacing: 5) {
-                    Text(L("结束条件 // TERMINATION")).font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
-                    Text(L(endSummary)).font(.system(size: 11)).lineLimit(2).help(endSummary)
-                }.frame(maxWidth: .infinity, alignment: .leading)
-                Button(L("设置结束条件"), action: openSessions).workKeyboardFocus(radius: 0)
-                Button(L(working ? "结束工作" : "开始工作")) {
-                    model.quitWhenReady = false
-                    Task { if working { await model.choose(.normal) } else { await model.beginDefaultSession() } }
-                }.buttonStyle(TerminalButtonStyle(prominent: true)).workKeyboardFocus(radius: 0).disabled(model.busy || sessions.isStarting)
-            }.padding(12).background(TerminalStyle.surface)
+            Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1)
+            ViewThatFits(in: .horizontal) {
+                HStack(alignment: .top, spacing: 20) {
+                    heroReadout.frame(minWidth: 610)
+                    OrbitalMoon(phase: model.active?.rawValue ?? "unknown").frame(width: 220, height: 205)
+                }
+                heroReadout
+            }
+            if model.helperStatus != .enabled && !model.helperMessage.isEmpty {
+                WorkNote(text: model.helperMessage)
+            }
         }.padding(18).background(TerminalStyle.recess).overlay(CRTLines()).terminalSurface()
+    }
+    private var heroReadout: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            HStack(alignment: .center, spacing: 12) {
+                Text(L(model.active == .background || model.active == .desk ? "唤醒模式运行中" : model.active?.title ?? "等待核验"))
+                    .font(TerminalStyle.display(32)).lineLimit(1).minimumScaleFactor(0.7).accessibilityAddTraits(.isHeader)
+                HStack(spacing: 7) {
+                    TerminalSignal(color: statusColor)
+                    Text(L(status)).font(.system(size: 10, weight: .semibold)).foregroundStyle(statusColor)
+                }.padding(6).background(TerminalStyle.surface)
+                if model.busy { ProgressView().controlSize(.small) }
+            }
+            Text(L(detail)).font(.system(size: 12)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
+            HStack(spacing: 8) {
+                OrbitalReadout(label: "THERMAL // 温度压力", value: model.thermalSummary, color: model.thermalProtectionRequired ? TerminalStyle.warning : TerminalStyle.signal)
+                OrbitalReadout(label: "ASSERTION // 系统断言", value: model.snapshot == nil ? "待核验" : model.keepsAwake ? "NoIdleSleep" : "None")
+                OrbitalReadout(label: "UPTIME // 系统运行", value: systemUptime, color: TerminalStyle.signal)
+            }
+            termination
+        }.frame(maxWidth: .infinity, alignment: .leading)
+    }
+    private var heroMetadata: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text(L("SESSION STATUS // 实时会话状态")).font(TerminalStyle.mono(10)).tracking(0.8).foregroundStyle(TerminalStyle.muted)
+            HStack(spacing: 6) {
+                TerminalIcon(name: "checkmark.shield", size: 13)
+                Text(L(model.helperStatus == .enabled ? "合盖服务已授权" : "合盖服务尚未授权")).font(.system(size: 10))
+            }.foregroundStyle(model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber)
+        }
+    }
+    private var heroActions: some View {
+        HStack(spacing: 10) {
+            if model.helperStatus == .enabled {
+                Button(L("重新核验")) { Task { await model.refresh() } }.disabled(model.busy)
+            } else {
+                Button(L(model.helperStatus == .requiresApproval ? "完成授权" : "启用合盖服务"), action: model.enableHelper).disabled(model.busy)
+            }
+            Button(role: .destructive) { Task { await model.requestQuit() } } label: {
+                TerminalLabel("退出 Orexin", systemImage: "power")
+            }.disabled(model.busy)
+        }.workKeyboardFocus(radius: 0).fixedSize(horizontal: true, vertical: false)
+    }
+    private var termination: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                terminationSummary.frame(minWidth: 140)
+                HStack(spacing: 10) { terminationButtons }.fixedSize(horizontal: true, vertical: false)
+            }
+            VStack(alignment: .leading, spacing: 10) {
+                terminationSummary
+                terminationActions
+            }
+        }.padding(12).background(TerminalStyle.surface)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.6)))
+            .padding(.top, 16)
+    }
+    private var terminationSummary: some View {
+        HStack(spacing: 8) {
+            VStack(alignment: .leading, spacing: 5) {
+                Text(L("结束条件 // TERMINATION")).font(TerminalStyle.mono(9)).foregroundStyle(TerminalStyle.muted)
+                Text(L(endSummary)).font(.system(size: 11)).lineLimit(2).help(endSummary)
+            }.frame(maxWidth: .infinity, alignment: .leading)
+            if sessions.deadline != nil {
+                Button(L("+15 分钟")) { _ = sessions.extend(minutes: 15); model.onUpdate?() }
+                    .workKeyboardFocus(radius: 0).disabled(!model.verifiedWork)
+            }
+        }
+    }
+    private var terminationActions: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: 10) { terminationButtons }.fixedSize(horizontal: true, vertical: false)
+            VStack(alignment: .leading, spacing: 10) { terminationButtons }
+        }
+    }
+    @ViewBuilder private var terminationButtons: some View {
+        Button(action: openSessions) { terminationLabel("设置结束条件") }.workKeyboardFocus(radius: 0)
+        Button { Task { await model.sleepDisplayNow() } } label: { terminationLabel("立即熄屏", icon: "display") }
+            .workKeyboardFocus(radius: 0).help(L("只关闭显示器，唤醒后继续原屏幕策略"))
+            .disabled(model.busy || !model.verifiedWork || sessions.isStarting || model.otherTasksRequireDisplay)
+        Button { Task { await model.choose(.normal, sleep: true) } } label: { terminationLabel("立即休眠", icon: "power") }
+            .buttonStyle(TerminalButtonStyle(prominent: true)).workKeyboardFocus(radius: 0)
+            .disabled(model.busy || sessions.isStarting)
+    }
+    private func terminationLabel(_ title: String, icon: String? = nil) -> some View {
+        HStack(spacing: 7) {
+            if let icon { TerminalIcon(name: icon, size: 16) }
+            Text(L(title)).lineLimit(1).minimumScaleFactor(0.7)
+        }.frame(width: 102, height: 36)
     }
     private var modes: some View {
         HStack(alignment: .top, spacing: 10) {
-            ForEach(Array(WorkMode.allCases.enumerated()), id: \.element) { index, mode in
-                let selected = model.active == mode && model.pending == nil && !model.error
+            ForEach(Array([model.preferredAwakeMode, WorkMode.normal].enumerated()), id: \.element) { index, mode in
+                let selected = (mode == .normal ? model.active == .normal : model.active == .desk || model.active == .background) && model.pending == nil && !model.error
                 Button {
                     model.quitWhenReady = false
                     Task { await model.selectWorkPreset(mode) }
@@ -106,14 +176,14 @@ struct PowerHomeView: View {
                             Rectangle().fill(selected ? TerminalStyle.signal : TerminalStyle.muted.opacity(0.5)).frame(width: 5, height: 5)
                         }.foregroundStyle(selected ? TerminalStyle.accent : TerminalStyle.muted)
                         HStack(spacing: 9) {
-                            TerminalIcon(name: mode == .background ? "laptopcomputer" : mode == .desk ? "display" : "moon.zzz", size: 22).foregroundStyle(selected ? TerminalStyle.accent : TerminalStyle.muted)
+                            TerminalIcon(name: mode == .normal ? "moon.zzz" : "sun.max", size: 22).foregroundStyle(selected ? TerminalStyle.accent : TerminalStyle.muted)
                             VStack(alignment: .leading, spacing: 3) {
                                 Text(mode.title).font(.system(size: 15, weight: .semibold)).foregroundStyle(TerminalStyle.ink)
-                                Text(mode == .background ? "MODE 01 // CLAMSHELL" : mode == .desk ? "MODE 02 // PRESENTATION" : "MODE 03 // DEFAULT POWER")
+                                Text(mode == .normal ? "MODE 02 // NORMAL" : "MODE 01 // AWAKE")
                                     .font(TerminalStyle.mono(8)).foregroundStyle(selected ? TerminalStyle.accent : TerminalStyle.muted)
                             }
                         }
-                        Text(L(mode == .background ? "合盖继续工作，允许屏幕自动关闭。" : mode == .desk ? "保持桌面工作，合盖后允许休眠。" : "释放保活，恢复系统自然休眠。"))
+                        Text(L(mode == .normal ? "释放保活，恢复系统自然休眠。" : "保持系统运行，按需设置屏幕、屏保、未锁定和合盖行为。"))
                             .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
                         Text(selected ? "CURRENT ACTIVE" : "SELECT MODE").font(TerminalStyle.mono(9)).foregroundStyle(selected ? TerminalStyle.signal : TerminalStyle.muted)
                     }.frame(maxWidth: .infinity, minHeight: 105, alignment: .topLeading).padding(13)
@@ -121,7 +191,7 @@ struct PowerHomeView: View {
                         .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.65)))
                         .overlay(alignment: .top) { Rectangle().fill(selected ? TerminalStyle.accent : TerminalStyle.line).frame(height: 2) }
                 }.buttonStyle(TerminalPlainButtonStyle()).workKeyboardFocus(radius: 0)
-                    .disabled(model.busy || (mode == .background && model.helperStatus != .enabled))
+                    .disabled(model.busy)
                     .accessibilityAddTraits(selected ? [.isSelected] : [])
             }
         }.animation(reduceMotion ? nil : .easeInOut(duration: 0.2), value: model.active)
@@ -129,20 +199,9 @@ struct PowerHomeView: View {
     private var controls: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(L("CONTROL MATRIX // 策略调控")).font(TerminalStyle.mono(10)).foregroundStyle(TerminalStyle.muted).padding(.top, 16).padding(.bottom, 12)
-            PowerAssertionRows(model: model, sessions: sessions)
-            rule
-            HStack(spacing: 10) {
-                TerminalIcon(name: model.helperStatus == .enabled ? "checkmark.shield" : "key", size: 21).frame(width: 25).foregroundStyle(TerminalStyle.signal)
-                if model.helperStatus == .enabled { Text(L("合盖服务已授权")).font(.system(size: 11)) }
-                else { Button(L(model.helperStatus == .requiresApproval ? "完成合盖服务授权…" : "启用合盖服务…"), action: model.enableHelper).workKeyboardFocus(radius: 0).disabled(model.busy) }
-                Spacer()
-                if sessions.deadline != nil { Button(L("+15 分钟")) { _ = sessions.extend(minutes: 15); model.onUpdate?() }.workKeyboardFocus(radius: 0).disabled(!model.verifiedWork) }
-                Button(L("立即休眠")) { Task { await model.choose(.normal, sleep: true) } }.workKeyboardFocus(radius: 0).disabled(model.busy)
-            }.padding(.vertical, 14)
-            if model.helperStatus != .enabled && !model.helperMessage.isEmpty { Text(L(model.helperMessage)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted).padding(.bottom, 12) }
+            PowerAssertionRows(model: model, sessions: sessions).padding(.bottom, 16)
         }.padding(.horizontal, 18).background(TerminalStyle.surface)
     }
-    private var rule: some View { Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1) }
 }
 
 /// Both window surfaces use the same labels, state, actions and feedback.
@@ -156,32 +215,30 @@ struct PowerAssertionRows: View {
     }
     private var controlsDisabled: Bool { model.busy || model.snapshot == nil || model.pending != nil }
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: compact ? 6 : 8) {
             TerminalPowerToggle(title: "保持唤醒", detail: "阻止闲置休眠，屏幕仍可自动关闭", icon: "sun.max", code: "KEEP_AWAKE",
                                 isOn: Binding(get: { model.keepsAwake }, set: { value in Task { await model.setKeepsAwake(value) } }), compact: compact)
                 .disabled(controlsDisabled)
-            divider
-            TerminalPowerToggle(title: "合盖继续运行", detail: "开启时同时保持唤醒", icon: "laptopcomputer", code: "CLAMSHELL",
-                                isOn: Binding(get: { model.runsWithLidClosed }, set: { value in Task { await model.changeSessionLidMode(value) } }), compact: compact)
+            TerminalPowerToggle(title: "合盖继续运行", detail: "控制唤醒模式下的合盖行为。", icon: "laptopcomputer", code: "CLAMSHELL",
+                                isOn: Binding(get: { model.clamshellOptionEnabled }, set: { value in Task { await model.setClamshellOption(value) } }), compact: compact)
                 .disabled(controlsDisabled || model.helperStatus != .enabled)
-            divider
             ForEach(WorkScreenBehavior.choices(for: model.active ?? .desk)) { behavior in
-                TerminalPowerToggle(title: behavior.title, detail: behavior.detail, icon: behavior.icon, code: behavior.code,
+                TerminalPowerToggle(title: behavior.title, detail: model.allowsScreenChoice(behavior) ? behavior.detail : "其他任务仍要求屏幕保持工作。", icon: behavior.icon, code: behavior.code,
                                     isOn: Binding(get: { screen.behavior(for: model.active ?? .desk) == behavior }, set: { enabled in
                     let fallback: WorkScreenBehavior = behavior == .systemIdle
-                        ? (model.active == .background ? .dim : .normalBrightness) : .systemIdle
+                        ? .normalBrightness : .systemIdle
                     Task { await model.setWorkScreenBehavior(enabled ? behavior : fallback) }
                 }), compact: compact)
-                    .disabled(controlsDisabled || !model.verifiedWork || sessions.isStarting)
-                divider
+                    .disabled(controlsDisabled || !model.verifiedWork || sessions.isStarting || !model.allowsScreenChoice(behavior))
             }
-            Text(L(screen.status)).font(.system(size: 10))
-                .foregroundStyle(screen.status.hasPrefix("屏幕策略未核验：") ? TerminalStyle.warning : TerminalStyle.muted)
-                .lineLimit(2).frame(maxWidth: .infinity, alignment: .leading).frame(height: 26, alignment: .topLeading)
-                .padding(.top, 7).padding(.leading, 9).help(L(screen.status))
-            if model.active == .desk {
-                WorkToggle(title: "Esc / 亮度键恢复", detail: "屏幕最暗时恢复原亮度，保留桌面工作会话。",
-                           isOn: $screen.restoreDesktopBrightnessOnKey)
+            if screen.status.hasPrefix("屏幕策略未核验：") {
+                Text(L(screen.status)).font(.system(size: 10)).foregroundStyle(TerminalStyle.warning)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(9)
+            }
+            if model.active == .desk || model.active == .background {
+                TerminalPowerToggle(title: "Esc / 亮度键恢复", detail: "屏幕最暗时恢复原亮度，保留唤醒会话。",
+                                    icon: "keyboard", code: "RESTORE_BRIGHTNESS", isOn: $screen.restoreDesktopBrightnessOnKey, compact: compact)
                 if screen.dimExitNeedsInputAccess {
                     Button(L("跨应用恢复需要输入监控权限")) {
                         _ = CGRequestListenEventAccess()
@@ -189,18 +246,30 @@ struct PowerAssertionRows: View {
                     }.font(.system(size: 10)).padding(.vertical, 4)
                 }
             }
-            HStack {
-                Text(L("只关闭显示器，唤醒后继续原屏幕策略"))
+            TerminalPowerToggle(title: "防止闲时屏保", detail: model.otherTasksRequireScreenSaverPrevention ? "其他任务仍要求暂停屏保。" : "开启时也会保持显示器唤醒；锁定后暂停。",
+                                icon: "sparkles", code: "PREVENT_SAVER",
+                                isOn: Binding(get: { sessions.effectivePreventScreenSaver }, set: { value in Task { await model.changeScreenSaverPrevention(value) } }), compact: compact)
+                .disabled(controlsDisabled || model.screenEffectsControlledByOtherTasks || (model.otherTasksRequireScreenSaverPrevention && sessions.effectivePreventScreenSaver))
+            TerminalPowerToggle(title: "工作时保持未锁定", detail: "每次新工作需账户授权；结束后恢复即时密码保护。",
+                                icon: "lock.open", code: "KEEP_UNLOCKED",
+                                isOn: Binding(get: { model.unlockedWorkEnabled }, set: { value in Task { await model.setUnlockedWork(value) } }), compact: compact)
+                .disabled(controlsDisabled || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))
+            if model.otherTasksRequireDisplay {
+                Text(L("其他任务需要屏幕，暂不能立即熄屏。"))
                     .font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
-                    .fixedSize(horizontal: false, vertical: true)
-                Spacer(minLength: 8)
-                Button(L("立即熄屏")) { Task { await model.sleepDisplayNow() } }
-                    .workKeyboardFocus(radius: 0)
-                    .disabled(controlsDisabled || !model.verifiedWork || sessions.isStarting)
-            }.padding(.top, 8)
+                    .frame(maxWidth: .infinity, alignment: .leading).padding(.top, 8)
+            }
+            if compact {
+                HStack {
+                    Spacer(minLength: 8)
+                    Button(L("立即熄屏")) { Task { await model.sleepDisplayNow() } }
+                        .workKeyboardFocus(radius: 0)
+                        .help(L("只关闭显示器，唤醒后继续原屏幕策略"))
+                        .disabled(controlsDisabled || !model.verifiedWork || sessions.isStarting || model.otherTasksRequireDisplay)
+                }.padding(.top, 8)
+            }
         }
     }
-    private var divider: some View { Rectangle().fill(TerminalStyle.line.opacity(0.6)).frame(height: 1) }
 }
 
 struct TerminalPowerToggle: View {
@@ -215,18 +284,26 @@ struct TerminalPowerToggle: View {
             TerminalIcon(name: icon, size: 21).foregroundStyle(TerminalStyle.accent).frame(width: 32, height: 32)
                 .background(TerminalStyle.recess).overlay(Rectangle().strokeBorder(TerminalStyle.line))
             VStack(alignment: .leading, spacing: 5) {
-                HStack(spacing: 8) {
-                    Text(L(title)).font(.system(size: 13, weight: .semibold)).lineLimit(2)
-                    Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.signal)
-                }.frame(height: 32, alignment: .leading)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 8) { heading; codeBadge }
+                    VStack(alignment: .leading, spacing: 4) { heading; codeBadge }
+                }
                 Text(L(detail)).font(.system(size: 10)).foregroundStyle(TerminalStyle.muted)
-                    .lineLimit(2).frame(height: 26, alignment: .topLeading).help(L(detail))
+                    .fixedSize(horizontal: false, vertical: true).help(L(detail))
             }
             Spacer(minLength: 10)
             Toggle(L(title), isOn: $isOn).labelsHidden().toggleStyle(TerminalSwitchStyle())
-        }.padding(.vertical, compact ? 6 : 13)
-            .padding(.leading, 9)
-            .overlay(alignment: .leading) { Rectangle().fill(TerminalStyle.accent).frame(width: 2).padding(.vertical, compact ? 6 : 13) }
-            .clipShape(Rectangle())
+        }.frame(minHeight: compact ? 40 : 46)
+            .padding(.vertical, compact ? 8 : 12).padding(.horizontal, 12)
+            .background(isOn ? TerminalStyle.selection.opacity(0.25) : TerminalStyle.recess.opacity(0.5))
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
+            .overlay(alignment: .leading) { Rectangle().fill(isOn ? TerminalStyle.accent : TerminalStyle.line).frame(width: 2) }
+    }
+    private var heading: some View {
+        Text(L(title)).font(.system(size: compact ? 12 : 13, weight: .semibold)).fixedSize(horizontal: false, vertical: true)
+    }
+    private var codeBadge: some View {
+        Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.signal)
+            .padding(.horizontal, 5).padding(.vertical, 3).background(TerminalStyle.silver.opacity(0.65))
     }
 }

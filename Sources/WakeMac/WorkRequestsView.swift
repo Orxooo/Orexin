@@ -25,7 +25,7 @@ struct WorkRequestsView: View {
     var onRunCommand: () -> Void
     var onConnect: () -> Void
     @State private var showHistory = false
-    private let actionWidth: CGFloat = 128
+    private let actionWidth: CGFloat = 132
     private let actionSpacing: CGFloat = 8
     private var visible: [WorkRequestRecord] {
         let records = model.workRequests.records.reversed()
@@ -78,7 +78,7 @@ struct WorkRequestsView: View {
                         Text(L(request.state.displayTitle)).font(TerminalStyle.mono(10))
                             .foregroundStyle(stateColor(request)).fixedSize()
                     }
-                    Text("\(L(request.spec.mode == .background ? "后台工作" : "桌面工作")) · \(L(screenTitle(request.spec.screen)))")
+                    Text("\(L("唤醒模式") + " · " + L(request.spec.mode == .background ? "合盖继续运行" : "合盖后允许休眠")) · \(L(screenTitle(request.spec.requiredScreen)))")
                         .font(WorkType.caption).foregroundStyle(WorkStyle.muted).fixedSize(horizontal: false, vertical: true)
                     HStack(spacing: 8) {
                         Text(request.spec.source.uppercased()).font(TerminalStyle.mono(9))
@@ -125,7 +125,6 @@ struct WorkRequestsView: View {
     }
     private func actionButton(_ title: String, role: ButtonRole? = nil, action: @escaping () -> Void) -> some View {
         Button(role: role, action: action) {
-            // WorkButtonStyle adds 15 pt on each side and a 36 pt minimum height.
             Text(L(title)).lineLimit(2).minimumScaleFactor(0.75)
                 .multilineTextAlignment(.center).frame(width: actionWidth - 30, height: 30)
         }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)

@@ -166,12 +166,8 @@ struct ThermalProtectionView: View {
                 lidRegister
                 commandRegister
             }
-            if availableWidth > 760 {
-                HStack(alignment: .top, spacing: 16) { thresholdPanel.frame(maxWidth: .infinity); switches.frame(maxWidth: .infinity) }
-            } else {
-                thresholdPanel
-                switches
-            }
+            thresholdPanel
+            switches
         }.padding(18).modifier(ThermalRackSurface())
     }
     private var assertionRegister: some View {
@@ -203,7 +199,8 @@ struct ThermalProtectionView: View {
             Text(L("触发阈值 // TRIGGER POINT")).font(.system(size: 14, weight: .semibold))
             Text(L("达到所选等级时释放本应用保活。")).font(.system(size: 11)).foregroundStyle(TerminalStyle.muted)
             HStack(spacing: 6) { thresholdChoice(.heavy); thresholdChoice(.critical) }
-        }.padding(14).background(TerminalStyle.surface)
+        }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.5)))
     }
     private func thresholdChoice(_ threshold: ThermalThreshold) -> some View {
         let selected = model.thermalThreshold == threshold
@@ -224,12 +221,15 @@ struct ThermalProtectionView: View {
             .accessibilityLabel(LF("温度保护阈值：%@", L(threshold.title))).accessibilityAddTraits(selected ? .isSelected : [])
     }
     private var switches: some View {
-        VStack(alignment: .leading, spacing: 22) {
+        VStack(alignment: .leading, spacing: 0) {
             WorkToggle(title: "超温时释放 Orexin 保活", detail: "EMERGENCY RELEASE // 依照所选阈值",
                        isOn: Binding(get: { model.thermalReleaseEnabled }, set: { value in Task { await model.setThermalReleaseEnabled(value) } }))
+                .padding(14).frame(minHeight: 64)
+            Rectangle().fill(TerminalStyle.line.opacity(0.5)).frame(height: 1)
             WorkToggle(title: "温度超标时播放警报", detail: "ACOUSTIC CHIME // 每次超温触发一次",
                        isOn: Binding(get: { model.thermalAudibleAlertEnabled }, set: { model.setThermalAudibleAlertEnabled($0) }))
-        }.padding(14).background(TerminalStyle.surface)
+                .padding(14).frame(minHeight: 64)
+        }.background(TerminalStyle.recess).overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.5)))
     }
     private var historyFeed: some View {
         VStack(alignment: .leading, spacing: 14) {

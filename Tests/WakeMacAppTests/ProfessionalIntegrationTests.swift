@@ -7,7 +7,7 @@ import WakeMacCore
 
 @MainActor final class ProfessionalIntegrationTests: XCTestCase {
     private final class Effects: SessionEffectManaging {
-        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep) }
+        func update(working: Bool, choices: SessionEffectChoices, directories: [URL], now: Date) -> SessionEffectReport { .init(displayAssertionActive: working && choices.preventDisplaySleep, screenSaverAssertionActive: working && choices.preventScreenSaver) }
         func release() {}
     }
     private final class Source: TriggerObservationSource {
@@ -110,8 +110,8 @@ import WakeMacCore
         }
         model.appearance.theme = .light
         for width in [CGFloat(1100), CGFloat(614)] {
-            try await capture(ScrollView { SessionsView(model: model, controller: model.sessions).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()).preferredColorScheme(.light), name: "sessions-\(Int(width))", width: width)
-            try await capture(IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: true).padding(20).background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).preferredColorScheme(.light), name: "idle-\(Int(width))", width: width)
+            try await capture(ScrollView { SessionsView(model: model, controller: model.sessions, availableWidth: width - 40).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()).preferredColorScheme(.light), name: "sessions-\(Int(width))", width: width)
+            try await capture(IdleScreenConsoleView(controller: model.idlePolicy, immediateAuthentication: true, availableWidth: width - 40).padding(20).background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).preferredColorScheme(.light), name: "idle-\(Int(width))", width: width)
             try await capture(ScrollView { WorkConfigurationsView(model: model).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()), name: "policies-\(Int(width))", width: width)
             try model.profiles.replace([], revoke: [])
             try await capture(ScrollView { WorkConfigurationsView(model: model).padding(20) }.background(TerminalStyle.paper).foregroundStyle(TerminalStyle.ink).buttonStyle(TerminalButtonStyle()), name: "policies-empty-\(Int(width))", width: width)

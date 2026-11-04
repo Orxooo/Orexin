@@ -43,8 +43,7 @@ struct PreferencesTelemetryLabel: View {
         HStack(spacing: 8) {
             Image(systemName: icon).font(.system(size: 13, weight: .regular))
                 .frame(width: 15).accessibilityHidden(true)
-            Text(L(title) + " // " + code).font(TerminalStyle.mono(10)).tracking(0.3)
-                .lineLimit(2).minimumScaleFactor(0.85)
+            Text(L(title)).font(.system(size: 12, weight: .semibold)).lineLimit(1)
         }
     }
 }
@@ -72,12 +71,12 @@ struct PreferencesConsoleFooter<Note: View, Action: View>: View {
         if stacked {
             VStack(alignment: .leading, spacing: 12) {
                 note
-                action.frame(maxWidth: .infinity, alignment: .trailing)
+                action.fixedSize(horizontal: true, vertical: false).frame(maxWidth: .infinity, alignment: .trailing)
             }
         } else {
             HStack(alignment: .center, spacing: 16) {
                 note.frame(maxWidth: .infinity, alignment: .leading)
-                action.frame(maxWidth: .infinity, alignment: .trailing)
+                action.fixedSize(horizontal: true, vertical: false)
             }
         }
     }
@@ -118,61 +117,59 @@ struct PreferencesAdditionalSettings<Content: View>: View {
 struct IdleScreenConsoleView: View {
     @ObservedObject var controller: IdlePolicyController
     var immediateAuthentication: Bool
+    var availableWidth: CGFloat
 
     var body: some View {
         PreferencesConsoleRack(number: "03", title: "闲置后的屏幕", code: "IDLE DISPLAY & SESSION GUARD", accent: TerminalStyle.secondary) {
             Text(L("工作继续运行；熄屏锁定需要即时密码保护，屏保的密码要求跟随系统设置。"))
                 .font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
-            policyRow(number: "01", title: "闲置后熄屏锁定", code: "DISPLAY LOCK", detail: "显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。") {
-                Toggle(L("闲置后熄屏锁定"), isOn: $controller.lockEnabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
-                    .disabled(!immediateAuthentication)
-                    .accessibilityLabel("闲置后熄屏锁定")
-            } timing: {
-                timingControl("锁定等待", value: $controller.lockMinutes, accessibility: "闲置锁定等待时间")
-            }
-            policyRow(number: "02", title: "闲置后启动系统屏保", code: "SCREEN SAVER", detail: "启用「防止闲时屏保」时暂停；不会结束工作。") {
-                Toggle(L("闲置后启动系统屏保"), isOn: $controller.screenSaverEnabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
-                    .accessibilityLabel("闲置后启动系统屏保")
-            } timing: {
-                timingControl("屏保等待", value: $controller.screenSaverMinutes, accessibility: "屏保等待时间")
+            LazyVGrid(columns: Array(repeating: GridItem(.flexible(), spacing: 12), count: availableWidth >= 580 ? 2 : 1), spacing: 12) {
+                policyRow(number: "01", title: "闲置后熄屏锁定", code: "DISPLAY LOCK", detail: "显示器保活期间暂停；允许熄屏且 macOS 立即要求密码时执行。") {
+                    Toggle(L("闲置后熄屏锁定"), isOn: $controller.lockEnabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
+                        .disabled(!immediateAuthentication)
+                        .accessibilityLabel("闲置后熄屏锁定")
+                } timing: {
+                    timingControl("锁定等待", value: $controller.lockMinutes, accessibility: "闲置锁定等待时间")
+                }
+                policyRow(number: "02", title: "闲置后启动系统屏保", code: "SCREEN SAVER", detail: "启用「防止闲时屏保」时暂停；不会结束工作。") {
+                    Toggle(L("闲置后启动系统屏保"), isOn: $controller.screenSaverEnabled).labelsHidden().toggleStyle(TerminalSwitchStyle())
+                        .accessibilityLabel("闲置后启动系统屏保")
+                } timing: {
+                    timingControl("屏保等待", value: $controller.screenSaverMinutes, accessibility: "屏保等待时间")
+                }
             }
             HStack(alignment: .top, spacing: 8) {
                 TerminalIcon(name: "info.circle", size: 13).foregroundStyle(TerminalStyle.signal)
                 Text(L(controller.status)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
                     .fixedSize(horizontal: false, vertical: true)
-            }
+            }.padding(10).frame(maxWidth: .infinity, alignment: .leading)
+                .background(TerminalStyle.selection.opacity(0.25))
+                .overlay(Rectangle().strokeBorder(TerminalStyle.accent.opacity(0.35)))
         }
     }
 
     private func policyRow<Control: View, Timing: View>(number: String, title: String, code: String, detail: String,
                                                        @ViewBuilder control: () -> Control, @ViewBuilder timing: () -> Timing) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            HStack(spacing: 12) {
-                Text("[" + number + "]").font(TerminalStyle.mono(10)).foregroundStyle(TerminalStyle.secondary)
-                    .frame(width: 63, alignment: .leading)
+            HStack(alignment: .top, spacing: 8) {
                 VStack(alignment: .leading, spacing: 5) {
-                    ViewThatFits(in: .horizontal) {
-                        HStack(spacing: 7) {
-                            Text(L(title)).font(.system(size: 13, weight: .semibold))
-                            Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
-                        }
-                        Text(L(title)).font(.system(size: 13, weight: .semibold))
-                    }
-                    Text(L(detail)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
+                    Text("[" + number + "] " + L(title)).font(.system(size: 12, weight: .semibold))
                         .fixedSize(horizontal: false, vertical: true)
+                    Text(code).font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
                 }.frame(maxWidth: .infinity, alignment: .leading)
-                Spacer(minLength: 0)
                 control()
             }
+            Text(L(detail)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
+                .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: 42, alignment: .topLeading)
             Rectangle().fill(TerminalStyle.line.opacity(0.4)).frame(height: 1)
             timing()
         }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
+            .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.4)))
     }
 
     private func timingControl(_ title: String, value: Binding<Double>, accessibility: String) -> some View {
         HStack {
             Text(L(title)).font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
-            Text("// WAIT INTERVAL").font(TerminalStyle.mono(8)).foregroundStyle(TerminalStyle.muted)
             Spacer(minLength: 0)
             TerminalStepper(value: value, in: 1...240) {
                 Text(LF("%d 分钟", Int(value.wrappedValue))).font(TerminalStyle.mono(12)).foregroundStyle(TerminalStyle.ink)

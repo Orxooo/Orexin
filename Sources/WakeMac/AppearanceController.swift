@@ -13,10 +13,23 @@ import UserNotifications
         var id: String { rawValue }
         var title: String { switch self { case .dark: L("创:电子世界争霸战"); case .light: L("齐马蓝"); case .amber: L("银翼杀手2049"); case .system: L("跟随系统") } }
         var artworkName: String { switch self { case .dark, .system: "OrbitalCore"; case .light: "OrbitalZima"; case .amber: "Orbital2049" } }
+        var moduleArtworkFolder: String? { switch self { case .dark: "Tron"; case .light: "ZimaBlue"; case .amber: "BladeRunner2049"; case .system: nil } }
         var colorScheme: ColorScheme? { switch self { case .dark, .amber: .dark; case .light: .light; case .system: nil } }
         var appearance: NSAppearance? { switch self { case .dark, .amber: NSAppearance(named: .darkAqua); case .light: NSAppearance(named: .aqua); case .system: nil } }
     }
     @Published var theme: Theme { didSet { preferences.set(theme.rawValue, forKey: "orexin.appearance.theme"); onUpdate?() } }
+    enum MenuLayout: String, CaseIterable, Identifiable {
+        case deck, band
+        var id: String { rawValue }
+        var title: String { self == .deck ? L("仪表舱") : L("横向悬浮条") }
+        func size(available: CGSize) -> CGSize {
+            switch self {
+            case .deck: CGSize(width: min(640, max(360, available.width - 32)), height: min(704, max(360, available.height - 64)))
+            case .band: CGSize(width: min(1120, max(360, available.width - 32)), height: 82)
+            }
+        }
+    }
+    @Published var menuLayout: MenuLayout { didSet { preferences.set(menuLayout.rawValue, forKey: "orexin.appearance.menuLayout"); onUpdate?() } }
     @Published var controlSounds: Bool { didSet { preferences.set(controlSounds, forKey: "orexin.appearance.controlSounds") } }
     enum ControlSound: String, CaseIterable, Identifiable {
         case relay, keyboard, `switch`
@@ -49,6 +62,7 @@ import UserNotifications
     init(preferences: UserDefaults) {
         self.preferences = preferences
         theme = Theme(rawValue: preferences.string(forKey: "orexin.appearance.theme") ?? "dark") ?? .dark
+        menuLayout = MenuLayout(rawValue: preferences.string(forKey: "orexin.appearance.menuLayout") ?? "") ?? .deck
         controlSounds = preferences.object(forKey: "orexin.appearance.controlSounds") as? Bool ?? true
         controlSound = ControlSound(rawValue: preferences.string(forKey: "orexin.appearance.controlSound") ?? "") ?? .defaultSound
         controlVolume = Self.validVolume(preferences.object(forKey: "orexin.appearance.controlVolume") as? Double ?? 0.3)

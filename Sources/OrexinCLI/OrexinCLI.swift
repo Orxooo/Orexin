@@ -14,7 +14,7 @@ private struct Arguments {
     init(_ arguments: [String]) throws {
         operation = arguments.first ?? "help"
         var index = 1
-        let allowed: Set<String> = ["--socket", "--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code", "--profile", "--strategy", "--expect", "--service-executable", "--id"]
+        let allowed: Set<String> = ["--socket", "--title", "--mode", "--clamshell", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--exit-code", "--profile", "--strategy", "--expect", "--service-executable", "--id"]
         while index < arguments.count {
             let item = arguments[index]
             if item == "--" { command = Array(arguments.dropFirst(index + 1)); break }
@@ -26,7 +26,7 @@ private struct Arguments {
             } else { positional.append(item); index += 1 }
         }
         let common: Set<String> = ["--socket"]
-        let registration: Set<String> = ["--title", "--mode", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--profile"]
+        let registration: Set<String> = ["--title", "--mode", "--clamshell", "--screen", "--lease", "--timeout", "--owner-pid", "--after", "--profile"]
         let valid = common.union(["register", "run"].contains(operation) ? registration : ["complete", "fail"].contains(operation) ? ["--exit-code"] : operation == "config-import" ? ["--strategy", "--expect"] : operation == "service-start" ? ["--service-executable"] : operation == "plan-run" ? ["--id"] : [])
         guard Set(options.keys).isSubset(of: valid), operation == "run" || command.isEmpty else { throw ModeError("Option does not apply to this command") }
         guard !apply || operation == "config-import" else { throw ModeError("--apply is only valid for config-import") }
@@ -40,8 +40,11 @@ private struct Arguments {
     }
     func spec(wrapping: Bool) throws -> WorkRequestSpec {
         guard positional.isEmpty else { throw ModeError("Unexpected positional argument") }
-        guard let mode = WorkMode(rawValue: options["--mode"] ?? "desk"), mode != .normal,
-              let screen = RequestScreen(rawValue: options["--screen"] ?? "idle") else { throw ModeError("Use --mode desk|background and --screen idle|dim|awake") }
+        let rawMode = options["--mode"] ?? "awake"
+        guard ["on", "off"].contains(options["--clamshell"] ?? "off") else { throw ModeError("Use --clamshell on|off") }
+        let mode = rawMode == "awake" ? (options["--clamshell"] == "on" ? WorkMode.background : .desk) : WorkMode(rawValue: rawMode)
+        guard let mode, mode != .normal,
+              let screen = RequestScreen(rawValue: options["--screen"] ?? "idle") else { throw ModeError("Use --mode awake --clamshell on|off --screen idle|dim|awake") }
         let after = options["--after"] ?? "restore"
         guard ["restore", "sleep"].contains(after) else { throw ModeError("Use --after restore|sleep") }
         let lease = try seconds("--lease", fallback: 60)
@@ -49,7 +52,7 @@ private struct Arguments {
         let deadline = try options["--timeout"].map { _ in Date().addingTimeInterval(try seconds("--timeout", fallback: 60)) }
         let profile = options["--profile"].flatMap(UUID.init(uuidString:))
         guard options["--profile"] == nil || profile != nil else { throw ModeError("--profile requires a profile UUID") }
-        guard profile == nil || ["--mode", "--screen", "--after"].allSatisfy({ options[$0] == nil }) else { throw ModeError("A profile supplies mode, screen and teardown; omit --mode/--screen/--after") }
+        guard profile == nil || ["--mode", "--clamshell", "--screen", "--after"].allSatisfy({ options[$0] == nil }) else { throw ModeError("A profile supplies mode, screen and teardown; omit --mode/--screen/--after") }
         var process: LocalProcessIdentity?
         if wrapping {
             guard options["--owner-pid"] == nil else { throw ModeError("run monitors its own wrapper; --owner-pid is only for register") }
@@ -92,7 +95,7 @@ private struct Arguments {
       config-import FILE [--strategy merge|replace]   Validate and preview, no changes
         --apply --expect TOKEN            Apply this exact preview; scripts stay inactive
     Registration options:
-      --title TEXT --mode desk|background --screen idle|dim|awake
+      --title TEXT --mode awake --clamshell on|off --screen idle|dim|awake
       --lease SECONDS (5–3600, default 60) --timeout SECONDS
       --after restore|sleep (default restore; sleep needs successful completion)
       --owner-pid PID (register only, long-lived reporter/shell PID, not the awaited worker; must live through complete)
@@ -190,10 +193,10 @@ private struct Arguments {
         }
         if let service = reply.service { print("service=running pid=\(service.pid) instance=\(service.instanceID.uuidString)") }
         for plan in reply.plans ?? [] { print("plan=\(plan.id.uuidString)\t\(plan.state.rawValue)\t\(plan.finished)/\(plan.total)\t\(plan.title)") }
-        print("mode=\(reply.mode?.rawValue ?? "unknown") verified=\(reply.verified) tasks=\(reply.tasks.count)")
+        print("mode=\(reply.mode == .normal ? "normal" : reply.mode == nil ? "unknown" : "awake") clamshell=\(reply.mode == .background) verified=\(reply.verified) tasks=\(reply.tasks.count)")
         for task in reply.tasks {
             let item = task.request
-            print("\(item.id.uuidString)\t\(item.state.rawValue)\t\(item.spec.mode.rawValue)/\(item.spec.screen.rawValue)\t\(task.satisfied ? "verified" : task.detail)\t\(item.spec.title)")
+            print("\(item.id.uuidString)\t\(item.state.rawValue)\tawake[clamshell=\(item.spec.mode == .background)]/\(item.spec.requiredScreen.rawValue)\t\(task.satisfied ? "verified" : task.detail)\t\(item.spec.title)")
         }
     }
     static func diagnostic(_ text: String) { try? FileHandle.standardError.write(contentsOf: Data(("orexin: " + text + "\n").utf8)) }

@@ -8,7 +8,7 @@ struct TaskIntegrationsView: View {
     let availableWidth: CGFloat
     @State private var cliCopyMessage = ""
     @State private var scriptCopyMessage = ""
-    private let sampleScript = "tell application \"Orexin\"\n    start session mode \"desktop\" for minutes 30\n    session status\n    -- end session\nend tell"
+    private let sampleScript = "tell application \"Orexin\"\n    start session mode \"awake\" for minutes 30\n    session status\n    -- end session\nend tell"
     private var cliExample: String {
         let bundle = Bundle.main.bundleURL
         let appPath = bundle.pathExtension == "app" ? bundle.path : "/Applications/Orexin.app"
@@ -88,14 +88,14 @@ struct TaskIntegrationsView: View {
             Button {
                 NSPasteboard.general.clearContents()
                 cliCopyMessage = NSPasteboard.general.setString(cliExample, forType: .string) ? "示例已复制" : "复制失败，请选中文本复制"
-            } label: { TerminalLabel("复制 CLI 示例", systemImage: "doc.on.doc").frame(width: 130) }.workKeyboardFocus(radius: 0)
+            } label: { TerminalLabel("复制 CLI 示例", systemImage: "doc.on.doc") }.workKeyboardFocus(radius: 0)
         }
     }
     private var cliNote: some View {
         WorkNote(text: "示例使用应用内附带的 CLI，无需安装到 PATH。默认恢复原有状态；需要成功后休眠时添加 --after sleep。")
     }
     private var cliDetails: some View {
-        DisclosureGroup(L("外部任务生命周期")) {
+        TerminalDisclosureSection(title: "外部任务生命周期") {
             VStack(alignment: .leading, spacing: 10) {
                 Text("register → heartbeat → complete / fail\nrelease · status · list · stop-all")
                     .font(TerminalStyle.mono(10)).textSelection(.enabled)
@@ -103,8 +103,8 @@ struct TaskIntegrationsView: View {
                     .font(WorkType.caption).foregroundStyle(TerminalStyle.muted).fixedSize(horizontal: false, vertical: true)
                 Text(L("使用 \"$orexin\" help 查看参数；所有命令支持 --json。"))
                     .font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
-            }.padding(.top, 8)
-        }.font(WorkType.caption)
+            }
+        }
     }
     private var scriptHeader: some View {
         HStack {
@@ -128,17 +128,17 @@ struct TaskIntegrationsView: View {
                 NSPasteboard.general.clearContents()
                 scriptCopyMessage = NSPasteboard.general.setString(sampleScript, forType: .string)
                     ? "脚本已复制" : "复制失败，请选中文本复制"
-            } label: { TerminalLabel("复制脚本", systemImage: "doc.on.doc").frame(width: 130) }
+            } label: { TerminalLabel("复制脚本", systemImage: "doc.on.doc") }
                 .workKeyboardFocus(radius: 0)
         }
     }
     private var scriptNote: some View {
-        WorkNote(text: "支持会话启停、延长、剩余时间、显示器与屏保、合盖、触发器和磁盘保活控制。后台工作需要已批准的合盖服务；所有命令采用偏好设置中的锁屏策略。")
+        WorkNote(text: "通过 CLI 或 AppleScript 启动唤醒会话，分别设置屏幕与合盖行为。")
     }
     private var scriptDetails: some View {
-        DisclosureGroup("更多脚本命令") {
+        TerminalDisclosureSection(title: "更多脚本命令") {
             Text("session is active\nsession time remaining\nextend session for minutes 15\nprevent display sleep\nallow display sleep\nprevent screen saver\nallow screen saver\nenable closed display mode\ndisable closed display mode\ntriggers are enabled\nenable triggers\ndisable triggers\nenable drive alive\ndisable drive alive")
-                .font(TerminalStyle.mono(10)).textSelection(.enabled).padding(.top, 8)
-        }.font(WorkType.caption)
+                .font(TerminalStyle.mono(10)).textSelection(.enabled)
+        }
     }
 }
