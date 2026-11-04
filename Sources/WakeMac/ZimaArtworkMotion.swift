@@ -116,8 +116,9 @@ struct ZimaArtworkMotion: View {
         for row in 0..<12 {
             var caustic = Path()
             for step in 0...32 {
-                let x = size.width * Double(step) / 32
-                let y = size.height * Double(row) / 12 + sin(Double(step) * motion.frequency * 1.5 + time * motion.speed + Double(row)) * size.height * motion.amplitude * 5
+                let x = size.width * CGFloat(step) / 32
+                let wave = CGFloat(sin(Double(step) * motion.frequency * 1.5 + time * motion.speed + Double(row)))
+                let y = size.height * CGFloat(row) / 12 + wave * size.height * CGFloat(motion.amplitude) * 5
                 if step == 0 { caustic.move(to: CGPoint(x: x, y: y)) }
                 else { caustic.addLine(to: CGPoint(x: x, y: y)) }
             }
