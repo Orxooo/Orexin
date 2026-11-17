@@ -13,11 +13,11 @@
 
 Orexin is a macOS menu bar utility for controlling when your Mac stays awake and when it can sleep.
 
-Use it for builds, downloads, presentations or long-running tasks, at your desk or with the lid closed. Timed sessions, automatic rules and command tasks let you choose when to stop keeping the Mac awake.
+Choose Awake to keep your Mac running and Normal to release Orexin’s keep-awake settings. Configure the display, lid-closed operation, screen saver and unlocked work independently; sessions, rules and commands define when work ends.
 
 [Download latest](https://github.com/Orxooo/Orexin/releases/latest) · [Changelog](CHANGELOG.en.md) · [Handbook](https://github.com/Orxooo/Orexin/wiki)
 
-![Orexin work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.0.3-modes.png)
+![Orexin work modes in the Tron theme, shown in Simplified Chinese](Assets/README/orexin-1.1.1-modes.png)
 
 ## Features
 
@@ -58,14 +58,16 @@ Quit Orexin, replace the app and reopen it. Skip this step if your old version h
 
 ### Before use
 
-- “Keep unlocked while working” is optional and requires separate authorization. It disables the wake-password requirement for the session and restores immediate password protection when work ends. Orexin does not store passwords or unlock a locked Mac.
+- “Keep unlocked while working” is optional and requires account authentication. It disables the wake-password requirement for the work session and restores immediate password protection when work ends. In Preferences → Core & Authorization, “Remember account password for automatic authorization” is off by default. When enabled, Orexin saves the password in the local macOS Keychain only after successful authentication and verification; it does not sync through iCloud. Turning it off deletes the saved password. Without a saved password, each new work session asks for it; a rejected saved password is deleted and allows one manual retry. Orexin cannot unlock a locked Mac.
 - Zero brightness differs from display sleep. Turning the display off may affect screenshots or UI automation that depend on it.
-- Returning to Normal Sleep releases Orexin's requests. Other apps may still prevent sleep.
+- Returning to Normal Mode releases Orexin's requests. Other apps may still prevent sleep.
 - Thermal protection uses macOS thermal-pressure levels, not Celsius readings. Cooling does not restart stopped work.
+- If the system helper disconnects and work stops, switch to Normal Mode, then restart the core in Preferences → Core & Authorization before starting work again.
+- After changing session or rule notification settings, or first allowing system notifications, restart the core to apply them.
 
 ## Task management and CLI
 
-Background commands and plans continue after you quit the interface. Manual sessions and automatic rules require the interface process. Restarting the service marks unfinished tasks as lost without rerunning them.
+The background core owns manual work modes, timed sessions, automatic rules, commands and execution plans. They continue after the interface quits. Hotkeys and AppleScript dispatch remain interface entry points and require the GUI process. After a core restart, previous work is not replayed; unfinished tasks are marked as lost.
 
 The CLI is bundled with the app:
 
@@ -90,6 +92,8 @@ cd Orexin
 swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
+
+Local builds use the Dev channel by default. For a stable build, set `OREXIN_BUILD_CHANNEL=stable` and provide the public version with `OREXIN_VERSION`.
 
 The output is `/tmp/orexin-dist/Orexin.app`, signed ad hoc by default. Lid-closed operation requires the app and helper to use the same Apple developer certificate:
 

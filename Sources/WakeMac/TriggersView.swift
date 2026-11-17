@@ -388,9 +388,9 @@ struct TriggersView: View {
             Text(L(explanation)).font(.system(size: 11)).foregroundStyle(WorkStyle.muted)
                 .fixedSize(horizontal: false, vertical: true).frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
             HStack(spacing: 10) {
-                Button(L(authorized ? "已授权" : "请求授权")) { controller.requestPermission(for: kind); Task { await refreshTelemetry() } }
-                    .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0).disabled(authorized)
-                Button(L("打开权限设置")) { controller.openPermissionSettings(for: kind) }.buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
+                Text(L(authorized ? "已授权" : "未授权")).font(WorkType.caption).foregroundStyle(WorkStyle.muted)
+                Button(L("打开权限设置")) { NotificationCenter.default.post(name: .orexinOpenCorePreferences, object: nil) }
+                    .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
             }.frame(minHeight: 36)
         }.padding(14).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
             .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.6)))

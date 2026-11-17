@@ -102,7 +102,11 @@ actor MacBackend: ModeBackend {
     func snapshot() async throws -> Snapshot {
         if let leaseFailure { throw ModeError(leaseFailure) }
         let began = ProcessInfo.processInfo.systemUptime
-        let power = try await sleepDisabled()
+        var power = try await sleepDisabled()
+        if backgroundRequested && !power {
+            try await helper.renew()
+            power = try await sleepDisabled()
+        }
         let policy = try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"])
         if let leaseFailure { throw ModeError(leaseFailure) }
         let elapsed = ProcessInfo.processInfo.systemUptime - began
@@ -134,22 +138,21 @@ actor MacBackend: ModeBackend {
             try await helper.setBackground(true)
         }
         if preferences.bool(forKey: "orexin.work.keepUnlocked"), !unlockedAuthorized {
-            guard allowsAuthentication else { throw ModeError("请在 Orexin 界面完成本次保持未锁定授权。") }
+            guard allowsAuthentication || preferences.bool(forKey: "orexin.work.rememberAccountPassword") else { throw ModeError("请在 Orexin 界面完成本次保持未锁定授权。") }
             guard let lockHelper = helper as? any ScreenLockLeaseClient else { throw ModeError("当前服务不支持临时锁屏策略。") }
             try await lockHelper.prepareUnlockedWork()
             unlockedRequested = true
             preferences.set(true, forKey: "orexin.UnlockedLeaseArmed")
             startHeartbeat()
             do {
-                var password = try await UnlockedWorkAuthorization.requestPassword()
-                defer { password.resetBytes(in: 0..<password.count) }
-                guard unlockedRequested, leaseFailure == nil else { throw ModeError("服务会话已失效，请重新开始工作。") }
-                try await helper.renew()
-                try await Task.detached(priority: .userInitiated) { [password] in try UnlockedWorkAuthorization.disableScreenLock(password: password) }.value
-                try await helper.renew()
-                let lockState = try await command("/usr/sbin/sysadminctl", ["-screenLock", "status"])
-                guard SystemParsing.lockPolicy(lockState) == .off, leaseFailure == nil else { throw ModeError("未确认临时关闭锁定；已恢复密码保护。") }
-                unlockedAuthorized = true
+                let savedPreferences = preferences, interactive = allowsAuthentication
+                let credentials = await MainActor.run { UnlockedWorkCredentials(preferences: savedPreferences) }
+                try await UnlockedWorkAuthentication.authorize(credentials: credentials, requestPassword: {
+                    guard interactive else { throw ModeError("请在 Orexin 界面完成本次保持未锁定授权。") }
+                    return try UnlockedWorkAuthorization.requestPassword(remembering: credentials.enabled)
+                }, renew: { try await self.renewPendingUnlockedWork() }, apply: { password in
+                    try await Task.detached(priority: .userInitiated) { try UnlockedWorkAuthorization.disableScreenLock(password: password) }.value
+                }, verify: { try await self.verifyUnlockedWorkFromInterface() })
             } catch {
                 let reason = error
                 try await restoreUnlockedWork()
@@ -159,7 +162,7 @@ actor MacBackend: ModeBackend {
         if heartbeat == nil, backgroundRequested || unlockedRequested { startHeartbeat() }
         let power = try await sleepDisabled()
         if let leaseFailure { throw ModeError(leaseFailure) }
-        guard power == (mode == .background) else {
+        guard mode != .background || power else {
             throw ModeError("系统防休眠状态不一致。请先在其他保活程序中恢复休眠，再重新选择模式。")
         }
         if mode != .normal { try assertion.acquire() }
@@ -227,11 +230,6 @@ actor MacBackend: ModeBackend {
                 } catch { failures.append(error.localizedDescription) }
             }
         }
-        do {
-            if try await sleepDisabled() != false {
-                failures.append("系统防休眠状态不一致。请先在其他保活程序中恢复休眠，再重新选择模式。")
-            }
-        } catch { failures.append(error.localizedDescription) }
         if !failures.isEmpty { throw ModeError(failures.joined(separator: "\n")) }
     }
     private func restoreUnlockedWork() async throws {

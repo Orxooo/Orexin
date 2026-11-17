@@ -7,7 +7,7 @@ import Combine
 import WakeMacCore
 
 /// Session plans are configuration only. Active sessions are deliberately never persisted.
-enum SessionEndCondition: String, CaseIterable, Identifiable {
+enum SessionEndCondition: String, CaseIterable, Identifiable, Codable {
     case indefinite, duration, untilDate, application, process, download
     var id: String { rawValue }
     var title: String {
@@ -30,7 +30,7 @@ struct SessionFileStamp: Equatable {
 }
 enum SessionDownloadReading: Equatable { case file(SessionFileStamp), missing, unavailable }
 
-struct SessionBehaviorOverride: Equatable {
+struct SessionBehaviorOverride: Equatable, Codable {
     var display: Bool? = nil
     var saver: Bool? = nil
 }
@@ -81,7 +81,7 @@ struct SessionBehaviorOverride: Equatable {
     var configuredScreenPolicyProvider: (() -> Bool)?
     @Published var screenSaverControlAvailable = true
     // Cursor motion always starts disabled. Granting Accessibility is a separate explicit action.
-    @Published var moveCursor = false
+    @Published var moveCursor = false { didSet { if oldValue != moveCursor { remoteCursorChanged?(moveCursor) } } }
     @Published private(set) var cursorAccessGranted = false
     @Published private(set) var cursorAccessStatus = "尚未检查辅助功能权限"
     var cursorAccessCheck: () -> Bool = { AXIsProcessTrusted() }
@@ -99,6 +99,37 @@ struct SessionBehaviorOverride: Equatable {
     @Published private(set) var deadline: Date?
     @Published private(set) var downloadProgressPercent: Double?
 
+    var remoteCursorChanged: ((Bool) -> Void)?
+    var remoteStart: (() async -> Void)?
+    var remoteEnd: (() async -> Void)?
+    var remoteExtend: ((Double) async -> Bool)?
+    func extendRemotely(minutes: Double) async -> Bool {
+        if let remoteExtend { return await remoteExtend(minutes) }
+        return extend(minutes: minutes)
+    }
+    func observeRuntime(_ value: CoreSessionSnapshot) {
+        isActive = value.active; isStarting = value.starting; status = value.status
+        deadline = value.deadline; effectReport = value.effects
+        downloadProgressPercent = value.downloadProgress
+        _moveCursor = Published(initialValue: value.cursor)
+        effectOverrides = value.overrides
+        screenPolicyPreventsSleep = value.preventDisplay
+        requestedScreenSaverPrevention = value.preventSaver
+    }
+    func reloadConfiguration() {
+        let source = SessionController(preferences: preferences, effects: effects)
+        endCondition = source.endCondition; durationMinutes = source.durationMinutes; endDate = source.endDate
+        applicationURL = source.applicationURL; downloadURL = source.downloadURL
+        defaultMode = source.defaultMode; preventDisplaySleep = source.preventDisplaySleep
+        _preventScreenSaver = Published(initialValue: source.preventScreenSaver)
+        hasScreenSaverPreference = source.hasScreenSaverPreference
+        screenSaverExceptionBundleIDs = source.screenSaverExceptionBundleIDs
+        driveAlive = source.driveAlive; driveDirectories = source.driveDirectories
+        downloadStabilitySeconds = source.downloadStabilitySeconds
+        mouseMovementIntervalSeconds = source.mouseMovementIntervalSeconds
+        mouseOnlyWhenIdle = source.mouseOnlyWhenIdle; mouseIdleThresholdSeconds = source.mouseIdleThresholdSeconds
+        mouseStopAfterIdleSeconds = source.mouseStopAfterIdleSeconds; diskAccessIntervalSeconds = source.diskAccessIntervalSeconds
+    }
     var onBegin: ((WorkMode) async -> Bool)?
     var onEnd: (() async -> Void)?
     var onConditionEnd: (() async -> Void)?
@@ -209,6 +240,13 @@ struct SessionBehaviorOverride: Equatable {
     }
 
     func start(now: Date = Date()) async {
+        if let remoteStart {
+            guard !isActive, !isStarting else { return }
+            isStarting = true
+            await remoteStart()
+            isStarting = false
+            return
+        }
         guard !stopped, !isActive, !isStarting else { return }
         effects.release(); effectReport = inactiveEffectReport()
         downloadProgressObserver.stop(); downloadProgressPercent = nil
@@ -264,6 +302,7 @@ struct SessionBehaviorOverride: Equatable {
     }
 
     func end() async {
+        if let remoteEnd { await remoteEnd(); return }
         guard isActive || isStarting else { return }
         let wasActive = isActive
         clear(status: "会话已结束")
@@ -285,6 +324,7 @@ struct SessionBehaviorOverride: Equatable {
     }
 
     func tick(now: Date) async {
+        guard remoteStart == nil else { return }
         guard !stopped else { effects.release(); return }
         guard workingProvider?() == true || workVerificationPending?() == true else {
             if isActive {

@@ -44,6 +44,7 @@ extension AppModel {
     func overrideWorkRequests(reason: String) {
         cancelPendingPlans()
         workStopEpoch += 1
+        pendingUnlockedGrantID = nil; pendingUnlockedOwner = nil; pendingUnlockedDeadline = nil
         policyHooks.cancelAll()
         workRequests.stopAll(reason: reason, now: Date())
         manualWorkMode = nil; sessionWorkMode = nil
@@ -177,7 +178,7 @@ extension AppModel {
     }
     func reconcileWorkRequests() async {
         if serviceSocket != nil {
-            await chooseThroughService(aggregateMode(), sleep: false, automatic: true, reconcilingRequests: true)
+            await refreshTaskService()
             return
         }
         requestReconcileNeeded = true

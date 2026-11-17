@@ -64,27 +64,61 @@ protocol ScreenLockLeaseClient: BackgroundLeaseClient {
 final class PowerHelperClient: ScreenLockLeaseClient {
     private var connection: NSXPCConnection?
     private let makeConnection: () throws -> NSXPCConnection
-    init(makeConnection: @escaping () throws -> NSXPCConnection = {
+    private let recoverService: (() async throws -> Void)?
+    private var backgroundHeld = false
+    private var unlockedHeld = false
+    convenience init() {
+        self.init(makeConnection: Self.signedConnection, recoverService: {
+            let executable = URL(fileURLWithPath: CommandLine.arguments[0])
+            if executable.lastPathComponent == "OrexinCore" {
+                let application = try TaskServiceLauncher.executable(near: executable)
+                _ = try await Task.detached { try CommandRunner.run(application.path, ["--check-power-helper"], timeout: 20) }.value
+            } else {
+                try await PowerHelperLifecycle.shared.reload()
+            }
+        })
+    }
+    private static func signedConnection() throws -> NSXPCConnection {
         let requirement = try PowerService.peerRequirement(identifier: PowerService.identifier)
         let connection = NSXPCConnection(machServiceName: PowerService.identifier, options: .privileged)
         connection.setCodeSigningRequirement(requirement)
         return connection
-    }) {
-        self.makeConnection = makeConnection
+    }
+    init(makeConnection: @escaping () throws -> NSXPCConnection, recoverService: (() async throws -> Void)? = nil) {
+        self.makeConnection = makeConnection; self.recoverService = recoverService
     }
     func setBackground(_ enabled: Bool) async throws {
+        if enabled { try await ensureReady() }
         try await request(context: "无法更改合盖运行状态。") { service, reply in service.setBackground(enabled, reply: reply) }
+        backgroundHeld = enabled
     }
     func renew() async throws {
         try await request(context: "无法续约工作会话。") { service, reply in service.renew(reply: reply) }
     }
     func prepareUnlockedWork() async throws {
+        try await ensureReady(context: "无法开始「工作时保持未锁定」。")
         try await request(context: "无法开始「工作时保持未锁定」。") { service, reply in service.prepareUnlockedWork(reply: reply) }
+        unlockedHeld = true
     }
     func endUnlockedWork() async throws {
         try await request(context: "无法结束「保持未锁定」恢复会话。") { service, reply in service.endUnlockedWork(reply: reply) }
+        unlockedHeld = false
     }
-    private func request(context: String, _ call: (PowerServiceProtocol, @escaping (String?) -> Void) -> Void) async throws {
+    /// Probe before acquiring a lease. Never reload a service holding our work.
+    func ensureReady(context: String = "无法核验系统辅助服务。") async throws {
+        do { try await probe(context: context) }
+        catch let failure as PowerHelperConnectionFailure {
+            guard !backgroundHeld, !unlockedHeld, let recoverService else { throw failure }
+            try await recoverService()
+            try await probe(context: context)
+        }
+    }
+    private func probe(context: String) async throws {
+        try await request(context: context, timeoutInterval: 2) { service, reply in
+            service.checkCompatibility(1, reply: reply)
+        }
+    }
+    private func request(context: String, timeoutInterval: Double = 8, _ call: (PowerServiceProtocol, @escaping (String?) -> Void) -> Void) async throws {
         do {
             // Registration metadata is process-relative and may lag approval.
             // The signed XPC peer's reply is authoritative; never veto it using
@@ -102,7 +136,7 @@ final class PowerHelperClient: ScreenLockLeaseClient {
                     gate.finish(.failure(ModeError("系统辅助服务响应超时；已断开连接以恢复休眠。")))
                     connection.invalidate()
                 }
-                DispatchQueue.global().asyncAfter(deadline: .now() + 8, execute: timeout)
+                DispatchQueue.global().asyncAfter(deadline: .now() + timeoutInterval, execute: timeout)
                 guard let service = connection.remoteObjectProxyWithErrorHandler({ error in
                     timeout.cancel(); gate.finish(.failure(error))
                 }) as? PowerServiceProtocol else {

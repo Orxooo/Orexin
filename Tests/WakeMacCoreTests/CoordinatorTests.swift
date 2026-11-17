@@ -11,7 +11,9 @@ actor RecordingBackend: ModeBackend {
     var requestedPolicies: [LockPolicy] = []
     var failPower = false
     var omitSleepDisable = false
+    var externalSleepDisabled = false
     func setup(policy: LockPolicy = .immediate, fail: Bool = false, omit: Bool = false) { value.lockPolicy = policy; failPower = fail; omitSleepDisable = omit }
+    func setExternalSleepDisabled(_ enabled: Bool) { externalSleepDisabled = enabled; value.sleepDisabled = enabled }
     func snapshot() -> Snapshot { value }
     func configurePower(_ mode: WorkMode) throws {
         operations.append("power:" + mode.rawValue)
@@ -19,7 +21,7 @@ actor RecordingBackend: ModeBackend {
         value.idleSleepPrevented = mode != .normal
         value.displaySleepAllowed = true
         value.backgroundLeaseActive = mode == .background
-        value.sleepDisabled = mode == .background && !omitSleepDisable
+        value.sleepDisabled = externalSleepDisabled || (mode == .background && !omitSleepDisable)
     }
     func requestLockPolicy(_ policy: LockPolicy) { operations.append("policy"); requestedPolicies.append(policy) }
     func sleepNow() { operations.append("sleep") }
@@ -56,6 +58,22 @@ final class CoordinatorTests: XCTestCase {
     func testBackgroundCanBecomeActiveAfterReadback() async {
         let r = await ModeCoordinator(backend: RecordingBackend()).select(.background)
         XCTAssertEqual(r, .active(.background))
+    }
+    func testNormalAndDeskCanReleaseOwnLeaseWhileAnotherAppPreventsSleep() async {
+        let b = RecordingBackend(); await b.setExternalSleepDisabled(true)
+        let c = ModeCoordinator(backend: b)
+        let desk = await c.select(.desk); XCTAssertEqual(desk, .active(.desk))
+        let normal = await c.select(.normal); XCTAssertEqual(normal, .active(.normal))
+        let state = await b.snapshot()
+        XCTAssertEqual(state.sleepDisabled, true)
+        XCTAssertEqual(state.backgroundLeaseActive, false)
+        XCTAssertEqual(state.idleSleepPrevented, false)
+    }
+    func testSleepIsNotIssuedWhenAnotherAppPreventsSleep() async {
+        let b = RecordingBackend(); await b.setExternalSleepDisabled(true)
+        let result = await ModeCoordinator(backend: b).sleep()
+        guard case .failed = result else { return XCTFail("Global sleep prevention must be reported") }
+        let ops = await b.operations; XCTAssertFalse(ops.contains("sleep"))
     }
     func testDeskDoesNotKeepGlobalSleepDisabled() async {
         let b = RecordingBackend(); let c = ModeCoordinator(backend: b)

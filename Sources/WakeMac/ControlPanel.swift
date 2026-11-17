@@ -384,7 +384,7 @@ struct ControlPanel: View {
     }
     private func engage(_ minutes: Double?) {
         Task {
-            if let minutes, sessions.isActive { _ = sessions.extend(minutes: minutes) }
+            if let minutes, sessions.isActive { _ = await sessions.extendRemotely(minutes: minutes) }
             else { sessions.endCondition = minutes == nil ? .indefinite : .duration; if let minutes { sessions.durationMinutes = minutes }; await sessions.start() }
             model.onUpdate?()
         }

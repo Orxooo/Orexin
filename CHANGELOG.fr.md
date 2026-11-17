@@ -6,6 +6,14 @@
 
 Les paquets d’installation et les instructions de mise à niveau sont disponibles sur la [page des versions](https://github.com/Orxooo/Orexin/releases).
 
+## V1.1.1 — 2026-11-16
+
+- Le cœur en arrière-plan gère les modes, sessions, règles automatiques, commandes et plans d’exécution après la fermeture de l’interface.
+- Correction d’un problème qui pouvait empêcher la réouverture de l’interface pendant l’exécution du cœur.
+- Pendant le travail capot fermé, le cœur vérifie le réglage de prévention de la veille et le réactive s’il est désactivé. Un réglage déjà activé avant le travail reste inchangé tant qu’Orexin ne l’a pas modifié.
+- Ajout d’une autorisation automatique facultative par trousseau, désactivée par défaut. Le mot de passe n’est enregistré qu’après authentification et vérification réussies.
+- Correction du retour d’état pour la veille immédiate. Un cœur occupé refuse la demande sans arrêter le travail en cours.
+
 ## V1.1.0 — 2026-11-04
 
 ### Nouveautés

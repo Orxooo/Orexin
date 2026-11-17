@@ -37,6 +37,7 @@ extension AppModel {
         if notify { notificationHandler?(text) }
     }
     func scheduleRestore(at date: Date) {
+        if serviceSocket != nil { Task { _ = await mutateCore("core-timer", intent: .init(date: date)) }; return }
         guard !busy, active == .desk || active == .background else {
             convenienceMessage = "请先开启唤醒模式。"; return
         }
@@ -63,6 +64,7 @@ extension AppModel {
         onUpdate?()
     }
     func cancelTimer() {
+        if serviceSocket != nil { Task { _ = await mutateCore("core-timer") }; return }
         automation.deadline = nil; record("已取消定时休眠。"); onUpdate?()
     }
     func cancelAutomaticSleep() {
@@ -102,11 +104,6 @@ extension AppModel {
         onUpdate?()
         if serviceSocket != nil {
             sampleThermalPressure(at: date)
-            if let deadline = automation.deadline, date >= deadline {
-                automation.deadline = nil; await choose(.normal, sleep: true, automatic: true)
-            }
-            await tickFeatures(now: date, battery: reading, thermalAlreadyChecked: true)
-            tickBehavior(now: date)
             return
         }
         if await protectFromThermalPressure() { return }
@@ -130,10 +127,6 @@ extension AppModel {
                 record("任务成功，开始恢复正常模式并请求休眠。", notify: true)
                 await choose(.normal, sleep: true, automatic: true)
             }
-        }
-        if isTaskService {
-            await applyWorkScreenPolicy(now: date)
-            return
         }
         await tickFeatures(now: date, battery: reading, thermalAlreadyChecked: true)
         tickBehavior(now: date)

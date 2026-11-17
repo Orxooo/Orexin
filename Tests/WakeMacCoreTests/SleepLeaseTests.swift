@@ -34,30 +34,30 @@ final class SleepLeaseTests: XCTestCase {
         XCTAssertTrue(power.disabled); XCTAssertEqual(power.enables, 3)
         try lease.end(owner: owner); XCTAssertFalse(power.disabled)
     }
-    func testResetOnUnchangedSourceIsNotOverwritten() throws {
+    func testActiveLeaseRestoresExternalResetOnUnchangedSource() throws {
         let power = FakeSleepSwitch(); power.source = .external
         let lease = SleepLease(power: power), owner = UUID()
         try lease.begin(owner: owner, uptime: 1000); power.disabled = false
-        XCTAssertThrowsError(try lease.renew(owner: owner, uptime: 1005))
-        XCTAssertFalse(power.disabled); XCTAssertEqual(power.enables, 1)
+        try lease.renew(owner: owner, uptime: 1005)
+        XCTAssertTrue(power.disabled); XCTAssertEqual(power.enables, 2)
     }
-    func testUnknownPowerSourceCannotAuthorizeRepair() throws {
+    func testActiveLeaseRestoresResetWithUnknownPowerSource() throws {
         let power = FakeSleepSwitch(); power.source = .external
         let lease = SleepLease(power: power), owner = UUID()
         try lease.begin(owner: owner, uptime: 1000)
         power.source = nil; power.disabled = false
-        XCTAssertThrowsError(try lease.renew(owner: owner, uptime: 1005))
-        XCTAssertFalse(power.disabled)
+        try lease.renew(owner: owner, uptime: 1005)
+        XCTAssertTrue(power.disabled)
     }
-    func testRepairWindowEndsWhileLeaseContinuesRenewing() throws {
+    func testActiveLeaseRestoresResetAfterAnyDuration() throws {
         let power = FakeSleepSwitch(); power.source = .external
         let lease = SleepLease(power: power), owner = UUID()
         try lease.begin(owner: owner, uptime: 1000); power.source = .battery
         try lease.renew(owner: owner, uptime: 1005)
         try lease.renew(owner: owner, uptime: 1020)
         power.disabled = false
-        XCTAssertThrowsError(try lease.renew(owner: owner, uptime: 1026))
-        XCTAssertFalse(power.disabled)
+        try lease.renew(owner: owner, uptime: 1026)
+        XCTAssertTrue(power.disabled)
     }
     func testExpiredOrDifferentOwnerCannotRepairPowerTransition() throws {
         let power = FakeSleepSwitch(); power.source = .external
@@ -79,11 +79,31 @@ final class SleepLeaseTests: XCTestCase {
         XCTAssertFalse(power.disabled)
     }
 
-    func testNeverAdoptsAnotherAppsGlobalPrevention() throws {
+    func testSharedPreventionIsNotClearedWhenLeaseEnds() throws {
         let power = FakeSleepSwitch(); power.disabled = true
-        let lease = SleepLease(power: power)
-        XCTAssertThrowsError(try lease.begin(owner: UUID(), uptime: 1_000))
+        let lease = SleepLease(power: power), owner = UUID()
+        try lease.begin(owner: owner, uptime: 1_000)
+        XCTAssertEqual(power.enables, 0)
+        try lease.end(owner: owner)
         XCTAssertTrue(power.disabled)
+    }
+    func testSharedPreventionIsReclaimedWhenAnotherAppTurnsItOff() throws {
+        let power = FakeSleepSwitch(); power.disabled = true
+        let lease = SleepLease(power: power), owner = UUID()
+        try lease.begin(owner: owner, uptime: 1_000)
+        power.disabled = false
+        try lease.renew(owner: owner, uptime: 1_005)
+        XCTAssertTrue(power.disabled); XCTAssertEqual(power.enables, 1)
+        try lease.end(owner: owner)
+        XCTAssertFalse(power.disabled)
+    }
+    func testWatchdogRepairsExternalResetBeforeNextHeartbeat() throws {
+        let power = FakeSleepSwitch(), lease = SleepLease(power: power), owner = UUID()
+        try lease.begin(owner: owner, uptime: 1_000)
+        power.disabled = false
+        try lease.expire(uptime: 1_001)
+        XCTAssertTrue(power.disabled)
+        try lease.end(owner: owner)
     }
     func testHeartbeatExpiryRestoresSleepAndCannotRenewExpiredLease() throws {
         let power = FakeSleepSwitch(); let lease = SleepLease(power: power)

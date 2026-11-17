@@ -258,12 +258,12 @@ struct SessionsView: View {
     }
 
     private func extensionControls(deadline: Date) -> some View {
-        HStack(spacing: 10) {
+        HStack(alignment: .center, spacing: 10) {
             Text(LF("结束：%@", deadline.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened).locale(AppLanguage.selected.locale))))
                 .font(WorkType.caption).foregroundStyle(WorkStyle.muted)
             Spacer(minLength: 8)
             TextField(L("分钟"), value: $extensionMinutes, format: .number)
-                .textFieldStyle(TerminalTextFieldStyle()).frame(width: 65)
+                .textFieldStyle(TerminalTextFieldStyle(height: 36)).frame(width: 65)
                 .accessibilityLabel("延长会话的分钟数")
             Button(L("延长会话")) { controller.extend(minutes: extensionMinutes) }
                 .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
@@ -314,7 +314,7 @@ struct SessionsView: View {
                             Text(L(controller.cursorAccessStatus)).font(WorkType.caption)
                                 .foregroundStyle(controller.cursorAccessGranted ? TerminalStyle.signal : WorkStyle.muted)
                                 .fixedSize(horizontal: false, vertical: true)
-                            Button(L(controller.cursorAccessGranted ? "辅助功能已授权" : "授权辅助功能")) { controller.requestCursorAccess() }
+                            Button(L(controller.cursorAccessGranted ? "辅助功能已授权" : "打开权限设置")) { NotificationCenter.default.post(name: .orexinOpenCorePreferences, object: nil) }
                                 .buttonStyle(WorkButtonStyle()).workKeyboardFocus(radius: 0)
                                 .disabled(controller.cursorAccessGranted)
                         }

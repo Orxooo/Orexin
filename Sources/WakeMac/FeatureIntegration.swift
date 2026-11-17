@@ -51,7 +51,7 @@ extension AppModel {
             guard let self else { return }
             await self.endOwnedSession(conditionMet: false)
             if self.active == .normal, !self.error, self.pending == nil {
-                self.featureNotificationHandler?("工作会话已结束，已恢复正常休眠。", .sessionEnd)
+                self.featureNotificationHandler?(self.snapshot?.sleepDisabled == true ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "工作会话已结束，已恢复正常休眠。", .sessionEnd)
             }
         }
         controller.onConditionEnd = { [weak self] in
@@ -84,7 +84,7 @@ extension AppModel {
         triggers.updateArbitration(triggerArbitrationContext)
     }
     func tickFeatures(now date: Date, battery reading: BatteryReading?, thermalAlreadyChecked: Bool = false) async {
-        guard !featureTickRunning else { return }
+        guard serviceSocket == nil, !featureTickRunning else { return }
         featureTickRunning = true
         defer { featureTickRunning = false }
         if !thermalAlreadyChecked, await protectFromThermalPressure() { return }
@@ -145,7 +145,7 @@ extension AppModel {
                 record("自动规则结束：条件或时间要求已解除。",
                        context: HistoryContext(kind: .rule, requestIDs: workRequests.active.map(\.id), ruleID: endedRuleID, mode: active?.rawValue))
             }
-            triggerSummary = "规则条件已解除，恢复正常休眠"
+            triggerSummary = active == .normal && snapshot?.sleepDisabled == true ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "规则条件已解除，恢复正常休眠"
             featureNotificationHandler?(triggerSummary, .triggerChange)
         } else { triggerSummary = matching.isEmpty ? triggers.status : "手动操作优先；等待规则条件解除" }
         let normalRevision = generation

@@ -29,7 +29,7 @@ struct AboutSoftwareView: View {
                         repositoryActions.frame(maxWidth: .infinity, alignment: .trailing)
                     }
                 }
-                Text(L("Orexin 在工作时保持 Mac 唤醒，并在会话或任务结束后恢复休眠。"))
+                Text(L("Orexin 在工作时保持 Mac 唤醒，并在会话或任务结束后停止保活。"))
                     .font(.system(size: 12)).foregroundStyle(TerminalStyle.muted)
                 Text(L("开源软件 · GPL-3.0-only · © 2026 Orxooo"))
                     .font(TerminalStyle.mono(10)).foregroundStyle(TerminalStyle.signal)

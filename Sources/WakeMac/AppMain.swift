@@ -47,6 +47,7 @@ extension WorkMode {
     }
     let historyStore: HistoryStore
     let notices: ClientNoticeCenter
+    lazy var unlockedCredentials = UnlockedWorkCredentials(preferences: preferences)
     lazy var updates = UpdateMonitor(notices: notices, preferences: preferences)
     var powerServiceIncident = false
     @Published var requestedNoticePage = UUID()
@@ -140,23 +141,38 @@ extension WorkMode {
     var serviceStopping = false
     var serviceInfo: TaskServiceInfo?
     var connectedServiceInstanceID: UUID?
-    var requestUnlockedWorkPassword: () throws -> Data = UnlockedWorkAuthorization.requestPassword
+    var requestUnlockedWorkPassword: () throws -> Data = { try UnlockedWorkAuthorization.requestPassword() }
     var disableUnlockedWorkScreenLock: @Sendable (Data) async throws -> Void = { password in
         try await Task.detached { try UnlockedWorkAuthorization.disableScreenLock(password: password) }.value
     }
+    var pendingUnlockedGrantID: UUID?
     var pendingUnlockedOwner: LocalProcessIdentity?
     var pendingUnlockedDeadline: Date?
     var stopTaskService: (() -> Void)?
-    var serviceSocket: String?
+    var serviceSocket: String? {
+        didSet {
+            guard serviceSocket != nil else { return }
+            sessions.remoteStart = { [weak self] in await self?.startCoreSession() }
+            sessions.remoteEnd = { [weak self] in _ = await self?.mutateCore("core-session-end") }
+            sessions.remoteExtend = { [weak self] minutes in
+                guard let self else { return false }
+                return await self.mutateCore("core-session-extend", minutes: minutes)
+            }
+            sessions.remoteCursorChanged = { [weak self] enabled in Task { _ = await self?.mutateCore("core-effects", intent: .init(cursor: enabled)) } }
+        }
+    }
     var interfaceHandle: WorkRequestHandle?
     var interfaceSpec: WorkRequestSpec?
     var serviceTransitionOwner: UUID?
+    @Published var coreUpgradeRequired = false
+    @Published var corePaused = false
     var serviceRecoveryEnabled = false
     var serviceRetryAt = Date.distantPast
     var serviceRetryDelay: TimeInterval = 1
     var serviceRecoveryBeganAt: Date?
     var launchTaskService: (URL, String) async throws -> ControlReply = { executable, socket in
-        try await Task.detached { try TaskServiceLauncher.start(executable: executable, socket: socket) }.value
+        let core = TaskServiceLauncher.bundledCore(near: executable) ?? executable
+        return try await Task.detached { try TaskServiceLauncher.start(executable: core, socket: socket) }.value
     }
     var serviceWorkRecoveryPending: Bool {
         serviceSocket != nil && !unlockedWorkEnabled && legacyWorkMode != nil &&
@@ -308,7 +324,11 @@ extension WorkMode {
                 await choose(target)
                 return
             }
-            if pending == nil && !error { message = active == nil ? "选择一个工作模式。现有电源状态尚未由本应用接管。" : "系统状态已回读确认。" }
+            if pending == nil && !error {
+                message = active == nil ? "选择一个工作模式。现有电源状态尚未由本应用接管。" :
+                    active == .normal && current.sleepDisabled == true
+                    ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "系统状态已回读确认。"
+            }
         } catch {
             guard generation == version, !busy, refreshID == id else { return }
             snapshot = nil; active = nil
@@ -398,7 +418,9 @@ extension WorkMode {
                 snapshot = current; observeDisplay(DisplayState.read())
                 guard current.matches(verified, lockRequirement: lockRequirement) else { throw ModeError("切换后状态发生变化：\n" + current.diagnostic) }
                 active = verified
-                message = sleep ? "已向系统发送休眠请求。" : "系统状态已回读确认。"
+                message = sleep ? "已向系统发送休眠请求。" :
+                    verified == .normal && current.sleepDisabled == true
+                    ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "系统状态已回读确认。"
             } catch { self.error = true; message = error.localizedDescription }
         case .sleepCancelled:
             do {
@@ -445,7 +467,9 @@ extension WorkMode {
         if verifiedWork { await applyWorkScreenPolicy(now: Date()) }
         if !automatic, !error, pending == nil, active == mode, previousMode != mode {
             if mode != .normal { featureNotificationHandler?("工作已开始：" + mode.title, .sessionStart) }
-            else if previousMode == .desk || previousMode == .background { featureNotificationHandler?("工作已结束，已恢复正常休眠。", .sessionEnd) }
+            else if previousMode == .desk || previousMode == .background {
+                featureNotificationHandler?(snapshot?.sleepDisabled == true ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "工作已结束，已恢复正常休眠。", .sessionEnd)
+            }
         }
         onUpdate?()
         if quitWhenReady {
@@ -580,11 +604,7 @@ extension WorkMode {
                         self.model.workScreen.resumeAfterDisplayWake()
                         await self.model.applyWorkScreenPolicy(now: Date())
                     }
-                    if name == NSWorkspace.willSleepNotification { await self.model.handleSystemWillSleep() }
-                    if name == NSWorkspace.didWakeNotification, self.model.behavior.startAfterWake {
-                        await self.model.refresh()
-                        await self.model.beginDefaultSession()
-                    }
+
                 }
             })
         }
@@ -726,6 +746,23 @@ extension WorkMode {
 
 @main struct WakeMacMain {
     @MainActor static func main() {
+        if CommandLine.arguments.contains("--check-power-helper") || CommandLine.arguments.contains("--prepare-helper-update") {
+            Task { @MainActor in
+                do {
+                    if CommandLine.arguments.contains("--prepare-helper-update") {
+                        let state = try LocalControlSocket.call(.init("status"), path: TaskServiceLauncher.socketPath)
+                        guard state.ok, state.mode == .normal, !state.tasks.contains(where: { $0.request.state == .active || $0.commandRunning }) else {
+                            throw ModeError("请结束当前工作后再更新应用。")
+                        }
+                        try await PowerHelperLifecycle.shared.prepareUpdate()
+                    } else { try await PowerHelperClient().ensureReady() }
+                    print("Orexin system helper ready")
+                    exit(0)
+                } catch { fputs(error.localizedDescription + "\n", stderr); exit(1) }
+            }
+            RunLoop.main.run()
+            return
+        }
         if CommandLine.arguments.contains("--task-service") {
             _ = setsid()
             let runtime = TaskServiceRuntime()

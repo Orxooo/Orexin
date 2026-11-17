@@ -28,7 +28,7 @@ enum SessionEffectTiming {
         idleSeconds.isFinite && idleSeconds >= Self.interval(interval)
     }
 }
-struct SessionEffectReport: Equatable {
+struct SessionEffectReport: Equatable, Codable {
     var displayAssertionActive = false
     var screenSaverAssertionActive = false
     var display = "未启用"

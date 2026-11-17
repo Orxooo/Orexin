@@ -160,6 +160,7 @@ struct PreferencesView: View {
         .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenTemperature)) { _ in page = .thermal }
         .onReceive(NotificationCenter.default.publisher(for: .wakeMacOpenCommandTask)) { _ in page = .command; taskSection = .run }
         .onReceive(NotificationCenter.default.publisher(for: .orexinOpenAbout)) { _ in page = .about }
+        .onReceive(NotificationCenter.default.publisher(for: .orexinOpenCorePreferences)) { _ in page = .settings }
     }
 
     private func contentPane(width: CGFloat) -> some View {
@@ -321,7 +322,9 @@ struct PreferencesView: View {
 
     func settingsTab(contentWidth: CGFloat) -> some View {
         Group {
-            PreferencesConsoleRack(number: "01", title: "合盖运行特权服务", code: "SMAPPSERVICE CLAMSHELL DAEMON", metadata: "DAEMON CONTROL") {
+            Text(L("核心与授权")).font(.system(size: 19, weight: .semibold)).accessibilityAddTraits(.isHeader)
+            CoreRuntimePreferencesView(model: model)
+            PreferencesConsoleRack(number: "02", title: "合盖运行特权服务", code: "SMAPPSERVICE CLAMSHELL DAEMON", metadata: "DAEMON CONTROL") {
                 Text(L("合盖继续运行需要启用 Orexin 自带的系统服务，并在系统设置中批准一次。"))
                     .font(.system(size: 12)).foregroundStyle(WorkStyle.muted)
                 PreferencesConsoleFooter(stacked: contentWidth < 600) {
@@ -350,14 +353,15 @@ struct PreferencesView: View {
                             .font(.system(size: 11, weight: .semibold)).foregroundStyle(model.helperStatus == .enabled ? TerminalStyle.signal : TerminalStyle.amber)
                             .fixedSize(horizontal: false, vertical: true)
                     }
-                    WorkNote(text: "切换回正常模式或退出应用会恢复休眠；异常断线和心跳超时由服务自动恢复。")
+                    WorkNote(text: "切换回正常模式或停止核心会结束 Orexin 保活；退出界面后后台工作继续运行。")
                 }.padding(12).frame(maxWidth: .infinity, alignment: .leading).background(TerminalStyle.recess)
                     .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
             }
-            PreferencesConsoleRack(number: "02", title: "锁屏与密码策略", code: "SECURITY & PRIVACY GUARDS", accent: TerminalStyle.secondary, metadata: "AUTHENTICATION POLICY") {
-                WorkToggle(title: "工作时保持未锁定", detail: "额外选项：熄屏或合盖返回时免输密码，每次新工作需账户密码。仅保持桌面可见无需开启，防熄屏与防屏保无需密码授权。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
+            PreferencesConsoleRack(number: "03", title: "锁屏与密码策略", code: "SECURITY & PRIVACY GUARDS", accent: TerminalStyle.secondary, metadata: "AUTHENTICATION POLICY") {
+                WorkToggle(title: "工作时保持未锁定", detail: "熄屏或合盖返回时免输密码，工作结束后恢复即时密码保护。", isOn: Binding(get: { model.unlockedWorkEnabled }, set: { enabled in Task { await model.setUnlockedWork(enabled) } }))
                     .disabled(model.busy || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))
                     .padding(12).background(TerminalStyle.recess)
+                RememberAccountPasswordView(credentials: model.unlockedCredentials)
                 WorkToggle(title: "要求即时密码保护", detail: "默认开启。关闭后跟随 macOS 的密码要求，可使用系统设置的延迟或不要求密码。", isOn: Binding(get: { model.requiresImmediateLock }, set: { enabled in Task { await model.setRequireImmediateLock(enabled) } }))
                     .disabled(model.busy || model.unlockedWorkEnabled).padding(12).background(TerminalStyle.recess)
                     .overlay(Rectangle().strokeBorder(TerminalStyle.line.opacity(0.45)))
@@ -374,7 +378,8 @@ struct PreferencesView: View {
                     }.workKeyboardFocus(radius: 0)
                 }
             }
-            PreferencesConsoleRack(number: "03", title: "日常使用偏好", code: "CONSOLE INTERACTION", accent: TerminalStyle.muted, metadata: "LOCAL PREFERENCES") {
+            CorePermissionPreferencesView(model: model)
+            PreferencesConsoleRack(number: "05", title: "日常使用偏好", code: "CONSOLE INTERACTION", accent: TerminalStyle.muted, metadata: "LOCAL PREFERENCES") {
                 WorkToggle(title: "菜单栏显示模式和倒计时", detail: "在 macOS 状态栏显示当前模式，以及剩余时长或结束时间。", isOn: Binding(get: { model.menuLabelEnabled }, set: model.setMenuLabel))
                     .padding(12).background(TerminalStyle.recess)
                 WorkToggle(title: "登录时启动 // Launch at Login", detail: "登录后启动 Orexin 菜单栏应用；是否自动开始会话由下方默认会话设置控制。", isOn: Binding(get: { model.loginEnabled }, set: model.setLogin))
@@ -401,7 +406,7 @@ struct PreferencesView: View {
             }.toggleStyle(TerminalSwitchStyle()).controlSize(.small)
             settingsEventStream
             PreferencesAdditionalSettings {
-                PreferencesConsoleRack(number: "04", title: "会话通知", code: "SESSION EVENT DELIVERY", accent: TerminalStyle.signal) {
+                PreferencesConsoleRack(number: "06", title: "会话通知", code: "SESSION EVENT DELIVERY", accent: TerminalStyle.signal) {
                     Text(L("任务结果、低电量与错误提醒继续保留。"))
                         .font(WorkType.caption).foregroundStyle(TerminalStyle.muted)
                     WorkToggle(title: "工作会话开始", isOn: $notifier.sessionStart)
@@ -409,7 +414,7 @@ struct PreferencesView: View {
                     WorkToggle(title: "自动触发开始与结束", isOn: $notifier.triggerChange)
                     WorkToggle(title: "自动清理已显示的 Orexin 通知", isOn: $notifier.autoClear)
                 }
-                PreferencesConsoleRack(number: "05", title: "全局快捷键", code: "GLOBAL KEY BINDINGS") {
+                PreferencesConsoleRack(number: "07", title: "全局快捷键", code: "GLOBAL KEY BINDINGS") {
                     WorkToggle(title: "启用快捷键", isOn: $shortcutEnabled)
                     ForEach(shortcutDraft.indices, id: \.self) { index in
                         HStack {
@@ -428,7 +433,7 @@ struct PreferencesView: View {
                         Button(L("保存快捷键")) { hotkeys.apply(shortcutDraft, enabled: shortcutEnabled) }.workKeyboardFocus(radius: 0)
                     }
                 }
-                BehaviorSettingsView(behavior: model.behavior)
+                BehaviorSettingsView(behavior: model.behavior, resetStatistics: { Task { await model.resetCoreStatistics() } })
             }
         }
     }

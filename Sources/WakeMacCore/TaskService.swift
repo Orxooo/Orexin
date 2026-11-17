@@ -40,7 +40,19 @@ public enum TaskServiceLauncher {
         if let value = ProcessInfo.processInfo.environment["OREXIN_STATE_DIR"] { return URL(fileURLWithPath: value, isDirectory: true) }
         return defaultStateDirectory
     }
+    public static func bundledCore(near executable: URL) -> URL? {
+        let directory = executable.deletingLastPathComponent()
+        let contents = directory.deletingLastPathComponent()
+        guard ["MacOS", "Helpers"].contains(directory.lastPathComponent),
+              contents.lastPathComponent == "Contents",
+              contents.deletingLastPathComponent().pathExtension == "app" else { return nil }
+        let core = contents.appendingPathComponent("Helpers/OrexinCore")
+        guard core.standardizedFileURL != executable.standardizedFileURL,
+              FileManager.default.isExecutableFile(atPath: core.path) else { return nil }
+        return core
+    }
     public static func executable(near executable: URL) throws -> URL {
+        if let core = bundledCore(near: executable) { return core }
         let directory = executable.deletingLastPathComponent()
         let candidates = [directory.appendingPathComponent("../MacOS/Orexin").standardizedFileURL,
                           directory.appendingPathComponent("Orexin.app/Contents/MacOS/Orexin"), directory.appendingPathComponent("WakeMac"), directory.appendingPathComponent("Orexin")]

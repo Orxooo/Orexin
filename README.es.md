@@ -13,11 +13,11 @@
 
 Orexin es una utilidad para la barra de menús de macOS que permite controlar cuándo el Mac permanece activo y cuándo puede entrar en reposo.
 
-Úsala para compilaciones, descargas, presentaciones o tareas de larga duración, en el escritorio o con la tapa cerrada. Las sesiones programadas, las reglas automáticas y las tareas de comandos permiten elegir cuándo dejar de mantener activo el Mac.
+Elige el modo despierto para mantener el Mac activo y el modo normal para liberar las solicitudes de Orexin. La pantalla, la tapa cerrada, el salvapantallas y el trabajo sin bloqueo se configuran por separado; las sesiones, reglas y órdenes definen cuándo termina el trabajo.
 
 [Descargar la última versión](https://github.com/Orxooo/Orexin/releases/latest) · [Historial de cambios](CHANGELOG.es.md) · [Manual de uso](https://github.com/Orxooo/Orexin/wiki)
 
-![Modos de trabajo de Orexin con el tema Tron, mostrados en chino simplificado](Assets/README/orexin-1.0.3-modes.png)
+![Modos de trabajo de Orexin con el tema Tron, mostrados en chino simplificado](Assets/README/orexin-1.1.1-modes.png)
 
 ## Funciones
 
@@ -58,14 +58,16 @@ Después, sal de Orexin, sustituye la aplicación y vuelve a abrirla. Omite el p
 
 ### Consideraciones de uso
 
-- «Mantener desbloqueado al trabajar» es una opción que requiere una autorización independiente. Desactiva la solicitud de contraseña al salir del reposo durante la sesión y restablece la protección inmediata con contraseña al terminar el trabajo. Orexin no guarda contraseñas ni desbloquea un Mac que ya esté bloqueado.
+- «Mantener desbloqueado al trabajar» es opcional y requiere autenticar la cuenta. Desactiva la solicitud de contraseña al salir del reposo durante el trabajo y restablece la protección inmediata al terminar. En Preferencias → Núcleo y autorización, «Recordar la contraseña para autorizar automáticamente» está desactivado de forma predeterminada. Al activarlo, Orexin guarda la contraseña en el llavero local de macOS solo tras completar correctamente la autenticación y verificación, sin sincronizarla con iCloud. Al desactivarlo se elimina la contraseña guardada. Sin una contraseña guardada, se solicita en cada nuevo trabajo; si se rechaza la contraseña guardada, se elimina y se permite un intento manual. Orexin no desbloquea un Mac que ya esté bloqueado.
 - Un brillo del 0 % no equivale al reposo de la pantalla. Apagarla puede afectar a las capturas de pantalla o a la automatización de la interfaz que dependan de ella.
-- Volver a Reposo normal solo libera las solicitudes de Orexin para mantener activo el Mac. Otras aplicaciones pueden seguir impidiendo el reposo.
+- Volver al modo normal solo libera las solicitudes de Orexin para mantener activo el Mac. Otras aplicaciones pueden seguir impidiendo el reposo.
 - La protección térmica utiliza los niveles de presión térmica de macOS, no lecturas en grados Celsius. Cuando baja la temperatura, el trabajo detenido no se reinicia automáticamente.
+- Si el servicio auxiliar se desconecta y el trabajo termina, cambia al modo normal y reinicia el núcleo en Preferencias → Núcleo y autorización antes de volver a empezar.
+- Después de cambiar los avisos de sesiones o reglas, o de permitir las notificaciones del sistema por primera vez, reinicia el núcleo para aplicar los ajustes.
 
 ## Gestión de tareas y CLI
 
-Los comandos y los planes en segundo plano pueden seguir ejecutándose después de cerrar la interfaz. Las sesiones manuales y las reglas automáticas necesitan que el proceso de la interfaz siga en ejecución. Al reiniciar el servicio, las tareas sin terminar se marcan como desconectadas y no se vuelven a ejecutar automáticamente.
+El núcleo en segundo plano gestiona los modos de trabajo manuales, las sesiones programadas, las reglas automáticas, los comandos y los planes de ejecución. Continúan tras cerrar la interfaz. Los atajos de teclado y la distribución de AppleScript siguen siendo puntos de entrada de la interfaz y requieren su proceso. Tras reiniciar el núcleo no se vuelve a ejecutar el trabajo anterior; las tareas incompletas se marcan como desconectadas.
 
 La CLI está incluida en el paquete de la aplicación y no necesita una instalación adicional:
 
@@ -90,6 +92,8 @@ cd Orexin
 swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
+
+Las compilaciones locales usan el canal Dev de forma predeterminada. Para una versión estable, establece `OREXIN_BUILD_CHANNEL=stable` e indica la versión pública con `OREXIN_VERSION`.
 
 La aplicación se genera en `/tmp/orexin-dist/Orexin.app` y utiliza una firma ad hoc de forma predeterminada. El funcionamiento con la tapa cerrada exige que la aplicación y el servicio auxiliar estén firmados con el mismo certificado de desarrollador de Apple:
 

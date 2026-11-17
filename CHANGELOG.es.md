@@ -6,6 +6,14 @@
 
 Los paquetes de instalación y las instrucciones de actualización están en la [página de versiones](https://github.com/Orxooo/Orexin/releases).
 
+## V1.1.1 — 2026-11-16
+
+- El núcleo en segundo plano gestiona los modos, sesiones, reglas automáticas, órdenes y planes de ejecución después de cerrar la interfaz.
+- Se ha corregido un problema que podía impedir volver a abrir la interfaz mientras el núcleo estaba activo.
+- Durante el trabajo con la tapa cerrada, el núcleo comprueba la prevención del reposo y la vuelve a activar si se desactiva. Si ya estaba activada antes del trabajo y Orexin no la modificó, se conserva.
+- Se ha añadido la autorización automática opcional mediante el Llavero, desactivada por defecto. La contraseña solo se guarda tras autenticar y verificar correctamente.
+- Se ha corregido el estado mostrado al solicitar el reposo inmediato. Si el núcleo está ocupado, rechaza la solicitud y mantiene el trabajo en curso.
+
 ## V1.1.0 — 2026-11-04
 
 ### Novedades

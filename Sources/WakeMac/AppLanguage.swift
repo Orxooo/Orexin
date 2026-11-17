@@ -98,7 +98,13 @@ func LF(_ key: String, _ arguments: CVarArg...) -> String {
 }
 
 private let languageBundles: [String: Bundle] = Dictionary(uniqueKeysWithValues: AppLanguage.allCases.compactMap { language in
-    guard let path = Bundle.main.path(forResource: language.rawValue, ofType: "lproj"), let bundle = Bundle(path: path) else { return nil }
+    let mainURL = Bundle.main.bundleURL
+    let resources: Bundle
+    if mainURL.lastPathComponent == "Helpers", mainURL.deletingLastPathComponent().lastPathComponent == "Contents",
+       let application = Bundle(url: mainURL.deletingLastPathComponent().deletingLastPathComponent()) {
+        resources = application
+    } else { resources = .main }
+    guard let path = resources.path(forResource: language.rawValue, ofType: "lproj"), let bundle = Bundle(path: path) else { return nil }
     return (language.rawValue, bundle)
 })
 

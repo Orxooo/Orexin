@@ -13,11 +13,11 @@
 
 Orexin est un utilitaire pour la barre des menus de macOS qui vous permet de choisir quand votre Mac reste éveillé et quand il peut se mettre en veille.
 
-Utilisez-le pour les compilations, les téléchargements, les présentations ou les tâches de longue durée, sur votre bureau ou capot fermé. Les sessions programmées, les règles automatiques et les tâches de commande permettent de définir quand cesser de maintenir le Mac éveillé.
+Choisissez le mode Éveillé pour garder le Mac actif et le mode Normal pour libérer les demandes d’Orexin. L’écran, le capot fermé, l’économiseur et le maintien déverrouillé se règlent séparément ; les sessions, règles et commandes définissent la fin du travail.
 
 [Télécharger la dernière version](https://github.com/Orxooo/Orexin/releases/latest) · [Historique des versions](CHANGELOG.fr.md) · [Manuel d’utilisation](https://github.com/Orxooo/Orexin/wiki)
 
-![Modes de travail d’Orexin avec le thème Tron, affichés en chinois simplifié](Assets/README/orexin-1.0.3-modes.png)
+![Modes de travail d’Orexin avec le thème Tron, affichés en chinois simplifié](Assets/README/orexin-1.1.1-modes.png)
 
 ## Fonctionnalités
 
@@ -58,14 +58,16 @@ Quittez ensuite Orexin, remplacez l’application et relancez-la. Ignorez l’é
 
 ### Précautions d’utilisation
 
-- L’option « Rester déverrouillé pendant le travail » nécessite une autorisation distincte. Elle désactive la demande de mot de passe à la sortie de veille pendant la session et rétablit la protection immédiate par mot de passe à la fin du travail. Orexin ne conserve aucun mot de passe et ne déverrouille pas un Mac déjà verrouillé.
+- L’option « Rester déverrouillé pendant le travail » nécessite l’authentification du compte. Elle désactive la demande de mot de passe à la sortie de veille pendant la session et rétablit la protection immédiate à la fin du travail. Dans Préférences → Noyau et autorisation, « Mémoriser le mot de passe pour l’autorisation automatique » est désactivé par défaut. Lorsqu’il est activé, Orexin enregistre le mot de passe dans le trousseau macOS local uniquement après authentification et vérification réussies, sans synchronisation iCloud. La désactivation supprime le mot de passe enregistré. Sans mot de passe enregistré, chaque nouvelle session le demande ; un mot de passe enregistré refusé est supprimé et une nouvelle tentative manuelle est proposée. Orexin ne déverrouille pas un Mac déjà verrouillé.
 - Une luminosité de 0 % n’équivaut pas à la mise en veille de l’écran. L’extinction de l’écran peut affecter les captures d’écran ou l’automatisation de l’interface qui en dépendent.
-- Le retour au mode Veille normale libère uniquement les demandes de maintien en éveil d’Orexin. D’autres applications peuvent encore empêcher la veille.
+- Le retour au mode Normal libère uniquement les demandes de maintien en éveil d’Orexin. D’autres applications peuvent encore empêcher la veille.
 - La protection thermique repose sur les niveaux de pression thermique de macOS, pas sur des températures en degrés Celsius. Le refroidissement ne relance pas automatiquement le travail arrêté.
+- Si le service auxiliaire se déconnecte et que le travail s’arrête, passez en mode Normal, puis redémarrez le cœur dans Préférences → Noyau et autorisation avant de reprendre.
+- Après avoir modifié les notifications des sessions ou des règles, ou autorisé les notifications système pour la première fois, redémarrez le cœur pour appliquer ces réglages.
 
 ## Gestion des tâches et CLI
 
-Les commandes et les plans exécutés en arrière-plan continuent de fonctionner après la fermeture de l’interface. Les sessions manuelles et les règles automatiques nécessitent que le processus de l’interface reste actif. Après un redémarrage du service, les tâches inachevées sont signalées comme ayant perdu le contact et ne sont pas relancées automatiquement.
+Le noyau en arrière-plan gère les modes de travail manuels, les sessions programmées, les règles automatiques, les commandes et les plans d’exécution. Ils continuent après la fermeture de l’interface. Les raccourcis clavier et la distribution AppleScript restent des points d’entrée de l’interface et nécessitent son processus. Après un redémarrage du noyau, le travail précédent n’est pas relancé ; les tâches inachevées sont signalées comme ayant perdu le contact.
 
 La CLI est intégrée au paquet de l’application et ne nécessite aucune installation supplémentaire :
 
@@ -90,6 +92,8 @@ cd Orexin
 swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
+
+Les compilations locales utilisent le canal Dev par défaut. Pour une version stable, définissez `OREXIN_BUILD_CHANNEL=stable` et indiquez la version publique avec `OREXIN_VERSION`.
 
 L’application est générée dans `/tmp/orexin-dist/Orexin.app` et utilise par défaut une signature ad hoc. Le fonctionnement capot fermé exige que l’application et le service auxiliaire soient signés avec le même certificat de développeur Apple :
 

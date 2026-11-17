@@ -6,6 +6,14 @@
 
 Installationspakete und Hinweise zum Aktualisieren findest du unter [Releases](https://github.com/Orxooo/Orexin/releases).
 
+## V1.1.1 — 2026-11-16
+
+- Der Hintergrundkern verwaltet Arbeitsmodi, Sitzungen, automatische Regeln, Befehle und Ausführungspläne auch nach dem Schließen der Oberfläche.
+- Ein Problem wurde behoben, durch das sich die Oberfläche bei laufendem Kern nicht erneut öffnen ließ.
+- Bei geschlossenem Deckel prüft der Kern die Ruhezustandssperre und aktiviert sie erneut, falls sie ausgeschaltet wird. Eine bereits vorher aktive Einstellung bleibt bestehen, solange Orexin sie nicht geändert hat.
+- Optionale automatische Autorisierung über den Schlüsselbund hinzugefügt; sie ist standardmäßig deaktiviert. Das Passwort wird erst nach erfolgreicher Authentifizierung und Prüfung gespeichert.
+- Die Rückmeldung zum sofortigen Ruhezustand wurde korrigiert. Während eines Moduswechsels lehnt der Kern die Anfrage ab und erhält laufende Arbeit.
+
 ## V1.1.0 — 2026-11-04
 
 ### Neu

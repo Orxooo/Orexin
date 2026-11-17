@@ -8,7 +8,7 @@ private actor ReplacingTaskService {
     var replaced = false
     init(first: AppModel, second: AppModel) { self.first = first; self.second = second }
     func reply(_ request: ControlMessage) async -> ControlReply {
-        if request.operation == "interface-register" { replaced = true }
+        if request.operation == "core-mode" { replaced = true }
         return await (replaced ? second : first).handleTaskControl(request)
     }
 }
@@ -46,6 +46,48 @@ private actor InterceptServiceReply {
             try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)
         }
         XCTAssertEqual(try TaskServiceLauncher.executable(near: cli).standardizedFileURL, service.standardizedFileURL)
+    }
+
+    func testPackagedCLIAndInterfacePreferDedicatedCore() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let cli = root.appendingPathComponent("Orexin.app/Contents/Helpers/orexin")
+        let interface = root.appendingPathComponent("Orexin.app/Contents/MacOS/Orexin")
+        let core = root.appendingPathComponent("Orexin.app/Contents/Helpers/OrexinCore")
+        for file in [cli, interface, core] {
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try Data("#!/bin/sh\nexit 0\n".utf8).write(to: file)
+            try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: file.path)
+        }
+        XCTAssertEqual(try TaskServiceLauncher.executable(near: cli).standardizedFileURL, core.standardizedFileURL)
+        XCTAssertEqual(try TaskServiceLauncher.executable(near: interface).standardizedFileURL, core.standardizedFileURL)
+        XCTAssertEqual(try TaskServiceLauncher.executable(near: core).standardizedFileURL, interface.standardizedFileURL)
+    }
+
+
+    func testSleepRequestReportsThatSleepWasRequested() async throws {
+        let service = await model()
+        let path = "/tmp/orx-sleep-" + UUID().uuidString.prefix(8) + "/control.sock"
+        let server = try LocalControlServer(path: path) { await service.handleTaskControl($0) }
+        defer { server.stop() }
+        let client = await model()
+        client.isTaskService = false; client.serviceSocket = path
+        await client.choose(.normal, sleep: true)
+        XCTAssertFalse(client.error, client.message)
+        XCTAssertEqual(client.message, "已向系统发送休眠请求。")
+    }
+
+
+    func testBusyCoreRejectsSleepWithoutQueuingAStop() async throws {
+        let service = await model()
+        let handle = try await service.registerWork(.init(title: "existing work"))
+        service.busy = true
+        let reply = await service.handleTaskControl(.init("sleep-now"))
+        XCTAssertFalse(reply.ok)
+        XCTAssertFalse(service.queuedUserStop)
+        XCTAssertEqual(service.workRequests.active.map(\.id), [handle.id])
+        service.busy = false
+        try await service.completeWork(handle, exitCode: 0)
     }
 
     func testServiceStopsAfterGraphicalSessionEnds() async throws {
@@ -194,7 +236,8 @@ private actor InterceptServiceReply {
         await client.refresh()
         XCTAssertEqual(value.workRequests.active.map(\.id), [external.id])
         await client.choose(.desk)
-        XCTAssertEqual(value.workRequests.active.count, 2)
+        XCTAssertEqual(value.workRequests.active.count, 1)
+        XCTAssertEqual(value.manualWorkMode, .desk)
         var quit = false; client.quitApplication = { quit = true }
         await client.requestQuit()
         XCTAssertTrue(quit)
@@ -225,7 +268,7 @@ private actor InterceptServiceReply {
         let client = await model(); client.isTaskService = false; client.serviceSocket = path
         client.workScreen.select(.systemIdle, for: .desk)
         await client.refresh(); await client.choose(.desk)
-        let old = try XCTUnwrap(client.interfaceHandle)
+        let old = try XCTUnwrap(client.connectedServiceInstanceID)
         server.stop()
         for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { try await Task.sleep(for: .milliseconds(10)) }
         let replacement = try LocalControlServer(path: path) { await second.handleTaskControl($0) }
@@ -233,8 +276,8 @@ private actor InterceptServiceReply {
         await client.choose(.desk)
         XCTAssertTrue(client.verifiedWork, client.message)
         XCTAssertFalse(client.error, client.message)
-        XCTAssertNotEqual(client.interfaceHandle, old)
-        XCTAssertEqual(second.workRequests.active.count, 1)
+        XCTAssertNotEqual(client.connectedServiceInstanceID, old)
+        XCTAssertTrue(second.workRequests.active.isEmpty)
         await client.choose(.normal); await first.choose(.normal)
     }
 
@@ -245,18 +288,17 @@ private actor InterceptServiceReply {
         let server = try LocalControlServer(path: path) { await router.reply($0) }
         defer { server.stop() }
         let client = await model(); client.isTaskService = false; client.serviceSocket = path
-        client.workScreen.select(.systemIdle, for: .desk)
         await client.refresh(); await client.choose(.desk)
         XCTAssertTrue(client.verifiedWork, client.message)
-        let handle = try XCTUnwrap(client.interfaceHandle, "A new registration must survive the final status read")
-        let deadline = try XCTUnwrap(second.workRequests.active.first?.leaseExpiresAt)
+        XCTAssertEqual(client.connectedServiceInstanceID, second.serviceInfo?.instanceID)
+        XCTAssertNil(client.interfaceHandle)
         await client.refreshTaskService(renew: true)
-        XCTAssertEqual(client.interfaceHandle, handle)
-        XCTAssertGreaterThan(try XCTUnwrap(second.workRequests.active.first?.leaseExpiresAt), deadline)
+        XCTAssertEqual(second.manualWorkMode, .desk)
+        XCTAssertTrue(second.workRequests.active.isEmpty)
         await client.choose(.normal)
     }
 
-    func testAutomaticRefreshRestartsMissingServiceAndRestoresOnlyLiveInterfaceWork() async throws {
+    func testAutomaticRefreshAdoptsReplacementWithoutReplayingWork() async throws {
         let first = await model(), second = await model()
         let path = "/tmp/orxk-" + UUID().uuidString.prefix(8) + "/control.sock"
         let server = try LocalControlServer(path: path) { await first.handleTaskControl($0) }
@@ -268,16 +310,14 @@ private actor InterceptServiceReply {
         _ = try await first.registerWork(.init(title: "external command", source: "external"))
         server.stop()
         for _ in 0..<100 where FileManager.default.fileExists(atPath: path) { try await Task.sleep(for: .milliseconds(10)) }
-        // A new live service instance must recover the GUI request on its ordinary
-        // timer refresh, without the user clicking Start or rerunning commands.
+        // A replacement publishes fresh state without replaying a previous intent.
         let replacement = try LocalControlServer(path: path) { await second.handleTaskControl($0) }
         defer { replacement.stop() }
         await client.refreshTaskService(renew: true)
-        XCTAssertTrue(client.verifiedWork, client.message)
+        XCTAssertFalse(client.verifiedWork)
         XCTAssertFalse(client.error, client.message)
-        XCTAssertEqual(second.workRequests.active.count, 1)
-        XCTAssertEqual(second.workRequests.active.first?.spec.source, "interface")
-        XCTAssertEqual(second.workRequests.active.first?.spec.screen, .awake)
+        XCTAssertTrue(second.workRequests.active.isEmpty)
+        XCTAssertNil(second.manualWorkMode)
         XCTAssertEqual(prompts, 0)
         await client.choose(.normal); await first.choose(.normal)
     }
@@ -301,8 +341,8 @@ private actor InterceptServiceReply {
         defer { replacement?.stop() }
         await client.refreshTaskService(renew: true)
         XCTAssertEqual(launches, 1)
-        XCTAssertTrue(client.verifiedWork, client.message)
-        XCTAssertEqual(second.workRequests.active.count, 1)
+        XCTAssertFalse(client.verifiedWork)
+        XCTAssertTrue(second.workRequests.active.isEmpty)
         await client.choose(.normal); await first.choose(.normal)
     }
 
@@ -371,7 +411,7 @@ private actor InterceptServiceReply {
         }
         defer { server.stop() }
         client.serviceSocket = path; client.workScreen.select(.systemIdle, for: .desk)
-        await client.refresh(); await intercept.arm("status")
+        await client.refresh(); await intercept.arm("core-mode")
         await client.choose(.desk)
         XCTAssertFalse(client.busy)
         await client.choose(.desk)
@@ -400,8 +440,8 @@ private actor InterceptServiceReply {
         XCTAssertNil(client.interfaceHandle)
         XCTAssertNil(client.legacyWorkMode)
     }
-    func testStopDuringRecoveryPreflightDoesNotRegisterWorkAfterward() async throws { try await stopWhileInterfaceReplyAwaits("status") }
-    func testStopDuringAcceptedRegistrationDoesNotAdoptItsHandle() async throws { try await stopWhileInterfaceReplyAwaits("interface-register") }
+    func testStopDuringRecoveryPreflightDoesNotRegisterWorkAfterward() async throws { try await stopWhileInterfaceReplyAwaits("core-mode") }
+    func testStopDuringAcceptedRegistrationDoesNotAdoptItsHandle() async throws { try await stopWhileInterfaceReplyAwaits("core-mode") }
 
     func testRemoteStopIsNotUndoneByAutomaticRefresh() async throws {
         let value = await model()
@@ -430,8 +470,7 @@ private actor InterceptServiceReply {
         await client.refresh()
         await client.choose(.desk)
         XCTAssertTrue(client.verifiedWork)
-        let handle = try XCTUnwrap(client.interfaceHandle)
-        let lease = try XCTUnwrap(value.workRequests.active.first?.leaseExpiresAt)
+        XCTAssertEqual(value.manualWorkMode, .desk)
         var transitions: [Bool] = []
         let observation = client.$busy.dropFirst().sink { transitions.append($0) }
         defer { observation.cancel() }
@@ -439,12 +478,12 @@ private actor InterceptServiceReply {
         for _ in 0..<8 {
             await client.tick(battery: nil)
             XCTAssertTrue(client.verifiedWork)
-            XCTAssertEqual(client.interfaceHandle, handle)
+            XCTAssertNil(client.interfaceHandle)
         }
 
         XCTAssertFalse(transitions.contains(true), "Heartbeat reconciliation must not show the mode-switching UI")
-        XCTAssertEqual(value.workRequests.active.map(\.id), [handle.id])
-        XCTAssertGreaterThan(try XCTUnwrap(value.workRequests.active.first?.leaseExpiresAt), lease)
+        XCTAssertTrue(value.workRequests.active.isEmpty)
+        XCTAssertEqual(value.manualWorkMode, .desk)
     }
 
     func testInterfaceScreenChangeAndErrorRecoveryStillReconcile() async throws {
@@ -453,26 +492,16 @@ private actor InterceptServiceReply {
         let server = try LocalControlServer(path: path) { await value.handleTaskControl($0) }
         defer { server.stop() }
         let client = await model(); client.isTaskService = false; client.serviceSocket = path
-        client.workScreen.select(.systemIdle, for: .desk)
-        await client.refresh()
-        await client.choose(.desk)
-        let original = try XCTUnwrap(client.interfaceHandle)
-        var transitions: [Bool] = []
-        let observation = client.$busy.dropFirst().sink { transitions.append($0) }
-        defer { observation.cancel() }
-
+        await client.refresh(); await client.choose(.desk)
         await client.setWorkScreenBehavior(.normalBrightness)
-        XCTAssertNotEqual(client.interfaceHandle, original)
-        XCTAssertEqual(value.workRequests.active.count, 1)
-        XCTAssertEqual(value.workRequests.active.first?.spec.screen, .awake)
-        XCTAssertTrue(transitions.contains(true))
+        XCTAssertEqual(value.workScreen.ownBehavior(for: .desk), .normalBrightness)
+        XCTAssertTrue(value.workRequests.active.isEmpty)
         XCTAssertTrue(client.verifiedWork)
-
-        transitions.removeAll()
         client.error = true
-        await client.reconcileWorkRequests()
-        XCTAssertTrue(transitions.contains(true), "An existing error must still be rechecked")
+        await client.choose(.desk)
+        XCTAssertFalse(client.error)
         XCTAssertTrue(client.verifiedWork)
+        await client.choose(.normal)
     }
 
 }

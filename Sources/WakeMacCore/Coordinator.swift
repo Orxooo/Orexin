@@ -23,8 +23,9 @@ public struct Snapshot: Codable, Equatable, Sendable {
         self.backgroundLeaseActive = backgroundLeaseActive
     }
     public func matches(_ mode: WorkMode, lockRequirement: LockRequirement = .immediate) -> Bool {
-        guard lockRequirement.accepts(lockPolicy), sleepDisabled == (mode == .background),
+        guard lockRequirement.accepts(lockPolicy), sleepDisabled != nil,
               backgroundLeaseActive == (mode == .background) else { return false }
+        if mode == .background && sleepDisabled != true { return false }
         if mode == .normal { return idleSleepPrevented == false }
         if lockRequirement == .unlockedWork && lockPolicy != .off { return false }
         return idleSleepPrevented == true && displaySleepAllowed == true
@@ -67,6 +68,7 @@ public actor ModeCoordinator {
             guard after.matches(mode, lockRequirement: lockRequirement) else { throw ModeError("系统回读与所选模式不一致，未标记为成功。\n" + after.diagnostic) }
             if sleep {
                 guard await shouldProceed() else { return .sleepCancelled }
+                guard after.sleepDisabled == false else { throw ModeError("系统防休眠已被其他程序开启，请先在原程序中恢复休眠。") }
                 try await backend.sleepNow()
             }
             return .active(mode)

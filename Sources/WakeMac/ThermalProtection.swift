@@ -100,7 +100,7 @@ extension AppModel {
         await choose(.normal, automatic: true)
         guard active == .normal, !error, pending == nil else { return true }
         thermalCleanupPending = false
-        message = "温度保护已结束保活，恢复正常休眠。降温后可重新开启工作。"
+        message = snapshot?.sleepDisabled == true ? "温度保护已结束保活；系统防休眠仍处于开启状态。" : "温度保护已结束保活，恢复正常休眠。降温后可重新开启工作。"
         convenienceMessage = message
         record(message); onUpdate?()
         return true

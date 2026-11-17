@@ -23,7 +23,7 @@ struct QuickSessionControls: View {
                 HStack {
                     Text(L("延长会话")).font(compact ? WorkType.compactLabel : WorkType.controlLabel)
                     Spacer()
-                    Button(L("+15 分钟")) { _ = sessions.extend(minutes: 15); model.onUpdate?() }.workKeyboardFocus(radius: 0).disabled(!model.verifiedWork)
+                    Button(L("+15 分钟")) { Task { _ = await sessions.extendRemotely(minutes: 15); model.onUpdate?() } }.workKeyboardFocus(radius: 0).disabled(!model.verifiedWork)
                 }
             }
         }.font(WorkType.body).buttonStyle(WorkButtonStyle()).focusEffectDisabled().disabled(model.busy)

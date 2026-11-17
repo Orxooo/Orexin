@@ -5,12 +5,12 @@ import Foundation
 import Darwin
 
 /// PID alone is not an identity: the kernel may reuse it immediately after exit.
-struct NativeProcessIdentity: Hashable, Sendable {
+struct NativeProcessIdentity: Hashable, Sendable, Codable {
     let pid: Int32
     let startedSeconds: UInt64
     let startedMicroseconds: UInt64
 }
-struct DiscoveredProcess: Identifiable, Hashable, Sendable {
+struct DiscoveredProcess: Identifiable, Hashable, Sendable, Codable {
     let identity: NativeProcessIdentity
     let name: String
     let executablePath: String

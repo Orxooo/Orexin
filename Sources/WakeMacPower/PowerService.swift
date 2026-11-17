@@ -5,6 +5,7 @@ import Foundation
 import Security
 
 @objc public protocol PowerServiceProtocol {
+    func checkCompatibility(_ version: Int, reply: @escaping (String?) -> Void)
     func setBackground(_ enabled: Bool, reply: @escaping (String?) -> Void)
     func renew(reply: @escaping (String?) -> Void)
     func prepareUnlockedWork(reply: @escaping (String?) -> Void)

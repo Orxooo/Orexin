@@ -13,11 +13,11 @@
 
 Orexin 是 macOS 菜单栏工具，用来控制 Mac 何时保持唤醒、何时允许休眠。
 
-编译、下载、演示或运行长任务时，可以选择桌面或合盖工作，通过定时会话、自动规则和命令任务管理结束条件。
+选择「唤醒模式」保持 Mac 运行，选择「正常模式」释放 Orexin 的保活。屏幕、合盖、防屏保与保持未锁定可独立设置；会话、规则和命令任务负责管理结束条件。
 
 [下载最新版](https://github.com/Orxooo/Orexin/releases/latest) · [更新记录](CHANGELOG.md) · [使用手册](https://github.com/Orxooo/Orexin/wiki)
 
-![Orexin 工作模式页面，创主题](Assets/README/orexin-1.0.3-modes.png)
+![Orexin 工作模式页面，创主题](Assets/README/orexin-1.1.1-modes.png)
 
 ## 功能
 
@@ -50,7 +50,9 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ### 升级
 
-等待命令和执行计划完成，结束保活，然后退出后台任务服务：
+本地开发更新从 V1.1.2 Dev 起使用 `scripts/install-local.sh /absolute/path/Orexin.app`。脚本在替换应用前结束后台核心并卸载系统辅助服务，保留旧应用备份。新版首次使用辅助服务时检查连接与协议，遇到失效旧服务会在没有本进程工作租约时重新加载一次。
+
+手动升级时，等待命令和执行计划完成，结束保活，然后退出后台任务服务：
 
 ```sh
 /Applications/Orexin.app/Contents/Helpers/orexin service-stop
@@ -60,14 +62,16 @@ shasum -a 256 -c SHA256SUMS.txt
 
 ### 使用注意
 
-- “工作时保持未锁定”是可选设置，需单独授权。它会在本次工作期间关闭唤醒密码要求，结束后恢复即时密码保护；Orexin 不保存密码，也不会解锁已锁定的 Mac。
+- “工作时保持未锁定”是可选设置，需要账户认证。它会在本次工作期间关闭唤醒密码要求，结束后恢复即时密码保护。在“偏好设置 → 核心与授权”中，“记住账户密码，自动授权”默认关闭。启用后，Orexin 仅在认证成功并完成核验后，将密码保存在本机 macOS 钥匙串，不通过 iCloud 同步；关闭后删除保存的密码。没有保存密码时，每次新工作需要输入密码；保存的密码未通过认证时会删除，并允许一次手动重试。Orexin 不会解锁已锁定的 Mac。
 - 亮度 0% 与熄屏不同。依赖显示器的截图或界面自动化可能在熄屏后受影响。
 - 恢复正常模式只释放 Orexin 的保活，其他应用仍可能阻止休眠。
 - 高温保护依据 macOS 的温度压力等级，不提供摄氏温度；降温后不会自动重启已停止的工作。
+- 辅助服务断线导致工作结束时，可以先切换到「正常模式」，然后在「偏好设置 → 核心与授权」中重启核心，最后重新开始工作。
+- 修改会话或规则通知设置、首次允许系统通知后，需要重启核心才能应用这些设置。
 
 ## 任务管理与 CLI
 
-后台命令和执行计划可在退出界面后继续运行；手动会话和自动规则需要界面进程运行。服务重启后，未完成任务记为失联，不会自动重跑。
+后台核心管理手动工作模式、定时会话、自动规则、命令和执行计划，退出界面后继续运行。快捷键和 AppleScript 分发仍由界面提供，需要界面进程运行。核心重启后不会重放之前的工作；未完成任务记为失联。
 
 内置 CLI 位于应用包中，无需另行安装：
 
@@ -93,7 +97,7 @@ swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
 
-输出为 `/tmp/orexin-dist/Orexin.app`，默认使用 ad hoc 签名。合盖服务要求主程序和辅助服务使用同一 Apple 开发者证书：
+输出为 `/tmp/orexin-dist/Orexin.app`，本地默认构建 Dev 渠道，默认使用 ad hoc 签名。GitHub 公开稳定版使用 `OREXIN_BUILD_CHANNEL=stable`；可用 `OREXIN_VERSION` 指定版本号。合盖服务要求主程序和辅助服务使用同一 Apple 开发者证书：
 
 ```sh
 OREXIN_SIGN_IDENTITY='证书名称或 SHA-1' ./scripts/build-app.sh

@@ -52,6 +52,8 @@ public struct ControlReply: Codable, Sendable {
     public var snapshot: Snapshot?
     public var commandLogs: [UUID: String]?
     public var unlockedWorkAuthorized: Bool?
+    public var coreRuntime: Data?
+    public var outcomeMessage: String?
     public var displayDimmingPaused: Bool?
     public var dimExitNeedsInputAccess: Bool?
     public init(ok: Bool = true, error: String? = nil, handle: WorkRequestHandle? = nil, tasks: [ControlTaskStatus] = [], mode: WorkMode? = nil, verified: Bool = false, sleepAt: Date? = nil) {

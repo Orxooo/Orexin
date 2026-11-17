@@ -44,6 +44,9 @@ private final class ClientSession: NSObject, PowerServiceProtocol {
     private var backgroundHeld = false
     private var screenLockHeld = false
     init(host: HelperHost, userID: UInt32) { self.host = host; self.userID = userID }
+    func checkCompatibility(_ version: Int, reply: @escaping (String?) -> Void) {
+        reply(version == 1 ? nil : "系统辅助服务协议不兼容，请更新应用。")
+    }
     func setBackground(_ enabled: Bool, reply: @escaping (String?) -> Void) {
         host.queue.async {
             do {
@@ -91,7 +94,7 @@ private final class HelperHost: NSObject, NSXPCListenerDelegate {
         screenLock = ScreenLockLease(recovery: lockRecovery)
         super.init()
         let timer = DispatchSource.makeTimerSource(queue: queue)
-        timer.schedule(deadline: .now() + 3, repeating: 3)
+        timer.schedule(deadline: .now() + 1, repeating: 1)
         timer.setEventHandler { [weak self] in
             do { try self?.lease.expire(uptime: ProcessInfo.processInfo.systemUptime) }
             catch { fputs("Orexin: sleep recovery failed; retrying.\n", stderr) }

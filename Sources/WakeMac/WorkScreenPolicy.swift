@@ -5,7 +5,7 @@ import CoreGraphics
 import Darwin
 import WakeMacCore
 
-enum WorkScreenBehavior: String, CaseIterable, Identifiable {
+enum WorkScreenBehavior: String, CaseIterable, Identifiable, Codable {
     case dim, normalBrightness, immediateSleep, systemIdle
     var id: String { rawValue }
     var keepsDisplayActive: Bool { self == .dim || self == .normalBrightness }
@@ -153,6 +153,12 @@ enum BuiltInBrightness {
         let restored = WorkScreenBehavior.choices(for: .desk).contains(selected) ? selected : .systemIdle
         desktop = restored; background = restored
         originalBrightness = (preferences.object(forKey: "orexin.screen.restoreBrightness") as? NSNumber).map { $0.floatValue }
+    }
+    func reloadConfiguration() {
+        let stored = preferences.string(forKey: "orexin.screen.awake") ?? preferences.string(forKey: "orexin.screen.desktop")
+        let selected = WorkScreenBehavior(rawValue: stored ?? "") ?? .normalBrightness
+        desktop = selected; background = selected
+        restoreDesktopBrightnessOnKey = preferences.object(forKey: "orexin.screen.desktop.restoreOnKey") as? Bool ?? true
     }
     func behavior(for mode: WorkMode) -> WorkScreenBehavior {
         if runtimeBehavior == .immediateSleep { return .immediateSleep }

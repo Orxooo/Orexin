@@ -38,6 +38,11 @@ struct PowerHomeView: View {
             hero
             modes
             controls
+            if model.active == .normal && model.snapshot?.sleepDisabled == true {
+                WorkCard(title: "系统状态") {
+                    WorkNote(text: "Orexin 已停止保活；系统防休眠仍处于开启状态。")
+                }
+            }
             if model.pending != nil || model.error {
                 WorkCard(title: "需要处理") {
                     WorkNote(text: model.message, icon: "exclamationmark.circle")
@@ -135,7 +140,7 @@ struct PowerHomeView: View {
                 Text(L(endSummary)).font(.system(size: 11)).lineLimit(2).help(endSummary)
             }.frame(maxWidth: .infinity, alignment: .leading)
             if sessions.deadline != nil {
-                Button(L("+15 分钟")) { _ = sessions.extend(minutes: 15); model.onUpdate?() }
+                Button(L("+15 分钟")) { Task { _ = await sessions.extendRemotely(minutes: 15); model.onUpdate?() } }
                     .workKeyboardFocus(radius: 0).disabled(!model.verifiedWork)
             }
         }
@@ -241,7 +246,7 @@ struct PowerAssertionRows: View {
                                     icon: "keyboard", code: "RESTORE_BRIGHTNESS", isOn: $screen.restoreDesktopBrightnessOnKey, compact: compact)
                 if screen.dimExitNeedsInputAccess {
                     Button(L("跨应用恢复需要输入监控权限")) {
-                        _ = CGRequestListenEventAccess()
+                        NotificationCenter.default.post(name: .orexinOpenCorePreferences, object: nil)
                         NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_ListenEvent")!)
                     }.font(.system(size: 10)).padding(.vertical, 4)
                 }
@@ -250,7 +255,7 @@ struct PowerAssertionRows: View {
                                 icon: "sparkles", code: "PREVENT_SAVER",
                                 isOn: Binding(get: { sessions.effectivePreventScreenSaver }, set: { value in Task { await model.changeScreenSaverPrevention(value) } }), compact: compact)
                 .disabled(controlsDisabled || model.screenEffectsControlledByOtherTasks || (model.otherTasksRequireScreenSaverPrevention && sessions.effectivePreventScreenSaver))
-            TerminalPowerToggle(title: "工作时保持未锁定", detail: "每次新工作需账户授权；结束后恢复即时密码保护。",
+            TerminalPowerToggle(title: "工作时保持未锁定", detail: "支持在偏好设置中启用自动授权；结束后恢复即时密码保护。",
                                 icon: "lock.open", code: "KEEP_UNLOCKED",
                                 isOn: Binding(get: { model.unlockedWorkEnabled }, set: { value in Task { await model.setUnlockedWork(value) } }), compact: compact)
                 .disabled(controlsDisabled || (!model.unlockedWorkEnabled && model.helperStatus != .enabled))

@@ -18,6 +18,7 @@ extension AppModel {
     }
     var screenEffectsControlledByOtherTasks: Bool { verifiedWork && legacyWorkMode == nil && workRequests.demand != nil }
     func changeDisplayPrevention(_ enabled: Bool) async {
+        if serviceSocket != nil { _ = await mutateCore("core-effects", intent: .init(display: enabled)); return }
         if !enabled && otherTasksRequireDisplay {
             message = "其他任务仍要求屏幕保持工作。"; onUpdate?(); return
         }
@@ -40,6 +41,7 @@ extension AppModel {
         onUpdate?()
     }
     func setWorkScreenBehavior(_ behavior: WorkScreenBehavior) async {
+        if serviceSocket != nil { _ = await mutateCore("core-effects", intent: .init(behavior: behavior)); return }
         guard verifiedWork, let active, WorkScreenBehavior.choices(for: active).contains(behavior) else { return }
         guard allowsScreenChoice(behavior) else {
             message = "其他任务仍要求屏幕保持工作。"; onUpdate?(); return
@@ -101,6 +103,7 @@ extension AppModel {
         } else { await choose(mode) }
     }
     func applyWorkScreenPolicy(now: Date) async {
+        guard serviceSocket == nil else { return }
         workScreen.allowsDimExit = { [weak self] in self?.verifiedWork == true }
         // A mode transition temporarily clears active/snapshot. Do not treat
         // that transient state as a failed session when a display wakes.
@@ -124,6 +127,7 @@ extension AppModel {
                               onBattery: battery?.onBattery == true, now: now)
     }
     func changeScreenSaverPrevention(_ enabled: Bool) async {
+        if serviceSocket != nil { _ = await mutateCore("core-effects", intent: .init(saver: enabled)); return }
         if !enabled && otherTasksRequireScreenSaverPrevention {
             message = "其他任务仍要求暂停屏保。"; onUpdate?(); return
         }
@@ -157,6 +161,7 @@ extension AppModel {
         onUpdate?()
     }
     func setTriggersEnabled(_ enabled: Bool) async {
+        if serviceSocket != nil { _ = await mutateCore("core-triggers", enabled: enabled); return }
         triggers.enabled = enabled
         if !enabled, triggerOwnedMode != nil, !sessions.isActive {
             triggerOwnedMode = nil; triggerOwnedRuleID = nil; appliedTriggerBehavior = nil
@@ -169,6 +174,7 @@ extension AppModel {
         await tickFeatures(now: Date(), battery: battery)
     }
     func changeSessionLidMode(_ enabled: Bool) async {
+        if serviceSocket != nil { _ = await mutateCore("core-lid", enabled: enabled); return }
         sessions.defaultMode = enabled ? .background : .desk
         guard !busy, !sessions.isStarting else { return }
         if sessions.isActive || triggerOwnedMode != nil {
@@ -193,7 +199,7 @@ extension AppModel {
         case 6: await changeScreenSaverPrevention(!sessions.effectivePreventScreenSaver)
         case 7: await changeSessionLidMode(!runsWithLidClosed)
         case 8:
-            let extended = sessions.extend(minutes: 15)
+            let extended = await sessions.extendRemotely(minutes: 15)
             record(extended ? "快捷键：会话已延长 15 分钟。" : sessions.status)
             onUpdate?()
         case 9: openMenu?()
@@ -221,7 +227,7 @@ enum ScriptControlAction: String, CaseIterable {
         if self == .extend {
             guard let number = arguments["minutes"] as? NSNumber, number.doubleValue.isFinite,
                   (1...10080).contains(number.doubleValue) else { throw ModeError("延长时长须为 1–10080 分钟。") }
-            guard model.sessions.extend(minutes: number.doubleValue) else { throw ModeError(model.sessions.status) }
+            guard await model.sessions.extendRemotely(minutes: number.doubleValue) else { throw ModeError(model.sessions.status) }
             model.onUpdate?(); return model.sessions.status
         }
         switch self {

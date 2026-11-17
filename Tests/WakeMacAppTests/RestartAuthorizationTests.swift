@@ -72,7 +72,8 @@ private actor RestartLockSystem: ScreenLockLeaseClient {
         } else {
             XCTAssertFalse(client.error, client.message)
             XCTAssertTrue(client.verifiedWork)
-            XCTAssertEqual(service.workRequests.active.count, 1)
+            XCTAssertTrue(service.workRequests.active.isEmpty)
+            XCTAssertEqual(service.manualWorkMode, .desk)
             await client.setWorkScreenBehavior(.normalBrightness)
             XCTAssertFalse(client.error, client.message)
             XCTAssertEqual(prompts, 1, "A verified live lease must survive ordinary display changes")

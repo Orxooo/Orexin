@@ -21,7 +21,9 @@ args = parser.parse_args()
 root = Path(tempfile.mkdtemp(prefix='orx78-'))
 root.chmod(0o700)
 cli = args.binaries / 'orexin'
-app = (args.app / 'Contents/MacOS/Orexin') if args.app else args.binaries / 'WakeMac'
+interface_app = (args.app / 'Contents/MacOS/Orexin') if args.app else args.binaries / 'WakeMac'
+packaged_core = args.app / 'Contents/Helpers/OrexinCore' if args.app else None
+app = packaged_core if packaged_core and packaged_core.is_file() else interface_app
 if args.interface and not args.app:
     parser.error('--interface requires --app because native notifications require an application bundle')
 env = dict(os.environ, OREXIN_SOCKET=str(root / 'control.sock'), OREXIN_STATE_DIR=str(root / 'state'))
@@ -81,7 +83,7 @@ try:
     group = submit('dependencies', [task('a', f'/bin/sleep {delay}; /usr/bin/touch a'), task('b', f'/bin/sleep {delay}; /usr/bin/touch b'), task('c', 'test -f a && test -f b', ['a', 'b'])])
     call('service-stop', ok=False)
     if args.interface:
-        interface = subprocess.Popen([str(app)], env=env, stdout=(root / 'interface.stdout').open('w'), stderr=(root / 'interface.stderr').open('w'))
+        interface = subprocess.Popen([str(interface_app)], env=env, stdout=(root / 'interface.stdout').open('w'), stderr=(root / 'interface.stderr').open('w'))
         time.sleep(2)
         assert interface.poll() is None, f'Interface exited {interface.returncode}; see {root}/interface.stderr'
         assert document(call('plan-status', group))['state'] == 'running'

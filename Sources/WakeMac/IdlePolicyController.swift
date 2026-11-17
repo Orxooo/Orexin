@@ -36,6 +36,16 @@ import WakeMacCore
         lockMinutes = preferences.object(forKey: "orexin.idle.lockMinutes") as? Double ?? 5
         screenSaverMinutes = preferences.object(forKey: "orexin.idle.saverMinutes") as? Double ?? 3
     }
+    func reloadConfiguration() {
+        let lock = preferences.bool(forKey: "orexin.idle.lockEnabled")
+        let saver = preferences.bool(forKey: "orexin.idle.saverEnabled")
+        let lockTime = preferences.object(forKey: "orexin.idle.lockMinutes") as? Double ?? 5
+        let saverTime = preferences.object(forKey: "orexin.idle.saverMinutes") as? Double ?? 3
+        if lockEnabled != lock { lockEnabled = lock }
+        if screenSaverEnabled != saver { screenSaverEnabled = saver }
+        if lockMinutes != lockTime { lockMinutes = lockTime }
+        if screenSaverMinutes != saverTime { screenSaverMinutes = saverTime }
+    }
     private func save() {
         preferences.set(lockEnabled, forKey: "orexin.idle.lockEnabled"); preferences.set(lockMinutes, forKey: "orexin.idle.lockMinutes")
         preferences.set(screenSaverEnabled, forKey: "orexin.idle.saverEnabled"); preferences.set(screenSaverMinutes, forKey: "orexin.idle.saverMinutes")

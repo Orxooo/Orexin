@@ -69,6 +69,23 @@ import AppKit
         previouslyWorking = working; previouslyClosed = closed
         return actions
     }
+    func reloadConfiguration() {
+        let source = BehaviorPreferences(preferences: preferences)
+        if startAtLaunch != source.startAtLaunch { startAtLaunch = source.startAtLaunch }
+        if startAfterWake != source.startAfterWake { startAfterWake = source.startAfterWake }
+        if defaultIndefinite != source.defaultIndefinite { defaultIndefinite = source.defaultIndefinite }
+        if defaultMinutes != source.defaultMinutes { defaultMinutes = source.defaultMinutes }
+        if reminderEnabled != source.reminderEnabled { reminderEnabled = source.reminderEnabled }
+        if reminderMinutes != source.reminderMinutes { reminderMinutes = source.reminderMinutes }
+        if lidToneEnabled != source.lidToneEnabled { lidToneEnabled = source.lidToneEnabled }
+        if lidToneRepeat != source.lidToneRepeat { lidToneRepeat = source.lidToneRepeat }
+        if lidToneSeconds != source.lidToneSeconds { lidToneSeconds = source.lidToneSeconds }
+        if lidToneVolume != source.lidToneVolume { lidToneVolume = source.lidToneVolume }
+        if statisticsEnabled != source.statisticsEnabled { statisticsEnabled = source.statisticsEnabled }
+    }
+    func observeStatistics(_ value: CoreStatisticsSnapshot) {
+        awakeSeconds = value.awakeSeconds; lidSeconds = value.lidSeconds; activations = value.activations
+    }
     func saveStatistics() {
         preferences.set(awakeSeconds, forKey: "orexin.statistics.awakeSeconds"); preferences.set(lidSeconds, forKey: "orexin.statistics.lidSeconds")
         preferences.set(activations, forKey: "orexin.statistics.activations")

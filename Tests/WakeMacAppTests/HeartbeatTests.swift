@@ -14,6 +14,7 @@ private actor HeartbeatLease: BackgroundLeaseClient {
     var starts = 0
     var pending = false
     var replyDelay: Double = 0
+    var repairsExternalReset = false
     func setBackground(_ enabled: Bool) async throws { disabled = enabled; if enabled { starts += 1 }; lastRenewal = ProcessInfo.processInfo.systemUptime }
     func renew() async throws {
         pending = true
@@ -24,12 +25,14 @@ private actor HeartbeatLease: BackgroundLeaseClient {
         pending = false
         if connectionFailure { connectionFailure = false; disabled = false; throw PowerHelperConnectionFailure(reason: "injected transport interruption") }
         if failNext { disabled = false; throw ModeError("injected connection loss") }
+        if !disabled && repairsExternalReset { disabled = true }
         guard disabled else { throw ModeError("lease ended") }
         renewals += 1; lastRenewal = ProcessInfo.processInfo.systemUptime
     }
     func interruptConnection() { connectionFailure = true }
     func configureFailure() { failNext = true }
     func configureDelay(_ seconds: Double) { replyDelay = seconds }
+    func resetExternally() { disabled = false; repairsExternalReset = true }
     func power() -> String { "SleepDisabled \(disabled ? 1 : 0)" }
     func fresh(ttl: Double) -> Bool { disabled && ProcessInfo.processInfo.systemUptime - lastRenewal < ttl }
 }
@@ -74,6 +77,39 @@ final class HeartbeatTests: XCTestCase {
         let snapshot = try await backend.snapshot(), starts = await lease.starts
         XCTAssertEqual(starts, 2); XCTAssertTrue(snapshot.matches(.background))
         try await backend.configurePower(.normal)
+    }
+
+    func testSnapshotRepairsExternalResetBeforeReportingBackgroundState() async throws {
+        let lease = HeartbeatLease()
+        let backend = MacBackend(command: { path, _, _ in
+            if path.hasSuffix("sysadminctl") { return "screenLock delay is immediate" }
+            return await lease.power()
+        }, helper: lease, heartbeatInterval: 60_000_000_000)
+        try await backend.configurePower(.background)
+        await lease.resetExternally()
+        let state = try await backend.snapshot()
+        XCTAssertTrue(state.matches(.background))
+        try await backend.configurePower(.normal)
+    }
+
+    @MainActor func testExternalResetDoesNotEndRunningSession() async throws {
+        let lease = HeartbeatLease(), prefs = UserDefaults(suiteName: "PrioritySession." + UUID().uuidString)!
+        let backend = MacBackend(command: { path, _, _ in
+            if path.hasSuffix("sysadminctl") { return "screenLock delay is immediate" }
+            return await lease.power()
+        }, helper: lease, heartbeatInterval: 60_000_000_000, preferences: prefs)
+        let model = AppModel(backend: backend, preferences: prefs, sessionEffects: IndependentCoreTests.Effects())
+        model.workScreen = WorkScreenPolicy(preferences: prefs, runtimeEnabled: false)
+        model.thermalStateProvider = { .nominal }; model.isTaskService = true
+        model.sessions.defaultMode = .background
+        await model.sessions.start()
+        XCTAssertTrue(model.sessions.isActive)
+        await lease.resetExternally()
+        await model.refresh()
+        await model.sessions.tick(now: Date())
+        XCTAssertTrue(model.sessions.isActive)
+        XCTAssertEqual(model.active, .background)
+        await model.sessions.end()
     }
 
     func testRenewalFailureReleasesNativeAssertionAndKeepsNestedErrorUntilExplicitRecovery() async throws {

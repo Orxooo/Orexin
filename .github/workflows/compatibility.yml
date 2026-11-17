@@ -28,8 +28,11 @@ jobs:
           swift --version
       - name: Tests
         run: swift test --arch arm64 --scratch-path "$RUNNER_TEMP/orexin-build"
+      - name: Local installer handoff
+        run: python3 scripts/test-install-handoff.py
       - name: Release bundle (ad hoc signature)
         env:
           OREXIN_BUILD_DIR: ${{ runner.temp }}/orexin-release
           OREXIN_OUTPUT_DIR: ${{ runner.temp }}/orexin-dist
+          OREXIN_BUILD_CHANNEL: stable
         run: ./scripts/build-app.sh

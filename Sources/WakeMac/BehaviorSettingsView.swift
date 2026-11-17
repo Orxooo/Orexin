@@ -5,6 +5,7 @@ import SwiftUI
 
 struct BehaviorSettingsView: View {
     @ObservedObject var behavior: BehaviorPreferences
+    var resetStatistics: () -> Void = {}
     @State private var resetPrompt = false
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -35,7 +36,7 @@ struct BehaviorSettingsView: View {
                 }.padding(12).background(TerminalStyle.recess)
             }
         }.confirmationDialog("清零本机工作统计？", isPresented: $resetPrompt) {
-            Button(L("清零统计"), role: .destructive) { behavior.resetStatistics() }
+            Button(L("清零统计"), role: .destructive) { resetStatistics() }
             Button(L("取消"), role: .cancel) {}
         }
     }

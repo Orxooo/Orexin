@@ -1541,3 +1541,153 @@
 "向左滚动" = "Défiler vers la gauche";
 
 "向右滚动" = "Défiler vers la droite";
+
+"下次成功授权后，将账户密码保存在本机钥匙串。" = "Après la prochaine autorisation réussie, le mot de passe du compte sera enregistré dans le trousseau local.";
+
+"会话、自动规则和任务由后台核心管理，退出界面后继续运行。" = "Les sessions, règles automatiques et tâches sont gérées par le noyau en arrière-plan et continuent après la fermeture de l’interface.";
+
+"保存的账户密码未通过认证，已删除，请重新输入。" = "Le mot de passe enregistré a été refusé et supprimé. Saisissez-le à nouveau.";
+
+"停止核心" = "Arrêter le noyau";
+
+"后台核心" = "Noyau en arrière-plan";
+
+"后台核心已停止。" = "Le noyau en arrière-plan est arrêté.";
+
+"后台核心已核验当前工作需求。" = "Le noyau en arrière-plan a vérifié les besoins du travail en cours.";
+
+"后台核心版本较旧；结束当前工作后，请在核心与授权中重新启动核心。" = "Le noyau en arrière-plan est ancien. Terminez le travail en cours, puis redémarrez-le dans Noyau et autorisation.";
+
+"启动核心" = "Démarrer le noyau";
+
+"命令已交给后台服务" = "Commande transmise au service en arrière-plan";
+
+"定位服务" = "Service de localisation";
+
+"将 Mac 账户密码保存到本机钥匙串，用于自动授权“工作时保持未锁定”。关闭后删除保存的密码。" = "Enregistrer le mot de passe du compte Mac dans le trousseau local pour autoriser automatiquement « Rester déverrouillé pendant le travail ». La désactivation supprime le mot de passe enregistré.";
+
+"工作会话已经运行。" = "Une session de travail est déjà en cours.";
+
+"已停止全部保活；运行中的命令继续。" = "Toutes les demandes de maintien en éveil sont arrêtées ; les commandes en cours continuent.";
+
+"已关闭自动授权，并删除本机保存的账户密码。" = "L’autorisation automatique est désactivée et le mot de passe local a été supprimé.";
+
+"已连接后台任务服务。" = "Connexion au service de tâches en arrière-plan établie.";
+
+"已重新连接后台任务服务。" = "Connexion au service de tâches en arrière-plan rétablie.";
+
+"支持在偏好设置中启用自动授权；结束后恢复即时密码保护。" = "Activez l’autorisation automatique dans les préférences. La protection immédiate par mot de passe est rétablie à la fin du travail.";
+
+"未知核心操作。" = "Opération du noyau inconnue.";
+
+"本机钥匙串中的账户密码格式无效。" = "Le format du mot de passe du compte dans le trousseau local est incorrect.";
+
+"本次授权已被其他操作取代，请重新开始工作。" = "Une autre opération a remplacé cette autorisation. Relancez le travail.";
+
+"核心与授权" = "Noyau et autorisation";
+
+"核心已连接" = "Noyau connecté";
+
+"核心未连接" = "Noyau déconnecté";
+
+"熄屏或合盖返回时免输密码，工作结束后恢复即时密码保护。" = "Revenez après la veille de l’écran ou la fermeture du capot sans saisir de mot de passe. La protection immédiate est rétablie à la fin du travail.";
+
+"独立核心尚未运行，请重新启动后台服务。" = "Le noyau indépendant n’est pas en cours d’exécution. Redémarrez le service en arrière-plan.";
+
+"用于 Esc 和亮度按键恢复屏幕亮度。" = "Permet de rétablir la luminosité avec Échap et les touches de luminosité.";
+
+"用于 Wi-Fi 网络名称触发条件。" = "Permet les déclencheurs basés sur le nom du réseau Wi-Fi.";
+
+"用于工作期间的自动移动指针。" = "Permet de déplacer automatiquement le pointeur pendant le travail.";
+
+"用于已连接蓝牙设备触发条件。" = "Permet les déclencheurs basés sur les appareils Bluetooth connectés.";
+
+"等待批准" = "En attente d’approbation";
+
+"系统权限" = "Autorisations système";
+
+"缺少合盖设置。" = "Le réglage du capot est manquant.";
+
+"缺少工作模式。" = "Le mode de travail est manquant.";
+
+"缺少规则设置。" = "Le réglage de règle est manquant.";
+
+"蓝牙" = "Bluetooth";
+
+"记住账户密码，自动授权" = "Mémoriser le mot de passe pour l’autorisation automatique";
+
+"请使用已签名的 Orexin 应用保存或读取账户密码。" = "Utilisez une application Orexin signée pour enregistrer ou lire le mot de passe du compte.";
+
+"读取" = "Lecture";
+
+"账户密码已保存在本机钥匙串，后续工作将自动授权。" = "Le mot de passe du compte est enregistré dans le trousseau local. Les prochains travaux seront autorisés automatiquement.";
+
+"账户密码设置正在更新，请稍后重试。" = "Les réglages du mot de passe sont en cours de mise à jour. Réessayez dans un instant.";
+
+"账户认证未完成，请重新授权。" = "L’authentification du compte n’a pas abouti. Autorisez à nouveau.";
+
+"辅助功能" = "Accessibilité";
+
+"输入 Mac 账户密码以授权保持未锁定。认证成功后，密码将保存到本机钥匙串，供后续工作自动授权。工作结束后恢复即时密码保护。" = "Saisissez le mot de passe du compte Mac pour autoriser le maintien déverrouillé. Après authentification réussie, il sera enregistré dans le trousseau local pour les prochaines autorisations automatiques. La protection immédiate est rétablie à la fin du travail.";
+
+"输入 Mac 账户密码以授权本次工作保持未锁定。密码仅用于本次认证，工作结束后恢复即时密码保护。" = "Saisissez le mot de passe du compte Mac pour rester déverrouillé pendant cette session. Il sert uniquement à cette authentification. La protection immédiate est rétablie à la fin du travail.";
+
+"输入监控" = "Surveillance de l’entrée";
+
+"运行中" = "En cours";
+
+"重启并升级核心" = "Redémarrer et mettre à jour le noyau";
+
+"重新连接" = "Reconnecter";
+
+"任务记录保存失败：" = "Impossible d’enregistrer les tâches : ";
+
+"会话已结束；其他工作请求继续。" = "La session est terminée ; les autres demandes de travail continuent.";
+
+"全部工作请求成功；60 秒后休眠，可取消。" = "Toutes les demandes ont réussi. Mise en veille dans 60 secondes ; vous pouvez annuler.";
+
+"切换回正常模式或停止核心会恢复休眠；退出界面后后台工作继续运行。" = "Revenez au mode normal ou arrêtez le noyau pour rétablir la veille. Le travail en arrière-plan continue après la fermeture de l’interface.";
+
+"合盖运行" = "Travailler capot fermé";
+
+"后台核心需要更新；请先结束当前工作，再重新启动核心。" = "Le noyau en arrière-plan doit être mis à jour. Terminez le travail en cours, puis redémarrez-le.";
+
+"命令任务 " = "Tâche de commande ";
+
+"命令任务已启动；独立保活，等待真实退出码。" = "Tâche de commande démarrée avec sa propre demande de maintien en éveil ; en attente du code de sortie réel.";
+
+"命令成功" = "Commande réussie";
+
+"工作请求已登记：" = "Demande de travail enregistrée : ";
+
+"无法恢复任务记录；未重放保活：" = "Impossible de restaurer les tâches ; les demandes de maintien en éveil n’ont pas été relancées : ";
+
+"温度保护正在生效。" = "La protection thermique est active.";
+
+"电源来源：外接电源" = "Source d’alimentation : secteur";
+
+"电源来源：未知" = "Source d’alimentation : inconnue";
+
+"电源来源：电池" = "Source d’alimentation : batterie";
+
+"界面启动；连接后台任务服务，保留正在运行的任务。" = "Interface démarrée ; connexion au service de tâches en préservant les tâches en cours.";
+
+"自动规则已抑制：手动操作、会话或保护策略优先。" = "Règles automatiques suspendues : les actions manuelles, sessions ou politiques de protection sont prioritaires.";
+
+"自动规则接管：" = "Prise en charge par une règle automatique : ";
+
+"自动规则结束：条件或时间要求已解除。" = "Règle automatique terminée : ses conditions ou exigences horaires ne s’appliquent plus.";
+
+"防屏保" = "Empêcher l’économiseur d’écran";
+
+"无法读取本机钥匙串：%@ 请手动授权。" = "Impossible de lire le trousseau local : %@ Autorisez manuellement.";
+
+"本次授权已完成，但密码未能保存：%@" = "L’autorisation est terminée, mais le mot de passe n’a pas pu être enregistré : %@";
+
+"本机钥匙串%@失败（%d）。" = "L’opération de trousseau local « %@ » a échoué (%d).";
+
+"系统状态" = "État du système";
+"Orexin 已停止保活；系统防休眠仍处于开启状态。" = "Orexin a cessé de maintenir le Mac éveillé ; la prévention de la veille du système reste activée.";
+"温度保护已结束保活；系统防休眠仍处于开启状态。" = "La protection thermique a arrêté le maintien en éveil d’Orexin ; la prévention de la veille du système reste activée.";
+"切换回正常模式或停止核心会结束 Orexin 保活；退出界面后后台工作继续运行。" = "Le retour au mode normal ou l’arrêt du cœur met fin au maintien en éveil d’Orexin. Les tâches continuent en arrière-plan après la fermeture de l’interface.";
+"Orexin 在工作时保持 Mac 唤醒，并在会话或任务结束后停止保活。" = "Orexin maintient le Mac éveillé pendant le travail et arrête son maintien en éveil à la fin de la session ou de la tâche.";

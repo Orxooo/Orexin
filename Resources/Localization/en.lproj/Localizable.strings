@@ -1541,3 +1541,153 @@
 "向左滚动" = "Scroll left";
 
 "向右滚动" = "Scroll right";
+
+"下次成功授权后，将账户密码保存在本机钥匙串。" = "After the next successful authorization, your account password will be saved in the local Keychain.";
+
+"会话、自动规则和任务由后台核心管理，退出界面后继续运行。" = "Sessions, automatic rules and tasks are managed by the background core and continue after the interface quits.";
+
+"保存的账户密码未通过认证，已删除，请重新输入。" = "The saved account password was rejected and deleted. Enter it again.";
+
+"停止核心" = "Stop core";
+
+"后台核心" = "Background core";
+
+"后台核心已停止。" = "Background core stopped.";
+
+"后台核心已核验当前工作需求。" = "The background core verified the current work requirements.";
+
+"后台核心版本较旧；结束当前工作后，请在核心与授权中重新启动核心。" = "The background core is outdated. Finish current work, then restart the core in Core & Authorization.";
+
+"启动核心" = "Start core";
+
+"命令已交给后台服务" = "Command handed to the background service";
+
+"定位服务" = "Location Services";
+
+"将 Mac 账户密码保存到本机钥匙串，用于自动授权“工作时保持未锁定”。关闭后删除保存的密码。" = "Save your Mac account password in the local Keychain to authorize “Keep unlocked while working” automatically. Turning this off deletes the saved password.";
+
+"工作会话已经运行。" = "A work session is already running.";
+
+"已停止全部保活；运行中的命令继续。" = "All keep-awake requests stopped; running commands continue.";
+
+"已关闭自动授权，并删除本机保存的账户密码。" = "Automatic authorization is off and the locally saved account password has been deleted.";
+
+"已连接后台任务服务。" = "Connected to the background task service.";
+
+"已重新连接后台任务服务。" = "Reconnected to the background task service.";
+
+"支持在偏好设置中启用自动授权；结束后恢复即时密码保护。" = "Enable automatic authorization in Preferences. Immediate password protection is restored when work ends.";
+
+"未知核心操作。" = "Unknown core operation.";
+
+"本机钥匙串中的账户密码格式无效。" = "The account password in the local Keychain has an invalid format.";
+
+"本次授权已被其他操作取代，请重新开始工作。" = "Another operation superseded this authorization. Start work again.";
+
+"核心与授权" = "Core & Authorization";
+
+"核心已连接" = "Core connected";
+
+"核心未连接" = "Core disconnected";
+
+"熄屏或合盖返回时免输密码，工作结束后恢复即时密码保护。" = "Return after display sleep or closing the lid without entering a password. Immediate password protection is restored when work ends.";
+
+"独立核心尚未运行，请重新启动后台服务。" = "The independent core is not running. Restart the background service.";
+
+"用于 Esc 和亮度按键恢复屏幕亮度。" = "Restore screen brightness with Esc and the brightness keys.";
+
+"用于 Wi-Fi 网络名称触发条件。" = "Enable triggers based on the Wi-Fi network name.";
+
+"用于工作期间的自动移动指针。" = "Move the pointer automatically while working.";
+
+"用于已连接蓝牙设备触发条件。" = "Enable triggers based on connected Bluetooth devices.";
+
+"等待批准" = "Awaiting approval";
+
+"系统权限" = "System permissions";
+
+"缺少合盖设置。" = "Lid setting is missing.";
+
+"缺少工作模式。" = "Work mode is missing.";
+
+"缺少规则设置。" = "Rule setting is missing.";
+
+"蓝牙" = "Bluetooth";
+
+"记住账户密码，自动授权" = "Remember account password for automatic authorization";
+
+"请使用已签名的 Orexin 应用保存或读取账户密码。" = "Use a signed Orexin app to save or read the account password.";
+
+"读取" = "Read";
+
+"账户密码已保存在本机钥匙串，后续工作将自动授权。" = "The account password is saved in the local Keychain. Future work will be authorized automatically.";
+
+"账户密码设置正在更新，请稍后重试。" = "Account password settings are being updated. Try again shortly.";
+
+"账户认证未完成，请重新授权。" = "Account authentication did not complete. Authorize again.";
+
+"辅助功能" = "Accessibility";
+
+"输入 Mac 账户密码以授权保持未锁定。认证成功后，密码将保存到本机钥匙串，供后续工作自动授权。工作结束后恢复即时密码保护。" = "Enter your Mac account password to authorize keeping it unlocked. After successful authentication, the password will be saved in the local Keychain for automatic authorization of future work. Immediate password protection returns when work ends.";
+
+"输入 Mac 账户密码以授权本次工作保持未锁定。密码仅用于本次认证，工作结束后恢复即时密码保护。" = "Enter your Mac account password to keep it unlocked for this work session. The password is used only for this authentication. Immediate password protection returns when work ends.";
+
+"输入监控" = "Input Monitoring";
+
+"运行中" = "Running";
+
+"重启并升级核心" = "Restart and upgrade core";
+
+"重新连接" = "Reconnect";
+
+"任务记录保存失败：" = "Could not save task records: ";
+
+"会话已结束；其他工作请求继续。" = "Session ended; other work requests continue.";
+
+"全部工作请求成功；60 秒后休眠，可取消。" = "All work requests succeeded. Sleeping in 60 seconds; you can cancel.";
+
+"切换回正常模式或停止核心会恢复休眠；退出界面后后台工作继续运行。" = "Return to Normal Sleep or stop the core to restore sleep. Background work continues after the interface quits.";
+
+"合盖运行" = "Work with lid closed";
+
+"后台核心需要更新；请先结束当前工作，再重新启动核心。" = "The background core needs updating. Finish current work, then restart the core.";
+
+"命令任务 " = "Command task ";
+
+"命令任务已启动；独立保活，等待真实退出码。" = "Command task started with its own keep-awake request; waiting for the actual exit code.";
+
+"命令成功" = "Command succeeded";
+
+"工作请求已登记：" = "Work request registered: ";
+
+"无法恢复任务记录；未重放保活：" = "Could not restore task records; keep-awake requests were not replayed: ";
+
+"温度保护正在生效。" = "Thermal protection is active.";
+
+"电源来源：外接电源" = "Power source: external power";
+
+"电源来源：未知" = "Power source: unknown";
+
+"电源来源：电池" = "Power source: battery";
+
+"界面启动；连接后台任务服务，保留正在运行的任务。" = "Interface started; connecting to the background task service while preserving running tasks.";
+
+"自动规则已抑制：手动操作、会话或保护策略优先。" = "Automatic rules suppressed: manual actions, sessions or protection policies take priority.";
+
+"自动规则接管：" = "Automatic rule took over: ";
+
+"自动规则结束：条件或时间要求已解除。" = "Automatic rule ended: its conditions or time requirements no longer apply.";
+
+"防屏保" = "Prevent screen saver";
+
+"无法读取本机钥匙串：%@ 请手动授权。" = "Could not read the local Keychain: %@ Authorize manually.";
+
+"本次授权已完成，但密码未能保存：%@" = "Authorization completed, but the password could not be saved: %@";
+
+"本机钥匙串%@失败（%d）。" = "Local Keychain operation %@ failed (%d).";
+
+"系统状态" = "System Status";
+"Orexin 已停止保活；系统防休眠仍处于开启状态。" = "Orexin has stopped keeping the Mac awake; system sleep prevention is still enabled.";
+"温度保护已结束保活；系统防休眠仍处于开启状态。" = "Temperature protection stopped Orexin’s keep-awake session; system sleep prevention is still enabled.";
+"切换回正常模式或停止核心会结束 Orexin 保活；退出界面后后台工作继续运行。" = "Returning to normal mode or stopping the core ends Orexin’s keep-awake session. Background work continues after the interface quits.";
+"Orexin 在工作时保持 Mac 唤醒，并在会话或任务结束后停止保活。" = "Orexin keeps your Mac awake while working and stops its keep-awake session when the session or task ends.";

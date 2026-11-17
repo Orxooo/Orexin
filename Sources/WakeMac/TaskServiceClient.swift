@@ -49,6 +49,8 @@ extension AppModel {
                 interfaceHandle = nil; interfaceSpec = nil
             }
             connectedServiceInstanceID = service.instanceID
+            serviceInfo = service
+            coreUpgradeRequired = reply.capabilities?.contains("independent-core-v1") != true
             sessions.screenSaverControlAvailable = reply.capabilities?.contains("session-effects-v1") == true
             let supported = reply.capabilities?.contains("notices-v1") == true
             if !supported {
@@ -59,6 +61,15 @@ extension AppModel {
                 notices.post(.serviceRecovery, title: "后台事件提醒已启用", body: "已连接支持消息提醒的后台服务。")
             }
             serviceNoticeSupport = supported
+        }
+        if let data = reply.coreRuntime, let core = try? ControlCoding.decode(CoreRuntimeSnapshot.self, from: data) {
+            if let statistics = core.statistics { behavior.observeStatistics(statistics) }
+            workScreen.reloadConfiguration()
+            workScreen.runtimeBehavior = core.screenBehavior
+            sessions.observeRuntime(core.session)
+            manualWorkMode = core.manualMode; sessionWorkMode = core.sessionMode
+            triggerOwnedMode = core.triggerMode; triggerOwnedRuleID = core.triggerRuleID
+            triggerSummary = core.triggerSummary; automation.deadline = core.timer
         }
         profiles.reload(); triggers.reload()
         workRequests = WorkRequestLedger(observing: reply.tasks.map(\.request))
@@ -78,19 +89,22 @@ extension AppModel {
         onUpdate?()
     }
     func connectTaskService() async {
+        corePaused = false
         serviceRecoveryEnabled = true
         do {
             let executable = Bundle.main.executableURL ?? URL(fileURLWithPath: CommandLine.arguments[0])
             let socket = serviceSocket ?? TaskServiceLauncher.socketPath
             let reply = try await launchTaskService(executable, socket)
-            adoptServiceReply(reply); error = false; message = "已连接后台任务服务。"
+            adoptServiceReply(reply)
+            error = coreUpgradeRequired
+            message = coreUpgradeRequired ? "后台核心版本较旧；结束当前工作后，请在核心与授权中重新启动核心。" : "已连接后台任务服务。"
         } catch {
             self.error = true; message = error.localizedDescription; requestServiceMessage = message
             reportPowerServiceFailure(message)
         }
     }
     func refreshTaskService(renew: Bool = false) async {
-        guard !serviceRefreshRunning else { return }
+        guard !corePaused, !serviceRefreshRunning else { return }
         serviceRefreshRunning = true
         defer { serviceRefreshRunning = false }
         let stopEpoch = workStopEpoch, previousInstance = connectedServiceInstanceID, observedGeneration = generation
@@ -109,22 +123,9 @@ extension AppModel {
             guard generation == observedGeneration, workStopEpoch == stopEpoch else { return }
             adoptServiceReply(reply)
             if serviceConnectionFailed { serviceConnectionFailed = false; error = false; message = "已重新连接后台任务服务。" }
-            let replaced = previousInstance != nil && previousInstance != connectedServiceInstanceID
-            if replaced, unlockedWorkEnabled {
-                // A password-free recovery must never invent a new lock-off grant.
+            // The service snapshot is authoritative. Reconnect never replays a UI intent.
+            if previousInstance != nil && previousInstance != connectedServiceInstanceID {
                 interfaceHandle = nil; interfaceSpec = nil
-                manualWorkMode = nil; sessionWorkMode = nil; triggerOwnedMode = nil
-            } else if replaced, stopEpoch == workStopEpoch, !busy, let mode = legacyWorkMode {
-                await chooseThroughService(mode, sleep: false, automatic: true, reconcilingRequests: true)
-            } else if let handle = interfaceHandle {
-                if !reply.tasks.contains(where: { $0.request.id == handle.id && $0.request.state == .active }) {
-                    // Same-instance revocation/expiry is authoritative. Never undo
-                    // a CLI stop or safety teardown by registering the GUI again.
-                    interfaceHandle = nil; interfaceSpec = nil
-                    manualWorkMode = nil; sessionWorkMode = nil; triggerOwnedMode = nil
-                } else if renew {
-                    _ = try await serviceCall(.init("heartbeat", handle: handle))
-                }
             }
             serviceRetryAt = .distantPast; serviceRetryDelay = 1; serviceRecoveryBeganAt = nil
             reportPowerServiceRecovery()
@@ -141,105 +142,37 @@ extension AppModel {
         }
     }
     func chooseThroughService(_ mode: WorkMode, sleep: Bool, automatic: Bool, reconcilingRequests: Bool) async {
-        let attemptStarted = Date()
-        let continuingAwake = (active == .desk || active == .background) && mode != .normal
-        if busy && mode != .normal { return }
-        // The timer already renews the lease and reads service state. Reconcile
-        // unchanged, verified work without publishing a user-visible transition.
-        if automatic, reconcilingRequests, !sleep, verifiedWork, !serviceConnectionFailed,
-           let desired = legacyWorkMode, desired != .normal, let handle = interfaceHandle,
-           workRequests.active.contains(where: { $0.id == handle.id }),
-           interfaceSpec == interfaceRequestSpec(for: desired) { return }
+        guard !busy || mode == .normal else { return }
         generation += 1
-        let revision = generation, stopEpoch = workStopEpoch, transition = UUID()
-        serviceTransitionOwner = transition
-        busy = true; error = false; pending = nil
+        let revision = generation, epoch = workStopEpoch, transition = UUID()
+        serviceTransitionOwner = transition; busy = true
         defer {
             if serviceTransitionOwner == transition { serviceTransitionOwner = nil; busy = false }
             onUpdate?()
         }
+        if mode != .normal, !(await authorizeCoreWork(grantID: transition, revision: revision, epoch: epoch)) { return }
+        guard coreIntentIsCurrent(revision: revision, epoch: epoch) else {
+            await cancelCoreAuthorization(transition); return
+        }
         do {
-            if !reconcilingRequests && (!automatic || mode == .normal) && !continuingAwake {
-                sessions.effectOverrides = nil
-                workScreen.runtimeBehavior = nil
+            let reply: ControlReply
+            if sleep { reply = try await serviceCall(.init("sleep-now")) }
+            else if mode == .normal { reply = try await serviceCall(.init("stop-all")) }
+            else {
+                var request = ControlMessage("core-mode", id: transition); request.mode = mode
+                reply = try await serviceCall(request)
             }
-            if mode == .normal && !reconcilingRequests {
-                interfaceHandle = nil; interfaceSpec = nil
-                overrideWorkRequests(reason: "User or interface stopped all work")
-                sessions.manualModeChanged(); suppressCurrentTriggers()
-                let reply = try await serviceCall(.init(sleep ? "sleep-now" : "stop-all"))
-                guard generation == revision else { return }
-                adoptServiceReply(reply)
-                sessions.screenPolicyPreventsSleep = nil
-                sessions.requestedScreenSaverPrevention = nil
-                message = sleep ? "已向系统发送休眠请求。" : "已停止全部保活；运行中的命令继续。"
-                return
-            }
-            if !automatic { manualWorkMode = mode; sessionWorkMode = nil; suppressCurrentTriggers() }
-            let desired = reconcilingRequests ? legacyWorkMode : legacyWorkMode ?? mode
-            if let desired, desired != .normal {
-                let status = try await serviceCall(.init("status"))
-                guard generation == revision, workStopEpoch == stopEpoch else { return }
-                adoptServiceReply(status)
-                let spec = interfaceRequestSpec(for: desired)
-                if interfaceSpec != spec || interfaceHandle == nil {
-                    if unlockedWorkEnabled {
-                        var prepare = ControlMessage("unlocked-prepare"); prepare.owner = LocalProcessIdentity.capture(pid: getpid())
-                        let prepared = try await serviceCall(prepare)
-                        guard generation == revision, workStopEpoch == stopEpoch else { return }
-                        if prepared.unlockedWorkAuthorized != true {
-                            do {
-                                var password = try requestUnlockedWorkPassword()
-                                defer { password.resetBytes(in: 0..<password.count) }
-                                _ = try await serviceCall(.init("unlocked-ready"))
-                                try await disableUnlockedWorkScreenLock(password)
-                                _ = try await serviceCall(.init("unlocked-finish"))
-                            } catch { _ = try? await serviceCall(.init("stop-all")); throw error }
-                        }
-                    }
-                    guard generation == revision, workStopEpoch == stopEpoch else { return }
-                    let handle = WorkRequestHandle(), previous = interfaceHandle
-                    let registered = try await serviceCall(.init("interface-register", handle: handle, spec: spec))
-                    guard generation == revision, workStopEpoch == stopEpoch else {
-                        _ = try? await serviceCall(.init("complete", handle: handle, exitCode: 0))
-                        return
-                    }
-                    connectedServiceInstanceID = registered.service?.instanceID
-                    interfaceHandle = handle; interfaceSpec = spec
-                    if let previous { _ = try? await serviceCall(.init("complete", handle: previous, exitCode: 0)) }
-                } else { _ = try await serviceCall(.init("heartbeat", handle: interfaceHandle)) }
-            } else if let handle = interfaceHandle {
-                interfaceHandle = nil; interfaceSpec = nil
-                _ = try await serviceCall(.init("complete", handle: handle, exitCode: 0))
-            }
-            // Registration, heartbeat and completion replies contain one task.
-            // Read the full ledger before calculating effects from all owners.
-            let final = try await serviceCall(.init("status"))
-            guard generation == revision, workStopEpoch == stopEpoch else { return }
-            adoptServiceReply(final)
-            preferences.set(true, forKey: "orexin.HasConfiguredMode")
-            message = "后台服务已核验当前工作需求。"
+            guard generation == revision, workStopEpoch == epoch else { await refreshTaskService(); return }
+            adoptServiceReply(reply)
+            error = false; pending = nil
+            message = sleep ? "已向系统发送休眠请求。" : mode == .normal ? (snapshot?.sleepDisabled == true ? "Orexin 已停止保活；系统防休眠仍处于开启状态。" : "已停止全部保活；运行中的命令继续。") : "后台核心已核验当前工作需求。"
         } catch {
-            guard generation == revision else { return }
+            await cancelCoreAuthorization(transition)
+            guard coreIntentIsCurrent(revision: revision, epoch: epoch) else { return }
             self.error = true; message = error.localizedDescription
-            let failure = message
-            await refreshTaskService()
-            guard generation == revision else { return }
-            if !notices.entries.contains(where: { $0.kind == .operationFailed && $0.date >= attemptStarted }) {
-                notices.post(.operationFailed, title: "工作模式未通过核验", body: failure)
-            }
-            self.error = true; message = failure
         }
     }
-    private func interfaceRequestSpec(for mode: WorkMode) -> WorkRequestSpec {
-        let screen = workScreen.ownBehavior(for: mode)
-        return WorkRequestSpec(title: "Orexin interface", source: "interface", mode: mode,
-                               screen: screen == .normalBrightness ? .awake : screen == .dim ? .dim : .idle,
-                               leaseSeconds: 15, process: LocalProcessIdentity.capture(pid: getpid()),
-                               preventScreenSaver: screen.keepsDisplayActive && sessions.screenSaverChoice(keepingDisplayActive: true))
-    }
     func disconnectInterface() async {
-        if let handle = interfaceHandle { _ = try? await serviceCall(.init("complete", handle: handle, exitCode: 0)) }
         interfaceHandle = nil; interfaceSpec = nil
         quitApplication?()
     }

@@ -154,8 +154,10 @@ struct TerminalMenuPanel: View {
 }
 
 struct TerminalTextFieldStyle: TextFieldStyle {
+    var height: CGFloat? = nil
     func _body(configuration: TextField<Self._Label>) -> some View {
-        configuration.textFieldStyle(.plain).padding(.horizontal, 9).padding(.vertical, 7)
+        configuration.textFieldStyle(.plain).padding(.horizontal, 9)
+            .padding(.vertical, height == nil ? 7 : 0).frame(height: height)
             .background(WorkStyle.surface)
             .overlay(Rectangle().strokeBorder(TerminalStyle.line))
     }

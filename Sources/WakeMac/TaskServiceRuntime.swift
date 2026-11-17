@@ -14,6 +14,7 @@ import WakeMacCore
     private var notifier: LocalNotifier?
     private var lastRefresh = Date.distantPast
     private var hadGraphicalSession = false
+    private var workspaceObservers: [NSObjectProtocol] = []
     private let root = TaskServiceLauncher.stateDirectory
     func start() {
         do {
@@ -25,6 +26,20 @@ import WakeMacCore
                              historyURL: root.appendingPathComponent("history.json"), jobLogDirectory: root.appendingPathComponent("Task Logs"))
             model.isTaskService = true
             model.workScreen.startObservingUserReturn()
+            let center = NSWorkspace.shared.notificationCenter
+            for name in [NSWorkspace.willSleepNotification, NSWorkspace.didWakeNotification] {
+                workspaceObservers.append(center.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor in
+                        guard let self, self.ready else { return }
+                        if name == NSWorkspace.willSleepNotification { await self.model.handleSystemWillSleep() }
+                        else {
+                            self.model.reloadServicePreferences()
+                            await self.model.refresh()
+                            if self.model.behavior.startAfterWake { await self.model.beginDefaultSession() }
+                        }
+                    }
+                })
+            }
             if Bundle.main.bundleIdentifier != nil {
                 let notifier = LocalNotifier(preferences: defaults)
                 notifier.configure(); self.notifier = notifier
@@ -58,7 +73,7 @@ import WakeMacCore
                 log("Task service ready; pid=\(getpid())")
                 timer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
                     Task { @MainActor in
-                        guard let self, !self.ticking else { return }
+                        guard let self, !self.ticking, !self.model.serviceStopping else { return }
                         self.ticking = true
                         defer { self.ticking = false }
                         self.model.reloadServicePreferences()
@@ -110,6 +125,7 @@ import WakeMacCore
 extension AppModel {
     func reloadServicePreferences() {
         reloadWorkPolicyPreferences(); profiles.reload(); triggers.reload()
+        sessions.reloadConfiguration(); workScreen.reloadConfiguration(); idlePolicy.reloadConfiguration(); behavior.reloadConfiguration()
         thermalThreshold = ThermalThreshold(rawValue: preferences.string(forKey: "orexin.thermal.threshold") ?? "") ?? .critical
         thermalReleaseEnabled = preferences.object(forKey: "orexin.thermal.releaseEnabled") as? Bool ?? true
         automation.batteryEnabled = preferences.object(forKey: "orexin.BatteryProtection") as? Bool ?? true
@@ -117,11 +133,14 @@ extension AppModel {
     }
     func handleServiceControl(_ request: ControlMessage) async throws -> ControlReply? {
         switch request.operation {
+        case "core-mode", "core-session-start", "core-session-end", "core-session-extend", "core-effects", "core-triggers", "core-lid", "core-timer", "core-statistics-reset":
+            return try await handleCoreControl(request)
         case "service-status":
             guard isTaskService else { throw ModeError("This is a legacy GUI endpoint; quit it and start the background service") }
             return taskControlReply()
         case "service-stop":
-            guard isTaskService, workRequests.active.isEmpty, runningCommandIDs.isEmpty,
+            guard isTaskService, legacyWorkMode == nil, !sessions.isActive, !sessions.isStarting,
+                  workRequests.active.isEmpty, runningCommandIDs.isEmpty,
                   !planRuns.contains(where: { !$0.state.terminal }), !busy else { throw ModeError("Service still owns active work; finish or stop it before shutting down") }
             serviceStopping = true
             var committed = false
@@ -167,24 +186,34 @@ extension AppModel {
         case "unlocked-setting":
             guard let enabled = request.enabled else { throw ModeError("缺少保持未锁定设置。") }
             await setUnlockedWork(enabled); return taskControlReply()
+        case "unlocked-cancel":
+            if request.id != nil, request.id == pendingUnlockedGrantID,
+               legacyWorkMode == nil, workRequests.active.isEmpty, runningCommandIDs.isEmpty,
+               !sessions.isActive, !sessions.isStarting, !busy {
+                pendingUnlockedGrantID = nil; pendingUnlockedOwner = nil; pendingUnlockedDeadline = nil
+                await choose(.normal, automatic: true)
+            }
+            return taskControlReply()
         case "unlocked-ready":
-            guard let deadline = pendingUnlockedDeadline, Date() < deadline, pendingUnlockedOwner?.isAlive == true,
+            guard request.id != nil, request.id == pendingUnlockedGrantID,
+                  let deadline = pendingUnlockedDeadline, Date() < deadline, pendingUnlockedOwner?.isAlive == true,
                   let backend = backend as? MacBackend else { throw ModeError("本次授权已过期，请重新开始工作。") }
             try await backend.renewPendingUnlockedWork()
             pendingUnlockedDeadline = Date().addingTimeInterval(30)
             return taskControlReply()
         case "unlocked-prepare":
             guard let backend = backend as? MacBackend else { throw ModeError("当前后端不支持保持未锁定授权。") }
-            guard let owner = request.owner, owner.isAlive == true else { throw ModeError("请在正在运行的 Orexin 界面发起授权。") }
+            guard let grantID = request.id, let owner = request.owner, owner.isAlive == true else { throw ModeError("请在正在运行的 Orexin 界面发起授权。") }
             if try await backend.unlockedWorkAuthorizationIsActive() {
                 var reply = taskControlReply(); reply.unlockedWorkAuthorized = true; return reply
             }
             guard workRequests.active.isEmpty else { throw ModeError("请先结束现有工作，再授权保持未锁定。") }
             await setUnlockedWork(true)
             try await backend.prepareUnlockedWorkFromInterface()
-            pendingUnlockedOwner = owner; pendingUnlockedDeadline = Date().addingTimeInterval(120)
+            pendingUnlockedGrantID = grantID; pendingUnlockedOwner = owner; pendingUnlockedDeadline = Date().addingTimeInterval(120)
             var reply = taskControlReply(); reply.unlockedWorkAuthorized = false; return reply
         case "unlocked-finish":
+            guard request.id != nil, request.id == pendingUnlockedGrantID else { throw ModeError("本次授权已过期，请重新开始工作。") }
             guard let backend = backend as? MacBackend else { throw ModeError("当前后端不支持保持未锁定授权。") }
             try await backend.verifyUnlockedWorkFromInterface()
             return taskControlReply()
@@ -200,8 +229,11 @@ extension AppModel {
             await restoreDesktopBrightnessFromKey()
             return taskControlReply()
         case "sleep-now":
+            guard !busy else { throw ModeError("正在切换模式，请稍候。") }
             await choose(.normal, sleep: true)
-            var reply = taskControlReply(); if error || pending != nil { reply.ok = false; reply.error = message }; return reply
+            var reply = taskControlReply()
+            if busy || error || pending != nil || active != .normal { reply.ok = false; reply.error = message }
+            return reply
         default: return nil
         }
     }

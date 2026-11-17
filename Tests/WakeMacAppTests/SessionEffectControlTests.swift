@@ -207,6 +207,11 @@ import WakeMacCore
         XCTAssertTrue(service.sessions.choices.preventScreenSaver)
         XCTAssertTrue(client.sessions.choices.preventScreenSaver)
         XCTAssertEqual(client.message, "其他任务仍要求暂停屏保。")
+        await client.refreshTaskService()
+        XCTAssertEqual(client.message, "其他任务仍要求暂停屏保。")
+        client.message = "界面操作失败，请重新选择。"
+        await client.refreshTaskService()
+        XCTAssertEqual(client.message, "界面操作失败，请重新选择。")
         try await service.completeWork(other, exitCode: 0)
         await client.choose(.normal)
     }
@@ -355,7 +360,7 @@ import WakeMacCore
         XCTAssertNil(client.sessions.effectOverrides)
         await client.choose(.desk)
         XCTAssertTrue(service.sessions.choices.preventScreenSaver)
-        client.sessions.setScreenSaverPrevention(false)
+        await client.changeScreenSaverPrevention(false)
         await client.choose(.background)
         XCTAssertEqual(client.sessions.effectOverrides?.saver, false)
         XCTAssertFalse(service.sessions.choices.preventScreenSaver)
@@ -376,7 +381,8 @@ import WakeMacCore
         await client.changeDisplayPrevention(false)
         XCTAssertFalse(service.sessions.choices.preventDisplaySleep)
         await client.sessions.start()
-        XCTAssertNil(client.workScreen.runtimeBehavior)
+        XCTAssertNil(service.workScreen.runtimeBehavior)
+        XCTAssertEqual(client.workScreen.runtimeBehavior, .normalBrightness)
         XCTAssertTrue(service.sessions.choices.preventDisplaySleep)
         await client.sessions.end()
     }
@@ -388,7 +394,8 @@ import WakeMacCore
         m.adoptServiceReply(reply)
         XCTAssertFalse(m.sessions.screenSaverControlAvailable)
         await m.changeScreenSaverPrevention(true)
-        XCTAssertTrue(m.message.contains("重启后台服务"))
+        XCTAssertTrue(m.coreUpgradeRequired)
+        XCTAssertTrue(m.message.contains("重新启动核心"))
         XCTAssertFalse(m.sessions.preventScreenSaver)
     }
     func testOldRequestPayloadRemainsCompatibleWithTheNewOptionalChoice() throws {

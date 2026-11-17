@@ -58,11 +58,12 @@ import WakeMacCore
         client.workScreen.select(.dim, for: .desk)
         await client.selectWorkPreset(.desk)
         XCTAssertTrue(client.verifiedWork)
-        XCTAssertEqual(service.workRequests.active.first?.spec.screen, .awake)
+        XCTAssertTrue(service.workRequests.active.isEmpty)
+        XCTAssertEqual(service.manualWorkMode, .desk)
         XCTAssertEqual(service.workScreen.behavior(for: .desk), .normalBrightness)
         await client.choose(.normal)
     }
-    func testDisplayWakeMakesNormalBrightnessTheInterfaceRequest() async throws {
+    func testDisplayWakeRestoresCoreBrightnessAndUpdatesInterfaceSnapshot() async throws {
         let prefs = preferences()
         let service = AppModel(backend: AutomationBackend(), preferences: prefs, sessionEffects: VerifiedAwakeEffects())
         service.isTaskService = true; service.serviceInfo = TaskServiceInfo(stateDirectory: "/tmp")
@@ -80,7 +81,7 @@ import WakeMacCore
         client.serviceSocket = path
         await client.selectWorkPreset(.desk)
         await client.setWorkScreenBehavior(.dim)
-        XCTAssertEqual(service.workRequests.active.first?.spec.screen, .dim)
+        XCTAssertEqual(service.workScreen.behavior(for: .desk), .dim)
         let awake = DisplayState(lidClosed: false, builtInAsleep: false, sessionLocked: false)
         await screen.tick(mode: .desk, working: true, state: awake, onBattery: false, now: Date())
         screen.resumeAfterDisplayWake()
@@ -88,12 +89,14 @@ import WakeMacCore
         XCTAssertTrue(screen.dimmingPaused)
         client.adoptServiceReply(service.taskControlReply())
         await client.applyWorkScreenPolicy(now: Date())
-        XCTAssertEqual(service.workRequests.active.count, 1)
-        XCTAssertEqual(service.workRequests.active.first?.spec.screen, .awake)
+        XCTAssertTrue(service.workRequests.active.isEmpty)
+        XCTAssertTrue(service.workRequests.active.isEmpty)
+        XCTAssertEqual(service.manualWorkMode, .desk)
         XCTAssertEqual(client.workScreen.ownBehavior(for: .desk), .normalBrightness)
+        XCTAssertEqual(service.workScreen.behavior(for: .desk), .normalBrightness)
         XCTAssertTrue(client.verifiedWork)
         await client.setWorkScreenBehavior(.dim)
-        XCTAssertEqual(service.workRequests.active.first?.spec.screen, .dim)
+        XCTAssertEqual(service.workScreen.behavior(for: .desk), .dim)
         XCTAssertFalse(screen.dimmingPaused)
         await client.choose(.normal)
     }
@@ -153,7 +156,7 @@ import WakeMacCore
         XCTAssertEqual(service.active, .background)
         XCTAssertTrue(service.sessions.effectReport.screenSaverAssertionActive)
         XCTAssertEqual(service.workScreen.behavior(for: .background), .normalBrightness)
-        XCTAssertEqual(service.workRequests.active.count, 1)
+        XCTAssertTrue(service.workRequests.active.isEmpty)
         await client.choose(.normal)
     }
     func testMigrationUsesThePreviouslySelectedSessionsScreenPolicy() {

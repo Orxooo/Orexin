@@ -6,6 +6,14 @@
 
 See [Releases](https://github.com/Orxooo/Orexin/releases) for downloads and upgrade instructions.
 
+## V1.1.1 — 2026-11-16
+
+- The background core manages work modes, sessions, automatic rules, commands and execution plans after the interface quits.
+- Fixed an issue that could prevent the interface from reopening while the core was running.
+- During lid-closed work, the core checks the sleep-prevention switch and restores it if switched off. A switch already enabled before work is preserved when Orexin has not changed it.
+- Added optional Keychain-backed automatic authorization, disabled by default. The account password is saved only after successful authentication and verification.
+- Corrected immediate-sleep feedback. A busy core rejects the sleep request without stopping existing work.
+
 ## V1.1.0 — 2026-11-04
 
 ### Added

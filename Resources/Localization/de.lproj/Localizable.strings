@@ -1541,3 +1541,153 @@
 "向左滚动" = "Nach links scrollen";
 
 "向右滚动" = "Nach rechts scrollen";
+
+"下次成功授权后，将账户密码保存在本机钥匙串。" = "Nach der nächsten erfolgreichen Autorisierung wird das Accountpasswort im lokalen Schlüsselbund gespeichert.";
+
+"会话、自动规则和任务由后台核心管理，退出界面后继续运行。" = "Sitzungen, automatische Regeln und Aufgaben werden vom Hintergrundkern verwaltet und laufen nach dem Beenden der Oberfläche weiter.";
+
+"保存的账户密码未通过认证，已删除，请重新输入。" = "Das gespeicherte Accountpasswort wurde abgelehnt und gelöscht. Bitte erneut eingeben.";
+
+"停止核心" = "Kern stoppen";
+
+"后台核心" = "Hintergrundkern";
+
+"后台核心已停止。" = "Hintergrundkern gestoppt.";
+
+"后台核心已核验当前工作需求。" = "Der Hintergrundkern hat die aktuellen Arbeitsanforderungen geprüft.";
+
+"后台核心版本较旧；结束当前工作后，请在核心与授权中重新启动核心。" = "Der Hintergrundkern ist veraltet. Beende die aktuelle Arbeit und starte ihn unter Kern und Autorisierung neu.";
+
+"启动核心" = "Kern starten";
+
+"命令已交给后台服务" = "Befehl an den Hintergrunddienst übergeben";
+
+"定位服务" = "Ortungsdienste";
+
+"将 Mac 账户密码保存到本机钥匙串，用于自动授权“工作时保持未锁定”。关闭后删除保存的密码。" = "Speichert das Mac-Accountpasswort im lokalen Schlüsselbund, um „Während der Arbeit entsperrt bleiben“ automatisch zu autorisieren. Beim Ausschalten wird das gespeicherte Passwort gelöscht.";
+
+"工作会话已经运行。" = "Eine Arbeitssitzung läuft bereits.";
+
+"已停止全部保活；运行中的命令继续。" = "Alle Wachhalteanforderungen gestoppt; laufende Befehle werden fortgesetzt.";
+
+"已关闭自动授权，并删除本机保存的账户密码。" = "Die automatische Autorisierung ist ausgeschaltet und das lokal gespeicherte Accountpasswort wurde gelöscht.";
+
+"已连接后台任务服务。" = "Mit dem Hintergrundaufgabendienst verbunden.";
+
+"已重新连接后台任务服务。" = "Erneut mit dem Hintergrundaufgabendienst verbunden.";
+
+"支持在偏好设置中启用自动授权；结束后恢复即时密码保护。" = "Die automatische Autorisierung lässt sich in den Einstellungen aktivieren. Nach Arbeitsende gilt wieder der sofortige Passwortschutz.";
+
+"未知核心操作。" = "Unbekannte Kernoperation.";
+
+"本机钥匙串中的账户密码格式无效。" = "Das Accountpasswort im lokalen Schlüsselbund hat ein ungültiges Format.";
+
+"本次授权已被其他操作取代，请重新开始工作。" = "Eine andere Operation hat diese Autorisierung ersetzt. Starte die Arbeit erneut.";
+
+"核心与授权" = "Kern und Autorisierung";
+
+"核心已连接" = "Kern verbunden";
+
+"核心未连接" = "Kern nicht verbunden";
+
+"熄屏或合盖返回时免输密码，工作结束后恢复即时密码保护。" = "Nach dem Ausschalten des Displays oder Schließen des Deckels ohne Passworteingabe zurückkehren. Nach Arbeitsende gilt wieder sofortiger Passwortschutz.";
+
+"独立核心尚未运行，请重新启动后台服务。" = "Der unabhängige Kern läuft nicht. Starte den Hintergrunddienst neu.";
+
+"用于 Esc 和亮度按键恢复屏幕亮度。" = "Stellt die Bildschirmhelligkeit mit Esc und den Helligkeitstasten wieder her.";
+
+"用于 Wi-Fi 网络名称触发条件。" = "Ermöglicht Auslöser anhand des WLAN-Netzwerknamens.";
+
+"用于工作期间的自动移动指针。" = "Bewegt den Zeiger während der Arbeit automatisch.";
+
+"用于已连接蓝牙设备触发条件。" = "Ermöglicht Auslöser anhand verbundener Bluetooth-Geräte.";
+
+"等待批准" = "Genehmigung ausstehend";
+
+"系统权限" = "Systemberechtigungen";
+
+"缺少合盖设置。" = "Deckeleinstellung fehlt.";
+
+"缺少工作模式。" = "Arbeitsmodus fehlt.";
+
+"缺少规则设置。" = "Regeleinstellung fehlt.";
+
+"蓝牙" = "Bluetooth";
+
+"记住账户密码，自动授权" = "Accountpasswort für automatische Autorisierung speichern";
+
+"请使用已签名的 Orexin 应用保存或读取账户密码。" = "Verwende eine signierte Orexin-App zum Speichern oder Lesen des Accountpassworts.";
+
+"读取" = "Lesen";
+
+"账户密码已保存在本机钥匙串，后续工作将自动授权。" = "Das Accountpasswort ist im lokalen Schlüsselbund gespeichert. Künftige Arbeit wird automatisch autorisiert.";
+
+"账户密码设置正在更新，请稍后重试。" = "Die Accountpassworteinstellungen werden aktualisiert. Versuche es gleich erneut.";
+
+"账户认证未完成，请重新授权。" = "Die Accountauthentifizierung wurde nicht abgeschlossen. Autorisiere erneut.";
+
+"辅助功能" = "Bedienungshilfen";
+
+"输入 Mac 账户密码以授权保持未锁定。认证成功后，密码将保存到本机钥匙串，供后续工作自动授权。工作结束后恢复即时密码保护。" = "Gib das Mac-Accountpasswort ein, um das Entsperrthalten zu autorisieren. Nach erfolgreicher Authentifizierung wird es im lokalen Schlüsselbund für künftige automatische Autorisierungen gespeichert. Nach Arbeitsende gilt wieder sofortiger Passwortschutz.";
+
+"输入 Mac 账户密码以授权本次工作保持未锁定。密码仅用于本次认证，工作结束后恢复即时密码保护。" = "Gib das Mac-Accountpasswort ein, um während dieser Arbeit entsperrt zu bleiben. Es wird nur für diese Authentifizierung verwendet. Nach Arbeitsende gilt wieder sofortiger Passwortschutz.";
+
+"输入监控" = "Eingabeüberwachung";
+
+"运行中" = "Läuft";
+
+"重启并升级核心" = "Kern neu starten und aktualisieren";
+
+"重新连接" = "Erneut verbinden";
+
+"任务记录保存失败：" = "Aufgabenaufzeichnungen konnten nicht gespeichert werden: ";
+
+"会话已结束；其他工作请求继续。" = "Sitzung beendet; andere Arbeitsanforderungen laufen weiter.";
+
+"全部工作请求成功；60 秒后休眠，可取消。" = "Alle Arbeitsanforderungen erfolgreich. Ruhezustand in 60 Sekunden; Abbrechen möglich.";
+
+"切换回正常模式或停止核心会恢复休眠；退出界面后后台工作继续运行。" = "Der normale Modus oder das Stoppen des Kerns stellt den Ruhezustand wieder her. Hintergrundarbeit läuft nach dem Beenden der Oberfläche weiter.";
+
+"合盖运行" = "Mit geschlossenem Deckel arbeiten";
+
+"后台核心需要更新；请先结束当前工作，再重新启动核心。" = "Der Hintergrundkern muss aktualisiert werden. Beende die aktuelle Arbeit und starte den Kern neu.";
+
+"命令任务 " = "Befehlsaufgabe ";
+
+"命令任务已启动；独立保活，等待真实退出码。" = "Befehlsaufgabe mit eigener Wachhalteanforderung gestartet; auf den tatsächlichen Exitcode wird gewartet.";
+
+"命令成功" = "Befehl erfolgreich";
+
+"工作请求已登记：" = "Arbeitsanforderung registriert: ";
+
+"无法恢复任务记录；未重放保活：" = "Aufgabenaufzeichnungen konnten nicht wiederhergestellt werden; Wachhalteanforderungen wurden nicht erneut ausgeführt: ";
+
+"温度保护正在生效。" = "Der Wärmeschutz ist aktiv.";
+
+"电源来源：外接电源" = "Stromquelle: Netzstrom";
+
+"电源来源：未知" = "Stromquelle: unbekannt";
+
+"电源来源：电池" = "Stromquelle: Batterie";
+
+"界面启动；连接后台任务服务，保留正在运行的任务。" = "Oberfläche gestartet; Verbindung zum Hintergrundaufgabendienst unter Beibehaltung laufender Aufgaben.";
+
+"自动规则已抑制：手动操作、会话或保护策略优先。" = "Automatische Regeln unterdrückt: Manuelle Aktionen, Sitzungen oder Schutzrichtlinien haben Vorrang.";
+
+"自动规则接管：" = "Automatische Regel übernimmt: ";
+
+"自动规则结束：条件或时间要求已解除。" = "Automatische Regel beendet: Bedingungen oder Zeitanforderungen gelten nicht mehr.";
+
+"防屏保" = "Bildschirmschoner verhindern";
+
+"无法读取本机钥匙串：%@ 请手动授权。" = "Der lokale Schlüsselbund konnte nicht gelesen werden: %@ Bitte manuell autorisieren.";
+
+"本次授权已完成，但密码未能保存：%@" = "Die Autorisierung wurde abgeschlossen, das Passwort konnte jedoch nicht gespeichert werden: %@";
+
+"本机钥匙串%@失败（%d）。" = "Die lokale Schlüsselbundoperation „%@“ ist fehlgeschlagen (%d).";
+
+"系统状态" = "Systemstatus";
+"Orexin 已停止保活；系统防休眠仍处于开启状态。" = "Orexin hält den Mac nicht mehr wach; die systemweite Ruhezustandssperre ist weiterhin aktiviert.";
+"温度保护已结束保活；系统防休眠仍处于开启状态。" = "Der Temperaturschutz hat das Wachhalten durch Orexin beendet; die systemweite Ruhezustandssperre ist weiterhin aktiviert.";
+"切换回正常模式或停止核心会结束 Orexin 保活；退出界面后后台工作继续运行。" = "Der Normalmodus oder das Stoppen des Kerns beendet das Wachhalten durch Orexin. Hintergrundaufgaben laufen nach dem Schließen der Oberfläche weiter.";
+"Orexin 在工作时保持 Mac 唤醒，并在会话或任务结束后停止保活。" = "Orexin hält den Mac während der Arbeit wach und beendet das Wachhalten nach einer Sitzung oder Aufgabe.";

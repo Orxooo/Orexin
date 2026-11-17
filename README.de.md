@@ -13,11 +13,11 @@
 
 Orexin ist eine macOS-Menüleisten-App, mit der du festlegst, wann dein Mac wach bleibt und wann er in den Ruhezustand wechseln darf.
 
-Nutze sie beim Kompilieren, Herunterladen, Präsentieren oder für lange Aufgaben – am Schreibtisch oder mit geschlossenem Deckel. Zeitlich begrenzte Sitzungen, automatische Regeln und Befehlsaufgaben bestimmen, wann der Mac nicht mehr wach gehalten werden soll.
+Der Wachmodus hält den Mac aktiv; der Normalmodus gibt die Wachhalteanforderungen von Orexin frei. Bildschirm, geschlossener Deckel, Bildschirmschoner und entsperrtes Arbeiten lassen sich getrennt einstellen. Sitzungen, Regeln und Befehle bestimmen das Ende.
 
 [Neueste Version herunterladen](https://github.com/Orxooo/Orexin/releases/latest) · [Änderungsprotokoll](CHANGELOG.de.md) · [Handbuch](https://github.com/Orxooo/Orexin/wiki)
 
-![Orexin-Arbeitsmodi im Tron-Design, dargestellt auf vereinfachtem Chinesisch](Assets/README/orexin-1.0.3-modes.png)
+![Orexin-Arbeitsmodi im Tron-Design, dargestellt auf vereinfachtem Chinesisch](Assets/README/orexin-1.1.1-modes.png)
 
 ## Funktionen
 
@@ -60,14 +60,16 @@ Beende danach Orexin, ersetze die App und öffne sie erneut. Überspringe den Di
 
 ### Hinweise zur Nutzung
 
-- „Während der Arbeit entsperrt bleiben“ ist optional und erfordert eine eigene Autorisierung. Die Einstellung deaktiviert die Passwortabfrage beim Aufwachen für die laufende Arbeit und stellt anschließend den sofortigen Passwortschutz wieder her. Orexin speichert keine Passwörter und entsperrt keinen gesperrten Mac.
+- „Während der Arbeit entsperrt bleiben“ ist optional und erfordert eine Accountauthentifizierung. Es deaktiviert die Passwortabfrage beim Aufwachen während der Arbeit und stellt nach Arbeitsende den sofortigen Passwortschutz wieder her. Unter Einstellungen → Kern und Autorisierung ist „Accountpasswort für automatische Autorisierung speichern“ standardmäßig ausgeschaltet. Wenn aktiviert, speichert Orexin das Passwort erst nach erfolgreicher Authentifizierung und Prüfung im lokalen macOS-Schlüsselbund, ohne iCloud-Synchronisierung. Beim Ausschalten wird es gelöscht. Ohne gespeichertes Passwort wird es für jede neue Arbeit abgefragt. Ein abgelehntes gespeichertes Passwort wird gelöscht; anschließend ist ein manueller Wiederholungsversuch möglich. Orexin entsperrt keinen bereits gesperrten Mac.
 - Helligkeit 0 % ist etwas anderes als ein ausgeschalteter Bildschirm. Bildschirmabhängige Screenshots oder UI-Automatisierungen können durch das Ausschalten beeinträchtigt werden.
-- Die Rückkehr zu „Normaler Ruhezustand“ hebt nur die Anforderungen von Orexin zum Wachhalten auf. Andere Apps können den Ruhezustand weiterhin verhindern.
+- Die Rückkehr zum „Normalmodus“ hebt nur die Anforderungen von Orexin zum Wachhalten auf. Andere Apps können den Ruhezustand weiterhin verhindern.
 - Der Wärmeschutz verwendet die von macOS gemeldeten Wärmebelastungsstufen, keine Temperaturwerte in Grad Celsius. Nach dem Abkühlen wird gestoppte Arbeit nicht automatisch neu gestartet.
+- Wenn die Verbindung zum Hilfsdienst abbricht und die Arbeit endet, wechsle in den Normalmodus und starte den Kern unter Einstellungen → Kern und Autorisierung neu, bevor du die Arbeit erneut startest.
+- Starte den Kern neu, nachdem du Sitzungs- oder Regelbenachrichtigungen geändert oder Systemmitteilungen erstmals erlaubt hast.
 
 ## Aufgabenverwaltung und CLI
 
-Hintergrundbefehle und Ausführungspläne laufen weiter, wenn du die Benutzeroberfläche beendest. Manuelle Sitzungen und automatische Regeln benötigen dagegen den laufenden Oberflächenprozess. Nach einem Neustart des Dienstes werden nicht abgeschlossene Aufgaben als nicht mehr erreichbar markiert und nicht automatisch erneut ausgeführt.
+Der Hintergrundkern verwaltet manuelle Arbeitsmodi, zeitgesteuerte Sitzungen, automatische Regeln, Befehle und Ausführungspläne. Sie laufen nach dem Beenden der Oberfläche weiter. Tastenkürzel und die AppleScript-Verteilung bleiben Einstiegspunkte der Oberfläche und benötigen deren Prozess. Nach einem Neustart des Kerns wird frühere Arbeit nicht erneut ausgeführt; unvollständige Aufgaben werden als nicht mehr erreichbar markiert.
 
 Die CLI ist im App-Paket enthalten und muss nicht separat installiert werden:
 
@@ -92,6 +94,8 @@ cd Orexin
 swift test --arch arm64 --scratch-path /tmp/orexin-test-build
 ./scripts/build-app.sh
 ```
+
+Lokale Builds verwenden standardmäßig den Dev-Kanal. Für einen stabilen Build setze `OREXIN_BUILD_CHANNEL=stable` und gib die öffentliche Versionsnummer mit `OREXIN_VERSION` an.
 
 Die Ausgabe liegt unter `/tmp/orexin-dist/Orexin.app` und wird standardmäßig ad hoc signiert. Für den Betrieb mit geschlossenem Deckel müssen die App und der Hilfsdienst mit demselben Apple-Entwicklerzertifikat signiert sein:
 
